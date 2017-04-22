@@ -1,7 +1,16 @@
 language: cpp
-script: make && make test
+
 dist: trusty
 sudo: false
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+
 compiler:
   - clang
   - gcc
+
+script: make && make test
