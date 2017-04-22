@@ -21,6 +21,7 @@ before_install:
 
 script:
   - sudo ln -s /usr/bin/g++-6 /usr/local/bin/g++
+  - sudo ln -s /usr/bin/clang-3.9 /usr/local/bin/clang++
   - g++ -v && clang++ -v
   - make && make test
 
