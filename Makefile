@@ -9,7 +9,7 @@ test: test_bin
 	./$<
 
 clean:
-	rm -f *.o *_bin
+	rm -f *.o *_bin *.gcov *.gcno *.gcda
 
 format:
 	clang-format -i test.cpp model.hpp
