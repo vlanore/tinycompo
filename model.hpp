@@ -92,10 +92,11 @@ TEST_CASE("Assembly class tests.") {
         MyClass(int i, int j) : i(i), j(j) {}
     };
 
-    _Component compo(_Type<MyClass>(), 3, 4);                       // create _Component object
-    auto ptr = dynamic_cast<MyClass*>(compo._constructor().get());  // instantiate actual object
-    CHECK(ptr->i == 3);
-    CHECK(ptr->j == 4);
+    _Component compo(_Type<MyClass>(), 3, 4);  // create _Component object
+    auto ptr = compo._constructor();           // instantiate actual object
+    auto ptr2 = dynamic_cast<MyClass*>(ptr.get());
+    CHECK(ptr2->i == 3);
+    CHECK(ptr2->j == 4);
 }
 
 /*

@@ -1,4 +1,4 @@
-.PHONY: test clean format
+.PHONY: test clean format ready
 
 all: test_bin
 
@@ -13,3 +13,6 @@ clean:
 
 format:
 	clang-format -i test.cpp model.hpp
+
+ready: test format
+	git status
