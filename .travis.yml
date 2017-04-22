@@ -25,4 +25,4 @@ script:
   - make && make test
 
 after_success:
-  - coveralls --gcov-options '\-lp' -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
+  - coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
