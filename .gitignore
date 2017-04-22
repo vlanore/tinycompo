@@ -4,3 +4,8 @@
 
 # Binaries
 *_bin
+
+# gcov things
+*.gcov
+*.gcno
+*.gcda
