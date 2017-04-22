@@ -20,7 +20,6 @@ matrix:
           packages:
             - clang-3.6
       env: COMPILER=clang++-3.6
-      after_success: coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
 
 before_install:
   - pip install --user cpp-coveralls
@@ -29,4 +28,4 @@ script:
   - export CXX=$COMPILER
   - $CXX -v
   - make && make test
-
+  - if [ "$CXX" == "g++-6" ]; then coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR; fi
