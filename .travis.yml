@@ -12,7 +12,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-      env: COMPILER=g++-6
+      env: CXX=g++-6
     - compiler: clang
       addons:
         apt:
@@ -21,14 +21,14 @@ matrix:
             - llvm-toolchain-precise-3.6
           packages:
             - clang-3.6
-      env: COMPILER=clang++-3.6
+      env: CXX=clang++-3.6
+      after_success: coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
+
 
 before_install:
   - pip install --user cpp-coveralls
 
 script:
-  - g++ -v && clang++ -v
+  - $CXX -v
   - make && make test
 
-after_success:
-  - coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
