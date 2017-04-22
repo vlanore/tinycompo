@@ -5,16 +5,14 @@ sudo: require
 
 matrix:
   include:
-    - compiler: gcc
-      addons:
+    - addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
       env: CXX=g++-6
-    - compiler: clang
-      addons:
+    - addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
@@ -23,7 +21,6 @@ matrix:
             - clang-3.6
       env: CXX=clang++-3.6
       after_success: coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR
-
 
 before_install:
   - pip install --user cpp-coveralls
