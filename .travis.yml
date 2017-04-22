@@ -1,16 +1,24 @@
 language: cpp
 
 dist: trusty
-sudo: false
+sudo: require
+
 addons:
   apt:
     sources:
-    - ubuntu-toolchain-r-test
+      - ubuntu-toolchain-r-test
     packages:
-    - gcc-5
+      - gcc-6
+      - g++-6
 
 compiler:
   - clang
   - gcc
 
-script: make && make test
+script:
+  - make && make test
+  - ln -s /usr/bin/gcc-6 /usr/local/bin/gcc
+  - ln -s /usr/bin/g++-6 /usr/local/bin/g++
+  - export CC=/usr/bin/gcc-6
+  - export CXX=/usr/bin/g++-6
+  - gcc -v && g++ -v && cmake --version
