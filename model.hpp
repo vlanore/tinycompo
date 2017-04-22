@@ -35,6 +35,7 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 #include <utility>
 #include "doctest.h"
 
@@ -104,15 +105,42 @@ TEST_CASE("Assembly class tests.") {
   Assembly class
 ==================================================================================================*/
 class Assembly {
+    std::vector<_Component> components;
+    std::vector<std::unique_ptr<Component>> instances;
+
   public:
-    int a{3};
+    template <class T, class ...Args>
+    void component(Args&&... args) {
+        components.emplace_back(_Type<T>(), std::forward<Args>(args)...);
+    }
+
+    void instantiate() {
+        for (auto c : components) {
+            instances.emplace_back(c._constructor());
+        }
+    }
+
+    Component* ptr_to_instance(int index) {
+        return instances.at(index).get();
+    }
 };
 
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
+    class MyClass : public Component {
+    public:
+        std::string _debug() { return "MyClass"; }
+        int i{1};
+        int j{1};
+        MyClass(int i, int j) : i(i), j(j) {}
+    };
     Assembly a;
-    CHECK(a.a == 3);
+    a.component<MyClass>(3, 4);
+    a.instantiate();
+    auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance(0));
+    CHECK(ptr->i == 3);
+    CHECK(ptr->j == 4);
 }
 
 #endif  // MODEL_HPP
