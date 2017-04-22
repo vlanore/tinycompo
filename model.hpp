@@ -32,23 +32,39 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include <cstdio>
+#include <string>
 #include "doctest.h"
 
-class Assembly {
-public:
-  int a{3};
-};
-
+/*
+======================================================================================================
+  Component class
+====================================================================================================*/
 class Component {
   public:
-    void hello() { printf("Hello world!\n"); }
+    virtual std::string _debug() = 0;
+};
+
+TEST_CASE("Basic component tests.") {
+    class MyCompo : public Component {
+      public:
+        std::string _debug() override { return "MyCompo"; }
+    };
+
+    MyCompo compo;  // mostly to check that the class is not virtual
+    CHECK(compo._debug() == "MyCompo");
+}
+
+/*
+======================================================================================================
+  Assembly class
+====================================================================================================*/
+class Assembly {
+  public:
+    int a{3};
 };
 
 TEST_CASE("Basic test.") {
-    Component b;
     Assembly a;
-    b.hello();
     CHECK(a.a == 3);
 }
 
