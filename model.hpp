@@ -33,10 +33,11 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #define MODEL_HPP
 
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 #include "doctest.h"
 
 /*
@@ -98,6 +99,7 @@ TEST_CASE("Assembly class tests.") {
     auto ptr2 = dynamic_cast<MyClass*>(ptr.get());
     CHECK(ptr2->i == 3);
     CHECK(ptr2->j == 4);
+    CHECK(ptr->_debug() == "MyClass");
 }
 
 /*
@@ -109,7 +111,7 @@ class Assembly {
     std::vector<std::unique_ptr<Component>> instances;
 
   public:
-    template <class T, class ...Args>
+    template <class T, class... Args>
     void component(Args&&... args) {
         components.emplace_back(_Type<T>(), std::forward<Args>(args)...);
     }
@@ -120,8 +122,12 @@ class Assembly {
         }
     }
 
-    Component* ptr_to_instance(int index) {
-        return instances.at(index).get();
+    Component* ptr_to_instance(int index) { return instances.at(index).get(); }
+
+    void print_all() {
+        for (auto& i : instances) {
+            std::cout << i->_debug() << std::endl;
+        }
     }
 };
 
@@ -129,7 +135,7 @@ class Assembly {
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
     class MyClass : public Component {
-    public:
+      public:
         std::string _debug() { return "MyClass"; }
         int i{1};
         int j{1};
@@ -141,6 +147,7 @@ TEST_CASE("Basic test.") {
     auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance(0));
     CHECK(ptr->i == 3);
     CHECK(ptr->j == 4);
+    a.print_all();
 }
 
 #endif  // MODEL_HPP
