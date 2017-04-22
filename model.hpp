@@ -39,14 +39,16 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #include "doctest.h"
 
 /*
-======================================================================================================
+====================================================================================================
   Component class
-====================================================================================================*/
+==================================================================================================*/
 class Component {
   public:
     virtual std::string _debug() = 0;
 };
 
+/*
+============================================== TEST ==============================================*/
 TEST_CASE("Basic component tests.") {
     class MyCompo : public Component {
       public:
@@ -58,16 +60,16 @@ TEST_CASE("Basic component tests.") {
 }
 
 /*
-======================================================================================================
+====================================================================================================
   _Component class
-====================================================================================================*/
+==================================================================================================*/
 template <class T>
 class _Type {};
 
 class _Component {
   public:
     template <class T, class... Args>
-    explicit _Component(_Type<T>, Args&&... args) {
+    _Component(_Type<T>, Args&&... args) {
         // stores a lambda that creates a new object of type T with provided args and returns a
         // unique pointer to the newly created object
         _constructor = [=]() {
@@ -79,6 +81,8 @@ class _Component {
     std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
 };
 
+/*
+============================================== TEST ==============================================*/
 TEST_CASE("Assembly class tests.") {
     class MyClass : public Component {
       public:
@@ -88,21 +92,23 @@ TEST_CASE("Assembly class tests.") {
         MyClass(int i, int j) : i(i), j(j) {}
     };
 
-    _Component compo(_Type<MyClass>(), 3, 4); // create _Component object
+    _Component compo(_Type<MyClass>(), 3, 4);                       // create _Component object
     auto ptr = dynamic_cast<MyClass*>(compo._constructor().get());  // instantiate actual object
     CHECK(ptr->i == 3);
     CHECK(ptr->j == 4);
 }
 
 /*
-======================================================================================================
+====================================================================================================
   Assembly class
-====================================================================================================*/
+==================================================================================================*/
 class Assembly {
   public:
     int a{3};
 };
 
+/*
+============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
     Assembly a;
     CHECK(a.a == 3);
