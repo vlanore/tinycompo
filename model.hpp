@@ -34,6 +34,7 @@ knowledge of the CeCILL license and that you accept its terms.*/
 
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -108,26 +109,27 @@ TEST_CASE("Assembly class tests.") {
   Assembly class
 ==================================================================================================*/
 class Assembly {
-    std::vector<_Component> components;
-    std::vector<std::unique_ptr<Component>> instances;
+    std::map<std::string, _Component> components;
+    std::map<std::string, std::unique_ptr<Component>> instances;
 
   public:
     template <class T, class... Args>
-    void component(Args&&... args) {
-        components.emplace_back(_Type<T>(), std::forward<Args>(args)...);
+    void component(std::string name, Args&&... args) {
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     void instantiate() {
         for (auto c : components) {
-            instances.emplace_back(c._constructor());
+            instances.emplace(c.first, c.second._constructor());
         }
     }
 
-    Component* ptr_to_instance(int index) { return instances.at(index).get(); }
+    Component* ptr_to_instance(std::string name) { return instances[name].get(); }
 
     void print_all(std::ostream& os = std::cout) {
         for (auto& i : instances) {
-            os << i->_debug() << std::endl;
+            os << i.second->_debug() << std::endl;
         }
     }
 };
@@ -143,11 +145,11 @@ TEST_CASE("Basic test.") {
         MyClass(int i, int j) : i(i), j(j) {}
     };
     Assembly a;
-    a.component<MyClass>(3, 4);
-    a.component<MyClass>(5, 6);
+    a.component<MyClass>("Compo1", 3, 4);
+    a.component<MyClass>("Compo2", 5, 6);
     a.instantiate();
-    auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance(0));
-    auto ptr2 = dynamic_cast<MyClass*>(a.ptr_to_instance(1));
+    auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance("Compo1"));
+    auto ptr2 = dynamic_cast<MyClass*>(a.ptr_to_instance("Compo2"));
     CHECK(ptr->i == 3);
     CHECK(ptr->j == 4);
     CHECK(ptr2->i == 5);
