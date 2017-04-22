@@ -32,7 +32,10 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
+#include <functional>
+#include <memory>
 #include <string>
+#include <utility>
 #include "doctest.h"
 
 /*
@@ -52,6 +55,43 @@ TEST_CASE("Basic component tests.") {
 
     MyCompo compo;  // mostly to check that the class is not virtual
     CHECK(compo._debug() == "MyCompo");
+}
+
+/*
+======================================================================================================
+  _Component class
+====================================================================================================*/
+template <class T>
+class _Type {};
+
+class _Component {
+  public:
+    template <class T, class... Args>
+    explicit _Component(_Type<T>, Args&&... args) {
+        // stores a lambda that creates a new object of type T with provided args and returns a
+        // unique pointer to the newly created object
+        _constructor = [=]() {
+            return std::unique_ptr<Component>(
+                dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
+        };
+    }
+
+    std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
+};
+
+TEST_CASE("Assembly class tests.") {
+    class MyClass : public Component {
+      public:
+        std::string _debug() { return "MyClass"; }
+        int i{1};
+        int j{1};
+        MyClass(int i, int j) : i(i), j(j) {}
+    };
+
+    _Component compo(_Type<MyClass>(), 3, 4); // create _Component object
+    auto ptr = dynamic_cast<MyClass*>(compo._constructor().get());  // instantiate actual object
+    CHECK(ptr->i == 3);
+    CHECK(ptr->j == 4);
 }
 
 /*
