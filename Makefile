@@ -3,7 +3,7 @@
 all: test_bin
 
 test_bin: test.cpp model.hpp
-	$(CXX) $< -o $@ --std=gnu++11
+	$(CXX) $< -o $@ --std=gnu++11 -ftest-coverage
 
 test: test_bin
 	./$<
