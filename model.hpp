@@ -1,5 +1,4 @@
-/* Copyright Vincent Lanore (2017)
-vincent.lanore@gmail.com
+/* Copyright Vincent Lanore (2017) - vincent.lanore@gmail.com
 
 This software is a computer program whose purpose is to provide the
 necessary classes to write ligntweight component-based c++ applications.
@@ -34,9 +33,23 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #define MODEL_HPP
 
 #include <cstdio>
+#include "doctest.h"
 
-class Assembly {};
+class Assembly {
+public:
+  int a{3};
+};
 
-class Component {};
+class Component {
+  public:
+    void hello() { printf("Hello world!\n"); }
+};
 
-#endif // MODEL_HPP
+TEST_CASE("Basic test.") {
+    Component b;
+    Assembly a;
+    b.hello();
+    CHECK(a.a == 3);
+}
+
+#endif  // MODEL_HPP
