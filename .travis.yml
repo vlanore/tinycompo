@@ -2,3 +2,6 @@ language: cpp
 script: make && make test
 dist: trusty
 sudo: false
+compiler:
+  - clang
+  - gcc
