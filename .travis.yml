@@ -7,9 +7,10 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.9
     packages:
-      - gcc-6
       - g++-6
+      - clang-3.9
 
 compiler:
   - clang
@@ -19,9 +20,8 @@ before_install:
   - pip install --user cpp-coveralls
 
 script:
-  - sudo ln -s /usr/bin/gcc-6 /usr/local/bin/gcc
   - sudo ln -s /usr/bin/g++-6 /usr/local/bin/g++
-  - gcc -v && g++ -v
+  - g++ -v && clang++ -v
   - make && make test
 
 after_success:
