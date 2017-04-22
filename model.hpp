@@ -35,6 +35,7 @@ knowledge of the CeCILL license and that you accept its terms.*/
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -124,9 +125,9 @@ class Assembly {
 
     Component* ptr_to_instance(int index) { return instances.at(index).get(); }
 
-    void print_all() {
+    void print_all(std::ostream& os = std::cout) {
         for (auto& i : instances) {
-            std::cout << i->_debug() << std::endl;
+            os << i->_debug() << std::endl;
         }
     }
 };
@@ -143,11 +144,17 @@ TEST_CASE("Basic test.") {
     };
     Assembly a;
     a.component<MyClass>(3, 4);
+    a.component<MyClass>(5, 6);
     a.instantiate();
     auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance(0));
+    auto ptr2 = dynamic_cast<MyClass*>(a.ptr_to_instance(1));
     CHECK(ptr->i == 3);
     CHECK(ptr->j == 4);
-    a.print_all();
+    CHECK(ptr2->i == 5);
+    CHECK(ptr2->j == 6);
+    std::stringstream ss;
+    a.print_all(ss);
+    CHECK(ss.str() == "MyClass\nMyClass\n");
 }
 
 #endif  // MODEL_HPP
