@@ -44,15 +44,60 @@ knowledge of the CeCILL license and that you accept its terms.*/
 
 /*
 ====================================================================================================
+  ~*~ _Port class ~*~
+==================================================================================================*/
+class _VirtualPort {};
+
+template <class C, class... Args>
+class _Port : public _VirtualPort {
+  public:
+    std::function<void(C&, Args...)> _set;
+    explicit _Port(void (C::*prop)(Args...))
+        : _set([=](C& ref, const Args... args) {
+              (ref.*prop)(std::forward<const Args>(args)...);
+          }) {}
+};
+
+/*
+  ============================================== TEST
+  ==============================================*/
+TEST_CASE("_Port tests.") {
+    class MyCompo {
+      public:
+        int i{1};
+        int j{2};
+        void setIJ(int iin, int jin) {
+            i = iin;
+            j = jin;
+        }
+    };
+
+    MyCompo compo;
+    auto ptr = dynamic_cast<_VirtualPort*>(new _Port<MyCompo, int, int>{&MyCompo::setIJ});
+    auto ptr2 =
+        static_cast<_Port<MyCompo, int, int>*>(ptr);  // TODO make dynamic (add virtual meth)
+    ptr2->_set(compo, 3, 4);
+    CHECK(compo.i == 3);
+    CHECK(compo.j == 4);
+    delete ptr;
+}
+
+/*
+====================================================================================================
   ~*~ Component class ~*~
   tinycompo components should always inherit from this class. It is mostly used as a base to be able
   to store pointers to child class instances but also provides a basic _debug method.
 ==================================================================================================*/
 class Component {
+    std::map<std::string, _VirtualPort> ports;
+
   public:
     Component(const Component&) = delete;  // forbidding copy
     Component() = default;
+
     virtual std::string _debug() = 0;
+
+    void port() {}
 };
 
 /*
@@ -66,7 +111,7 @@ TEST_CASE("Basic component tests.") {
     };
 
     MyCompo compo{};  // mostly to check that the class is not virtual
-    // MyCompo compo2 = compo; // does not work because Component copy is forbidden
+    // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
 }
 

@@ -3,7 +3,7 @@
 all: test_bin
 
 test_bin: test.cpp model.hpp
-	$(CXX) $< -o $@ --std=gnu++11 -fprofile-arcs -ftest-coverage -g
+	$(CXX) $< -o $@ --std=gnu++11 -fprofile-arcs -ftest-coverage -g -Wall -Wextra
 
 test: test_bin
 	./$<
