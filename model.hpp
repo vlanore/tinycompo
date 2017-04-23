@@ -50,6 +50,8 @@ knowledge of the CeCILL license and that you accept its terms.*/
 ==================================================================================================*/
 class Component {
   public:
+    Component(const Component&) = delete;  // forbidding copy
+    Component() = default;
     virtual std::string _debug() = 0;
 };
 
@@ -58,10 +60,13 @@ class Component {
 TEST_CASE("Basic component tests.") {
     class MyCompo : public Component {  // example of a user creating their own component
       public:                           // by inheriting from Component
+        MyCompo(const MyCompo&) = default;
+        MyCompo() = default;
         std::string _debug() override { return "MyCompo"; }
     };
 
-    MyCompo compo;  // mostly to check that the class is not virtual
+    MyCompo compo{};  // mostly to check that the class is not virtual
+    // MyCompo compo2 = compo; // does not work because Component copy is forbidden
     CHECK(compo._debug() == "MyCompo");
 }
 
