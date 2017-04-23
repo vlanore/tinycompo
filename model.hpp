@@ -44,7 +44,9 @@ knowledge of the CeCILL license and that you accept its terms.*/
 
 /*
 ====================================================================================================
-  Component class
+  ~*~ Component class ~*~
+  tinycompo components should always inherit from this class. It is mostly used as a base to be able
+  to store pointers to child class instances but also provides a basic _debug method.
 ==================================================================================================*/
 class Component {
   public:
@@ -54,8 +56,8 @@ class Component {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic component tests.") {
-    class MyCompo : public Component {
-      public:
+    class MyCompo : public Component {  // example of a user creating their own component
+      public:                           // by inheriting from Component
         std::string _debug() override { return "MyCompo"; }
     };
 
@@ -65,10 +67,14 @@ TEST_CASE("Basic component tests.") {
 
 /*
 ====================================================================================================
-  _Component class
+  ~*~ _Component class ~*~
+  A small class that is capable of storing a constructor call for any Component child class and
+  execute said call later on demand. The class itself is not templated (allowing direct storage)
+  but the constructor call is. This is an internal tinycompo class that should never be seen by
+  the user (as denoted by the underscore prefix).
 ==================================================================================================*/
-template <class T>
-class _Type {};
+template <class T>  // this is an empty helper class that is used to pass T to the _Component
+class _Type {};     // constructor below
 
 class _Component {
   public:
@@ -106,7 +112,7 @@ TEST_CASE("Assembly class tests.") {
 
 /*
 ====================================================================================================
-  Assembly class
+  ~*~ Assembly class ~*~
 ==================================================================================================*/
 class Assembly {
     std::map<std::string, _Component> components;
