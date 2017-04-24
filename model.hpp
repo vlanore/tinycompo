@@ -190,7 +190,7 @@ class Assembly {
 
     void print_all(std::ostream& os = std::cout) {
         for (auto& i : instances) {
-            os << i.second->_debug() << std::endl;
+            os << i.first << ": " << i.second->_debug() << std::endl;
         }
     }
 };
@@ -210,7 +210,7 @@ TEST_CASE("Basic test.") {
     CHECK(ptr2->j == 16);
     std::stringstream ss;
     a.print_all(ss);
-    CHECK(ss.str() == "MyCompo\nMyCompo\n");
+    CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
 }
 
 #endif  // MODEL_HPP
