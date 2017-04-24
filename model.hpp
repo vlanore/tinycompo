@@ -56,7 +56,7 @@ class _Port : public _VirtualPort {
 
     template <class C>
     explicit _Port(C* ref, void (C::*prop)(Args...)) {
-        _set = [=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); };
+        _set = [=](Args const... args) { (ref->*prop)(std::forward<Args const>(args)...); };
     }
 };
 
@@ -102,18 +102,18 @@ class Component {
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
         ports[name] = std::unique_ptr<_VirtualPort>(
-            static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
+            static_cast<_VirtualPort*>(new _Port<Args const...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class... Args>
-    void set(std::string name, Args&&... args) {
-        auto ptr = dynamic_cast<_Port<const Args...>*>(ports[name].get());
+    void set(std::string name, Args... args) {  // no perfect forwarding to avoid references
+        auto ptr = dynamic_cast<_Port<Args const...>*>(ports[name].get());
         if (ptr != nullptr)  // casting succeedeed
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
             std::cout << "-- Error while trying to set property! Type "
-                      << typeid(_Port<const Args...>).name() << " does not seem to match port "
+                      << typeid(_Port<Args const...>).name() << " does not seem to match port "
                       << name << ".\n";
             exit(1);  // TODO exception?
         }
@@ -170,7 +170,7 @@ class _Component {
         // unique pointer to the newly created object
         _constructor = [=]() {
             return std::unique_ptr<Component>(
-                static_cast<Component*>(new T(std::forward<const Args>(args)...)));
+                static_cast<Component*>(new T(std::forward<Args const>(args)...)));
         };
     }
 
@@ -197,7 +197,7 @@ class _Property {
   public:
     template <class... Args>
     _Property(std::string prop, Args&&... args) {
-        _setter = [=](Component* compo) { compo->set(prop, std::forward<const Args>(args)...); };
+        _setter = [=](Component* compo) { compo->set(prop, std::forward<Args const>(args)...); };
     }
 
     std::function<void(Component*)> _setter;  // stores the component constructor
@@ -273,6 +273,57 @@ TEST_CASE("Basic test.") {
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
+}
+
+/*
+
+====================================================================================================
+  ~*~ Connector classes ~*~
+==================================================================================================*/
+template <class Interface>
+class UseProvide {
+  public:
+    static void _connect(Assembly& assembly, std::string user, std::string userPort,
+                         std::string provider) {
+        auto ptrUser = assembly.get_ptr_to_instance(user);
+        auto ptrProvider = dynamic_cast<Interface*>(assembly.get_ptr_to_instance(provider));
+        ptrUser->set(userPort, ptrProvider);
+    }
+};
+
+/*
+============================================== TEST ==============================================*/
+class IntInterface {
+  public:
+    virtual int get() = 0;
+};
+
+class MyInt : public Component, public IntInterface {
+  public:
+    int i{1};
+    MyInt(int i) : i(i) {}
+    std::string _debug() { return "MyInt"; }
+    int get() { return i; }
+};
+
+class MyIntProxy : public Component, public IntInterface {
+    IntInterface* ptr;
+
+  public:
+    MyIntProxy() { port("ptr", &MyIntProxy::set_ptr); }
+    void set_ptr(IntInterface* ptrin) { ptr = ptrin; }
+    std::string _debug() { return "MyIntProxy"; }
+    int get() { return 2 * ptr->get(); }
+};
+
+TEST_CASE("Use/provide test.") {
+    Assembly model;
+    model.component<MyInt>("Compo1", 4);
+    model.component<MyIntProxy>("Compo2");
+    model.instantiate();
+    UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
+    auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
+    CHECK(ptr->get() == 8);
 }
 
 #endif  // MODEL_HPP
