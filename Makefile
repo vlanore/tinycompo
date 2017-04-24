@@ -3,7 +3,7 @@
 all: test_bin
 
 test_bin: test.cpp model.hpp
-	$(CXX) $< -o $@ --std=gnu++11 -Wall -Wextra $(TINYCOMPO_FLAGS)
+	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) Wall -Wextra
 
 test: test_bin
 	rm -f *.profraw *.gcov *.gcno *.gcda
