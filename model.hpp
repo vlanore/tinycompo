@@ -85,7 +85,8 @@ TEST_CASE("_Port tests.") {
 ====================================================================================================
   ~*~ Component class ~*~
   tinycompo components should always inherit from this class. It is mostly used as a base to be able
-  to store pointers to child class instances but also provides a basic _debug method.
+  to store pointers to child class instances but also provides basic debugging methods and the
+  infrastructure required to declare ports.
 ==================================================================================================*/
 class Component {
     std::map<std::string, _VirtualPort*> ports;
@@ -114,11 +115,13 @@ class MyCompo : public Component {  // example of a user creating their own comp
     int i{1};
     int j{2};
 
-    MyCompo(const MyCompo&) = default;
+    MyCompo(const MyCompo&) = default;  // does not work (Component's copy constructor is deleted)
 
-    MyCompo(int i = 5, int j = 6) : i(i), j(j) { port("a", &MyCompo::setIJ); }
+    MyCompo(int i = 5, int j = 6) : i(i), j(j) {
+        port("myPort", &MyCompo::setIJ);  // how to declare a port
+    }
 
-    void setIJ(int iin, int jin) {
+    void setIJ(int iin, int jin) {  // the setter method that acts as our port
         i = iin;
         j = jin;
     }
@@ -127,10 +130,10 @@ class MyCompo : public Component {  // example of a user creating their own comp
 };
 
 TEST_CASE("Basic component tests.") {
-    MyCompo compo{};  // mostly to check that the class is not virtual
+    MyCompo compo{};
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
-    compo.set("a", compo, 17, 18);
+    compo.set("myPort", compo, 17, 18);
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
 }
