@@ -165,7 +165,7 @@ class _Component {
 
 /*
 ============================================== TEST ==============================================*/
-TEST_CASE("Assembly class tests.") {
+TEST_CASE("_Component class tests.") {
     _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
     auto ptr = compo._constructor();           // instantiate actual object
     auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
@@ -174,6 +174,30 @@ TEST_CASE("Assembly class tests.") {
     CHECK(ptr->_debug() == "MyCompo");
 }
 
+/*
+====================================================================================================
+  ~*~ _Property class ~*~
+==================================================================================================*/
+class _Property {
+  public:
+    template <class... Args>
+    _Property(std::string prop, Args&&... args) {
+        _setter = [=](Component& compo) { compo.set(prop, std::forward<const Args>(args)...); };
+    }
+
+    std::function<void(Component&)> _setter;  // stores the component constructor
+};
+
+/*
+============================================== TEST ==============================================*/
+TEST_CASE("_Property class tests.") {
+    _Property myProp{"myPort", 22, 23};
+    MyCompo compo{11, 12};
+    Component& myRef = compo;
+    myProp._setter(myRef);
+    CHECK(compo.i == 22);
+    CHECK(compo.j == 23);
+}
 /*
 ====================================================================================================
   ~*~ Assembly class ~*~
