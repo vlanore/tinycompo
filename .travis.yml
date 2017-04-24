@@ -27,6 +27,7 @@ before_install:
 script:
   - export CXX=$COMPILER
   - $CXX -v
+  - if [ "CXX" == "g++-6" ]; then export TINYCOMPO_FLAGS="-fprofile-arcs -ftest-coverage -g"; fi
   - make && make test
 
 after_success:
