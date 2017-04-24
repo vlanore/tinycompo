@@ -323,6 +323,9 @@ TEST_CASE("Use/provide test.") {
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
     model.instantiate();
+    std::stringstream ss;
+    model.print_all(ss);
+    CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
     auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
     REQUIRE(ptr != nullptr);
