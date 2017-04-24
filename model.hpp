@@ -199,15 +199,15 @@ class Assembly {
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
     Assembly a;
-    a.component<MyCompo>("Compo1", 3, 4);
-    a.component<MyCompo>("Compo2", 5, 6);
+    a.component<MyCompo>("Compo1", 13, 14);
+    a.component<MyCompo>("Compo2", 15, 16);
     a.instantiate();
     auto ptr = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo1"));
     auto ptr2 = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo2"));
-    CHECK(ptr->i == 3);
-    CHECK(ptr->j == 4);
-    CHECK(ptr2->i == 5);
-    CHECK(ptr2->j == 6);
+    CHECK(ptr->i == 13);
+    CHECK(ptr->j == 14);
+    CHECK(ptr2->i == 15);
+    CHECK(ptr2->j == 16);
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "MyCompo\nMyCompo\n");
