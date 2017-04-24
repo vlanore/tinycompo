@@ -107,7 +107,16 @@ class Component {
 
     template <class... Args>
     void set(std::string name, Args&&... args) {
-        dynamic_cast<_Port<const Args...>*>(ports[name].get())->_set(std::forward<Args>(args)...);
+        auto ptr = dynamic_cast<_Port<const Args...>*>(ports[name].get());
+        if (ptr != nullptr)  // casting succeedeed
+        {
+            ptr->_set(std::forward<Args>(args)...);
+        } else {  // casting failed, trying to provide useful error message
+            std::cout << "-- Error while trying to set property! Type "
+                      << typeid(_Port<const Args...>).name() << " does not seem to match port "
+                      << name << ".\n";
+            exit(1);  // TODO exception?
+        }
     }
 };
 
