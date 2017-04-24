@@ -182,22 +182,23 @@ class _Property {
   public:
     template <class... Args>
     _Property(std::string prop, Args&&... args) {
-        _setter = [=](Component& compo) { compo.set(prop, std::forward<const Args>(args)...); };
+        _setter = [=](Component* compo) { compo->set(prop, std::forward<const Args>(args)...); };
     }
 
-    std::function<void(Component&)> _setter;  // stores the component constructor
+    std::function<void(Component*)> _setter;  // stores the component constructor
 };
 
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("_Property class tests.") {
-    _Property myProp{"myPort", 22, 23};
+    _Property myProp{"myPort", 22, 23};  // note that the property is created BEFORE the instance
     MyCompo compo{11, 12};
-    Component& myRef = compo;
+    auto myRef = static_cast<Component*>(&compo);
     myProp._setter(myRef);
     CHECK(compo.i == 22);
     CHECK(compo.j == 23);
 }
+
 /*
 ====================================================================================================
   ~*~ Assembly class ~*~
@@ -205,6 +206,7 @@ TEST_CASE("_Property class tests.") {
 class Assembly {
     std::map<std::string, _Component> components;
     std::map<std::string, std::unique_ptr<Component>> instances;
+    std::vector<std::pair<std::string, _Property>> properties;
 
   public:
     template <class T, class... Args>
@@ -213,9 +215,19 @@ class Assembly {
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
+    template <class... Args>
+    void property(std::string compoName, std::string propName, Args&&... args) {
+        properties.emplace_back(
+            std::piecewise_construct, std::forward_as_tuple(compoName),
+            std::forward_as_tuple(_Property(propName, std::forward<Args>(args)...)));
+    }
+
     void instantiate() {
         for (auto c : components) {
             instances.emplace(c.first, c.second._constructor());
+        }
+        for (auto p : properties) {
+            p.second._setter(instances[p.first].get());
         }
     }
 
@@ -234,11 +246,12 @@ TEST_CASE("Basic test.") {
     Assembly a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
+    a.property("Compo1", "myPort", 22, 23);
     a.instantiate();
     auto ptr = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"));
     auto ptr2 = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"));
-    CHECK(ptr->i == 13);
-    CHECK(ptr->j == 14);
+    CHECK(ptr->i == 22);
+    CHECK(ptr->j == 23);
     CHECK(ptr2->i == 15);
     CHECK(ptr2->j == 16);
     std::stringstream ss;
