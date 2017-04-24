@@ -41,16 +41,23 @@ and that you accept its terms.*/
 ====================================================================================================
   ~*~ _Port class ~*~
 ==================================================================================================*/
-class _VirtualPort {};
+class _VirtualPort {
+  public:
+    virtual ~_VirtualPort() = default;
+};
 
 template <class... Args>
 class _Port : public _VirtualPort {
   public:
     std::function<void(Args...)> _set;
 
+    _Port() = delete;
+    virtual ~_Port() = default;
+
     template <class C>
-    explicit _Port(C* ref, void (C::*prop)(Args...))
-        : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
+    explicit _Port(C* ref, void (C::*prop)(Args...)) {
+        _set = [=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); };
+    }
 };
 
 /*
@@ -67,8 +74,8 @@ TEST_CASE("_Port tests.") {
     };
 
     MyCompo compo;
-    auto ptr = dynamic_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
-    auto ptr2 = static_cast<_Port<int, int>*>(ptr);  // TODO make dynamic?
+    auto ptr = static_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
+    auto ptr2 = dynamic_cast<_Port<int, int>*>(ptr);
     ptr2->_set(3, 4);
     CHECK(compo.i == 3);
     CHECK(compo.j == 4);
@@ -84,7 +91,7 @@ TEST_CASE("_Port tests.") {
   infrastructure required to declare ports.
 ==================================================================================================*/
 class Component {
-    std::map<std::string, _VirtualPort*> ports;
+    std::map<std::string, std::unique_ptr<_VirtualPort>> ports;
 
   public:
     Component(const Component&) = delete;  // forbidding copy
@@ -94,12 +101,13 @@ class Component {
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
-        ports[name] = static_cast<_VirtualPort*>(new _Port<Args...>(static_cast<C*>(this), prop));
+        ports[name] = std::unique_ptr<_VirtualPort>(
+            static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class... Args>
     void set(std::string name, Args&&... args) {
-        static_cast<_Port<Args...>*>(ports[name])->_set(std::forward<Args>(args)...);
+        dynamic_cast<_Port<const Args...>*>(ports[name].get())->_set(std::forward<Args>(args)...);
     }
 };
 
@@ -153,7 +161,7 @@ class _Component {
         // unique pointer to the newly created object
         _constructor = [=]() {
             return std::unique_ptr<Component>(
-                dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
+                static_cast<Component*>(new T(std::forward<const Args>(args)...)));
         };
     }
 
