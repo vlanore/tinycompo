@@ -6,6 +6,7 @@ test_bin: test.cpp model.hpp
 	$(CXX) $< -o $@ --std=gnu++11 -fprofile-arcs -ftest-coverage -g -Wall -Wextra
 
 test: test_bin
+	rm -f *.profraw *.gcov *.gcno *.gcda
 	./$<
 
 clean:
@@ -14,5 +15,5 @@ clean:
 format:
 	clang-format -i test.cpp model.hpp
 
-ready: test format clean
+ready: test format
 	git status

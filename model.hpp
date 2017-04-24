@@ -55,9 +55,8 @@ class _Port : public _VirtualPort {
     virtual ~_Port() = default;
 
     template <class C>
-    explicit _Port(C* ref, void (C::*prop)(Args...)) {
-        _set = [=](Args const... args) { (ref->*prop)(std::forward<Args const>(args)...); };
-    }
+    explicit _Port(C* ref, void (C::*prop)(Args...))
+        : _set([=](Args const... args) { (ref->*prop)(std::forward<Args const>(args)...); }) {}
 };
 
 /*
@@ -76,6 +75,7 @@ TEST_CASE("_Port tests.") {
     MyCompo compo;
     auto ptr = static_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
     auto ptr2 = dynamic_cast<_Port<int, int>*>(ptr);
+    REQUIRE(ptr2 != nullptr);
     ptr2->_set(3, 4);
     CHECK(compo.i == 3);
     CHECK(compo.j == 4);
@@ -183,6 +183,7 @@ TEST_CASE("_Component class tests.") {
     _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
     auto ptr = compo._constructor();           // instantiate actual object
     auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
+    REQUIRE(ptr2 != nullptr);
     CHECK(ptr2->i == 3);
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
@@ -196,9 +197,8 @@ TEST_CASE("_Component class tests.") {
 class _Property {
   public:
     template <class... Args>
-    _Property(std::string prop, Args&&... args) {
-        _setter = [=](Component* compo) { compo->set(prop, std::forward<Args const>(args)...); };
-    }
+    _Property(std::string prop, Args&&... args)
+        : _setter([=](Component* compo) { compo->set(prop, std::forward<Args const>(args)...); }) {}
 
     std::function<void(Component*)> _setter;  // stores the component constructor
 };
@@ -265,7 +265,9 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     a.instantiate();
     auto ptr = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"));
+    REQUIRE(ptr != nullptr);
     auto ptr2 = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"));
+    REQUIRE(ptr2 != nullptr);
     CHECK(ptr->i == 13);
     CHECK(ptr->j == 14);
     CHECK(ptr2->i == 22);
@@ -301,13 +303,13 @@ class IntInterface {
 class MyInt : public Component, public IntInterface {
   public:
     int i{1};
-    MyInt(int i) : i(i) {}
+    explicit MyInt(int i) : i(i) {}
     std::string _debug() { return "MyInt"; }
     int get() { return i; }
 };
 
 class MyIntProxy : public Component, public IntInterface {
-    IntInterface* ptr;
+    IntInterface* ptr{nullptr};
 
   public:
     MyIntProxy() { port("ptr", &MyIntProxy::set_ptr); }
@@ -323,6 +325,7 @@ TEST_CASE("Use/provide test.") {
     model.instantiate();
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
     auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
+    REQUIRE(ptr != nullptr);
     CHECK(ptr->get() == 8);
 }
 
