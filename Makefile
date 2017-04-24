@@ -6,7 +6,7 @@ test_bin: test.cpp model.hpp
 	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) -Wall -Wextra
 
 test: test_bin
-	rm -f *.profraw *.gcov *.gcno *.gcda
+	rm -f *.profraw *.gcov *.gcda
 	./$<
 
 clean:
