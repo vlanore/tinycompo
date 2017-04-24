@@ -52,6 +52,7 @@ template <class C, class... Args>
 class _Port : public _VirtualPort {
   public:
     std::function<void(C&, Args...)> _set;
+
     explicit _Port(void (C::*prop)(Args...))
         : _set([=](C& ref, const Args... args) {
               (ref.*prop)(std::forward<const Args>(args)...);
@@ -59,8 +60,7 @@ class _Port : public _VirtualPort {
 };
 
 /*
-  ============================================== TEST
-  ==============================================*/
+============================================== TEST ==============================================*/
 TEST_CASE("_Port tests.") {
     class MyCompo {
       public:
@@ -97,16 +97,29 @@ class Component {
 
     virtual std::string _debug() = 0;
 
-    void port() {}
+    template <class C, class... Args>
+    void port(std::string name, void (C::*prop)(Args...)) {
+        ports[name] = static_cast<_VirtualPort>(_Port<C, Args...>(prop));
+    }
 };
 
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic component tests.") {
     class MyCompo : public Component {  // example of a user creating their own component
-      public:                           // by inheriting from Component
+        int i{1};
+        int j{2};
+
+      public:
         MyCompo(const MyCompo&) = default;
-        MyCompo() = default;
+
+        MyCompo() { port("a", &MyCompo::setIJ); }
+
+        void setIJ(int iin, int jin) {
+            i = iin;
+            j = jin;
+        }
+
         std::string _debug() override { return "MyCompo"; }
     };
 
