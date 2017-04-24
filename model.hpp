@@ -74,8 +74,7 @@ TEST_CASE("_Port tests.") {
 
     MyCompo compo;
     auto ptr = dynamic_cast<_VirtualPort*>(new _Port<MyCompo, int, int>{&MyCompo::setIJ});
-    auto ptr2 =
-        static_cast<_Port<MyCompo, int, int>*>(ptr);  // TODO make dynamic (add virtual meth)
+    auto ptr2 = static_cast<_Port<MyCompo, int, int>*>(ptr);  // TODO make dynamic?
     ptr2->_set(compo, 3, 4);
     CHECK(compo.i == 3);
     CHECK(compo.j == 4);
@@ -89,7 +88,7 @@ TEST_CASE("_Port tests.") {
   to store pointers to child class instances but also provides a basic _debug method.
 ==================================================================================================*/
 class Component {
-    std::map<std::string, _VirtualPort> ports;
+    std::map<std::string, _VirtualPort*> ports;
 
   public:
     Component(const Component&) = delete;  // forbidding copy
@@ -99,7 +98,12 @@ class Component {
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
-        ports[name] = static_cast<_VirtualPort>(_Port<C, Args...>(prop));
+        ports[name] = static_cast<_VirtualPort*>(new _Port<C, Args...>(prop));
+    }
+
+    template <class C, class... Args>
+    void set(std::string name, C& instance, Args&&... args) {
+        static_cast<_Port<C, Args...>*>(ports[name])->_set(instance, std::forward<Args>(args)...);
     }
 };
 
@@ -126,6 +130,9 @@ TEST_CASE("Basic component tests.") {
     MyCompo compo{};  // mostly to check that the class is not virtual
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
+    compo.set("a", compo, 17, 18);
+    CHECK(compo.i == 17);
+    CHECK(compo.j == 18);
 }
 
 /*
@@ -186,7 +193,7 @@ class Assembly {
         }
     }
 
-    Component* ptr_to_instance(std::string name) { return instances[name].get(); }
+    Component* get_ptr_to_instance(std::string name) { return instances[name].get(); }
 
     void print_all(std::ostream& os = std::cout) {
         for (auto& i : instances) {
@@ -202,8 +209,8 @@ TEST_CASE("Basic test.") {
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     a.instantiate();
-    auto ptr = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo1"));
-    auto ptr2 = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo2"));
+    auto ptr = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"));
+    auto ptr2 = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"));
     CHECK(ptr->i == 13);
     CHECK(ptr->j == 14);
     CHECK(ptr2->i == 15);

@@ -14,5 +14,5 @@ clean:
 format:
 	clang-format -i test.cpp model.hpp
 
-ready: clean test format
+ready: test format clean
 	git status
