@@ -105,24 +105,24 @@ class Component {
 
 /*
 ============================================== TEST ==============================================*/
+class MyCompo : public Component {  // example of a user creating their own component
+  public:                           // by inheriting from the Component class
+    int i{1};
+    int j{2};
+
+    MyCompo(const MyCompo&) = default;
+
+    MyCompo(int i = 5, int j = 6) : i(i), j(j) { port("a", &MyCompo::setIJ); }
+
+    void setIJ(int iin, int jin) {
+        i = iin;
+        j = jin;
+    }
+
+    std::string _debug() override { return "MyCompo"; }
+};
+
 TEST_CASE("Basic component tests.") {
-    class MyCompo : public Component {  // example of a user creating their own component
-        int i{1};
-        int j{2};
-
-      public:
-        MyCompo(const MyCompo&) = default;
-
-        MyCompo() { port("a", &MyCompo::setIJ); }
-
-        void setIJ(int iin, int jin) {
-            i = iin;
-            j = jin;
-        }
-
-        std::string _debug() override { return "MyCompo"; }
-    };
-
     MyCompo compo{};  // mostly to check that the class is not virtual
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
@@ -157,20 +157,12 @@ class _Component {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Assembly class tests.") {
-    class MyClass : public Component {
-      public:
-        std::string _debug() { return "MyClass"; }
-        int i{1};
-        int j{1};
-        MyClass(int i, int j) : i(i), j(j) {}
-    };
-
-    _Component compo(_Type<MyClass>(), 3, 4);  // create _Component object
+    _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
     auto ptr = compo._constructor();           // instantiate actual object
-    auto ptr2 = dynamic_cast<MyClass*>(ptr.get());
+    auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
     CHECK(ptr2->i == 3);
     CHECK(ptr2->j == 4);
-    CHECK(ptr->_debug() == "MyClass");
+    CHECK(ptr->_debug() == "MyCompo");
 }
 
 /*
@@ -206,26 +198,19 @@ class Assembly {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
-    class MyClass : public Component {
-      public:
-        std::string _debug() { return "MyClass"; }
-        int i{1};
-        int j{1};
-        MyClass(int i, int j) : i(i), j(j) {}
-    };
     Assembly a;
-    a.component<MyClass>("Compo1", 3, 4);
-    a.component<MyClass>("Compo2", 5, 6);
+    a.component<MyCompo>("Compo1", 3, 4);
+    a.component<MyCompo>("Compo2", 5, 6);
     a.instantiate();
-    auto ptr = dynamic_cast<MyClass*>(a.ptr_to_instance("Compo1"));
-    auto ptr2 = dynamic_cast<MyClass*>(a.ptr_to_instance("Compo2"));
+    auto ptr = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo1"));
+    auto ptr2 = dynamic_cast<MyCompo*>(a.ptr_to_instance("Compo2"));
     CHECK(ptr->i == 3);
     CHECK(ptr->j == 4);
     CHECK(ptr2->i == 5);
     CHECK(ptr2->j == 6);
     std::stringstream ss;
     a.print_all(ss);
-    CHECK(ss.str() == "MyClass\nMyClass\n");
+    CHECK(ss.str() == "MyCompo\nMyCompo\n");
 }
 
 #endif  // MODEL_HPP
