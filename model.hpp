@@ -48,15 +48,14 @@ knowledge of the CeCILL license and that you accept its terms.*/
 ==================================================================================================*/
 class _VirtualPort {};
 
-template <class C, class... Args>
+template <class... Args>
 class _Port : public _VirtualPort {
   public:
-    std::function<void(C&, Args...)> _set;
+    std::function<void(Args...)> _set;
 
-    explicit _Port(void (C::*prop)(Args...))
-        : _set([=](C& ref, const Args... args) {
-              (ref.*prop)(std::forward<const Args>(args)...);
-          }) {}
+    template <class C>
+    explicit _Port(C* ref, void (C::*prop)(Args...))
+        : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
 };
 
 /*
@@ -73,9 +72,9 @@ TEST_CASE("_Port tests.") {
     };
 
     MyCompo compo;
-    auto ptr = dynamic_cast<_VirtualPort*>(new _Port<MyCompo, int, int>{&MyCompo::setIJ});
-    auto ptr2 = static_cast<_Port<MyCompo, int, int>*>(ptr);  // TODO make dynamic?
-    ptr2->_set(compo, 3, 4);
+    auto ptr = dynamic_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
+    auto ptr2 = static_cast<_Port<int, int>*>(ptr);  // TODO make dynamic?
+    ptr2->_set(3, 4);
     CHECK(compo.i == 3);
     CHECK(compo.j == 4);
     delete ptr;
@@ -99,12 +98,12 @@ class Component {
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
-        ports[name] = static_cast<_VirtualPort*>(new _Port<C, Args...>(prop));
+        ports[name] = static_cast<_VirtualPort*>(new _Port<Args...>(static_cast<C*>(this), prop));
     }
 
-    template <class C, class... Args>
-    void set(std::string name, C& instance, Args&&... args) {
-        static_cast<_Port<C, Args...>*>(ports[name])->_set(instance, std::forward<Args>(args)...);
+    template <class... Args>
+    void set(std::string name, Args&&... args) {
+        static_cast<_Port<Args...>*>(ports[name])->_set(std::forward<Args>(args)...);
     }
 };
 
@@ -133,7 +132,7 @@ TEST_CASE("Basic component tests.") {
     MyCompo compo{};
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
-    compo.set("myPort", compo, 17, 18);
+    compo.set("myPort", 17, 18);
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
 }
