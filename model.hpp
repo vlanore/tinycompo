@@ -26,9 +26,9 @@ and that you accept its terms.*/
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include <array>
 #include <functional>
 #include <iostream>
+#include <list>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -58,7 +58,6 @@ class _Port : public _VirtualPort {
     std::function<void(Args...)> _set;
 
     _Port() = delete;
-    virtual ~_Port() = default;
 
     template <class C>
     explicit _Port(C* ref, void (C::*prop)(Args...))
@@ -102,6 +101,7 @@ class Component {
   public:
     Component(const Component&) = delete;  // forbidding copy
     Component() = default;
+    virtual ~Component() = default;
 
     virtual std::string _debug() = 0;
 
@@ -305,7 +305,7 @@ class Assembly {
         }
     }
 
-    Component* get_ptr_to_instance(std::string name) { return instances[name].get(); }
+    Component& get_ref_to_instance(std::string name) { return *(instances[name].get()); }
 
     void print_all(std::ostream& os = std::cout) {
         for (auto& i : instances) {
@@ -320,8 +320,8 @@ TEST_CASE("Basic test.") {
     class MyConnector {
       public:
         static void _connect(Assembly& a, int i, int i2) {
-            dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"))->i = i;
-            dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"))->i = i2;
+            dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo1")).i = i;
+            dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo2")).i = i2;
         }
     };
 
@@ -331,14 +331,12 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     a.connect<MyConnector>(33, 34);
     a.instantiate();
-    auto ptr = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"));
-    REQUIRE(ptr != nullptr);
-    auto ptr2 = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"));
-    REQUIRE(ptr2 != nullptr);
-    CHECK(ptr->i == 33);   // changed by connector
-    CHECK(ptr->j == 14);   // base value
-    CHECK(ptr2->i == 22);  // changed by connector AND THEN by property
-    CHECK(ptr2->j == 23);  // changed by property
+    auto& ref = dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo1"));
+    auto& ref2 = dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo2"));
+    CHECK(ref.i == 33);   // changed by connector
+    CHECK(ref.j == 14);   // base value
+    CHECK(ref2.i == 22);  // changed by connector AND THEN by property
+    CHECK(ref2.j == 23);  // changed by property
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
@@ -354,9 +352,9 @@ class UseProvide {
   public:
     static void _connect(Assembly& assembly, std::string user, std::string userPort,
                          std::string provider) {
-        auto ptrUser = assembly.get_ptr_to_instance(user);
-        auto ptrProvider = dynamic_cast<Interface*>(assembly.get_ptr_to_instance(provider));
-        ptrUser->set(userPort, ptrProvider);
+        auto& refUser = assembly.get_ref_to_instance(user);
+        auto refProvider = dynamic_cast<Interface*>(&assembly.get_ref_to_instance(provider));
+        refUser.set(userPort, refProvider);
     }
 };
 
@@ -370,7 +368,7 @@ class IntInterface {
 class MyInt : public Component, public IntInterface {
   public:
     int i{1};
-    explicit MyInt(int i) : i(i) {}
+    explicit MyInt(int i = 0) : i(i) {}
     std::string _debug() { return "MyInt"; }
     int get() { return i; }
 };
@@ -394,15 +392,14 @@ TEST_CASE("Use/provide test.") {
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
-    REQUIRE(ptr != nullptr);
-    CHECK(ptr->get() == 8);
+    auto& ref = dynamic_cast<MyIntProxy&>(model.get_ref_to_instance("Compo2"));
+    CHECK(ref.get() == 8);
 }
 
 /*
 
 ====================================================================================================
-  ~*~ Array classes ~*~
+  ~*~ Array class ~*~
 ==================================================================================================*/
 class ComponentArray {
   public:
@@ -412,12 +409,23 @@ class ComponentArray {
 
 template <class T, std::size_t n>
 class Array : public ComponentArray, public Component {
-    std::array<T, n> elements;
+    std::list<T> elements;
 
   public:
     std::string _debug() override { return "Array"; }  // TODO improve
 
-    Component& at(int index) override { return elements.at(index); }
+    template <class... Args>
+    explicit Array(Args... args) {
+        for (int i = 0; i < static_cast<int>(n); i++) {
+            elements.emplace(elements.begin(), std::forward<Args>(args)...);
+        }
+    }
+
+    Component& at(int index) override {
+        auto it = elements.begin();
+        std::advance(it, index);
+        return *it;
+    }
 
     std::size_t size() override { return n; }
 };
@@ -425,16 +433,61 @@ class Array : public ComponentArray, public Component {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Array tests.") {
-    Array<MyCompo, 5> myArray;
+    Array<MyCompo, 5> myArray(11, 12);
     CHECK(myArray._debug() == "Array");
     CHECK(myArray.size() == 5);
     auto& ref0 = dynamic_cast<MyCompo&>(myArray.at(0));
     auto& ref2 = dynamic_cast<MyCompo&>(myArray.at(2));
-    ref2.i = 17;         // random number
-    CHECK(ref0.i == 5);  // default value for MyCompo
+    ref2.i = 17;          // random number
+    CHECK(ref0.i == 11);  // cf myArray init above
     CHECK(ref2.i == 17);
     auto& ref2bis = dynamic_cast<MyCompo&>(myArray.at(2));
     CHECK(ref2bis.i == 17);
+}
+
+/*
+
+====================================================================================================
+  ~*~ Array connectors ~*~
+==================================================================================================*/
+template <class Interface>
+class ArrayOneToOne {
+  public:
+    static void _connect(Assembly& a, std::string array1, std::string prop, std::string array2) {
+        auto& ref1 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array1));
+        auto& ref2 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array2));
+        if (ref1.size() == ref2.size()) {
+            for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
+                auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+                ref1.at(i).set(prop, ptr);
+            }
+        } else {
+            std::cerr << "-- Error while connecting arrays! Arrays have different sizes. " << array1
+                      << " has size " << array1.size() << " while " << array2 << " has size "
+                      << array2.size() << ".\n";
+            exit(1);
+        }
+    }
+};
+
+/*
+============================================== TEST ==============================================*/
+TEST_CASE("Array connector tests.") {
+    Assembly model;
+    model.component<Array<MyInt, 5>>("intArray", 12);
+    model.component<Array<MyIntProxy, 5>>("proxyArray");
+    model.instantiate();
+    ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
+    auto& refArray1 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
+    auto& refElement1 = dynamic_cast<MyInt&>(refArray1.at(1));
+    CHECK(refElement1.get() == 12);
+    refElement1.i = 23;
+    CHECK(refElement1.get() == 23);
+    auto& refArray2 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("proxyArray"));
+    auto& refElement2 = dynamic_cast<MyIntProxy&>(refArray2.at(1));
+    CHECK(refElement2.get() == 46);
+    auto& refElement3 = dynamic_cast<MyIntProxy&>(refArray2.at(4));
+    CHECK(refElement3.get() == 24);
 }
 
 /*
@@ -457,9 +510,8 @@ TEST_CASE("Large test resembling a real-life situation more than the other tests
     std::stringstream ss;
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
-    auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
-    REQUIRE(ptr != nullptr);
-    CHECK(ptr->get() == 8);
+    auto& ptr = dynamic_cast<MyIntProxy&>(model.get_ref_to_instance("Compo2"));
+    CHECK(ptr.get() == 8);
 }
 
 #endif  // MODEL_HPP
