@@ -398,4 +398,29 @@ TEST_CASE("Use/provide test.") {
     CHECK(ptr->get() == 8);
 }
 
+/*
+
+====================================================================================================
+                                      ~*~*~ FULL TEST ~*~*~
+==================================================================================================*/
+TEST_CASE("Large test resembling a real-life situation more than the other tests") {
+    /*  The model :
+        -----------                      ------------------
+        |  MyInt  |<== UseProvide ==(ptr)|   MyIntProxy   |
+        | value:4 |                      | val:2*intGet() |
+        -----------                      ------------------
+     */
+    Assembly model;
+    model.component<MyInt>("Compo1", 4);
+    model.component<MyIntProxy>("Compo2");
+    model.connect<UseProvide<IntInterface>>("Compo2", "ptr", "Compo1");
+    model.instantiate();
+    std::stringstream ss;
+    model.print_all(ss);
+    CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
+    auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
+    REQUIRE(ptr != nullptr);
+    CHECK(ptr->get() == 8);
+}
+
 #endif  // MODEL_HPP
