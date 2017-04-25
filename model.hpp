@@ -40,6 +40,11 @@ and that you accept its terms.*/
 
 ====================================================================================================
   ~*~ _Port class ~*~
+  A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
+  and provides a method called '_set(Args...)' which calls prop.
+  _Port<Args...> derives from _VirtualPort which allows the storage of pointers to _Port by
+  converting them to _VirtualPort*. These classes are for internal use by tinycompo and should not
+  be seen by the user (as denoted by the underscore prefixes).
 ==================================================================================================*/
 class _VirtualPort {
   public:
@@ -56,7 +61,7 @@ class _Port : public _VirtualPort {
 
     template <class C>
     explicit _Port(C* ref, void (C::*prop)(Args...))
-        : _set([=](Args const... args) { (ref->*prop)(std::forward<Args const>(args)...); }) {}
+        : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
 };
 
 /*
@@ -102,18 +107,18 @@ class Component {
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
         ports[name] = std::unique_ptr<_VirtualPort>(
-            static_cast<_VirtualPort*>(new _Port<Args const...>(dynamic_cast<C*>(this), prop)));
+            static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class... Args>
     void set(std::string name, Args... args) {  // no perfect forwarding to avoid references
-        auto ptr = dynamic_cast<_Port<Args const...>*>(ports[name].get());
+        auto ptr = dynamic_cast<_Port<const Args...>*>(ports[name].get());
         if (ptr != nullptr)  // casting succeedeed
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
             std::cout << "-- Error while trying to set property! Type "
-                      << typeid(_Port<Args const...>).name() << " does not seem to match port "
+                      << typeid(_Port<const Args...>).name() << " does not seem to match port "
                       << name << ".\n";
             exit(1);  // TODO exception?
         }
@@ -170,7 +175,7 @@ class _Component {
         // unique pointer to the newly created object
         _constructor = [=]() {
             return std::unique_ptr<Component>(
-                static_cast<Component*>(new T(std::forward<Args const>(args)...)));
+                static_cast<Component*>(new T(std::forward<const Args>(args)...)));
         };
     }
 
@@ -197,8 +202,8 @@ TEST_CASE("_Component class tests.") {
 class _Property {
   public:
     template <class... Args>
-    _Property(std::string prop, Args&&... args)
-        : _setter([=](Component* compo) { compo->set(prop, std::forward<Args const>(args)...); }) {}
+    _Property(const std::string& prop, Args&&... args)
+        : _setter([=](Component* compo) { compo->set(prop, std::forward<const Args>(args)...); }) {}
 
     std::function<void(Component*)> _setter;  // stores the component constructor
 };
