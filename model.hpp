@@ -96,7 +96,7 @@ TEST_CASE("_Port tests.") {
   infrastructure required to declare ports.
 ==================================================================================================*/
 class Component {
-    std::map<std::string, std::unique_ptr<_VirtualPort>> ports;
+    std::map<std::string, std::unique_ptr<_VirtualPort>> _ports;
 
   public:
     Component(const Component&) = delete;  // forbidding copy
@@ -106,18 +106,18 @@ class Component {
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
-        ports[name] = std::unique_ptr<_VirtualPort>(
+        _ports[name] = std::unique_ptr<_VirtualPort>(
             static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class... Args>
     void set(std::string name, Args... args) {  // no perfect forwarding to avoid references
-        auto ptr = dynamic_cast<_Port<const Args...>*>(ports[name].get());
+        auto ptr = dynamic_cast<_Port<const Args...>*>(_ports[name].get());
         if (ptr != nullptr)  // casting succeedeed
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
-            std::cout << "-- Error while trying to set property! Type "
+            std::cerr << "-- Error while trying to set property! Type "
                       << typeid(_Port<const Args...>).name() << " does not seem to match port "
                       << name << ".\n";
             exit(1);  // TODO exception?
@@ -205,7 +205,7 @@ class _Property {
     _Property(const std::string& prop, Args&&... args)
         : _setter([=](Component* compo) { compo->set(prop, std::forward<const Args>(args)...); }) {}
 
-    std::function<void(Component*)> _setter;  // stores the component constructor
+    std::function<void(Component*)> _setter;
 };
 
 /*
@@ -217,6 +217,49 @@ TEST_CASE("_Property class tests.") {
     myProp._setter(myRef);
     CHECK(compo.i == 22);
     CHECK(compo.j == 23);
+}
+
+/*
+
+====================================================================================================
+  ~*~ __Connection class ~*~
+==================================================================================================*/
+template <class A>
+class _Connection {
+  public:
+    template <class Connector, class... Args>
+    _Connection(_Type<Connector>, Args&&... args)
+        : _connect([=](A& assembly) {
+              Connector::_connect(assembly, std::forward<const Args>(args)...);
+          }) {}
+
+    std::function<void(A&)> _connect;
+};
+
+/*
+============================================== TEST ==============================================*/
+TEST_CASE("_Connection class tests.") {
+    class MyAssembly {
+      public:
+        MyCompo compo1{14, 15};
+        MyCompo compo2{18, 19};
+    };
+
+    class MyConnector {
+      public:
+        static void _connect(MyAssembly& a, int i, int i2) {
+            a.compo1.i = i;
+            a.compo2.i = i2;
+        }
+    };
+
+    MyAssembly myAssembly;
+    _Connection<MyAssembly> myConnection{_Type<MyConnector>(), 22, 23};
+    myConnection._connect(myAssembly);
+    CHECK(myAssembly.compo1.i == 22);
+    CHECK(myAssembly.compo1.j == 15);
+    CHECK(myAssembly.compo2.i == 23);
+    CHECK(myAssembly.compo2.j == 19);
 }
 
 /*
