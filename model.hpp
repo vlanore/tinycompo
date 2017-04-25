@@ -271,6 +271,7 @@ class Assembly {
     std::map<std::string, _Component> components;
     std::map<std::string, std::unique_ptr<Component>> instances;
     std::vector<std::pair<std::string, _Property>> properties;
+    std::vector<_Connection<Assembly>> connections;
 
   public:
     template <class T, class... Args>
@@ -286,9 +287,17 @@ class Assembly {
             std::forward_as_tuple(_Property(propName, std::forward<Args>(args)...)));
     }
 
+    template <class C, class... Args>
+    void connect(Args&&... args) {
+        connections.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
     void instantiate() {
         for (auto c : components) {
             instances.emplace(c.first, c.second._constructor());
+        }
+        for (auto c : connections) {
+            c._connect(*this);
         }
         for (auto p : properties) {
             p.second._setter(instances[p.first].get());
@@ -307,19 +316,28 @@ class Assembly {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Basic test.") {
+    class MyConnector {
+      public:
+        static void _connect(Assembly& a, int i, int i2) {
+            dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"))->i = i;
+            dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"))->i = i2;
+        }
+    };
+
     Assembly a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     a.property("Compo2", "myPort", 22, 23);
+    a.connect<MyConnector>(33, 34);
     a.instantiate();
     auto ptr = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo1"));
     REQUIRE(ptr != nullptr);
     auto ptr2 = dynamic_cast<MyCompo*>(a.get_ptr_to_instance("Compo2"));
     REQUIRE(ptr2 != nullptr);
-    CHECK(ptr->i == 13);
-    CHECK(ptr->j == 14);
-    CHECK(ptr2->i == 22);
-    CHECK(ptr2->j == 23);
+    CHECK(ptr->i == 33);   // changed by connector
+    CHECK(ptr->j == 14);   // base value
+    CHECK(ptr2->i == 22);  // changed by connector AND THEN by property
+    CHECK(ptr2->j == 23);  // changed by property
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
