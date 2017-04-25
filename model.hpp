@@ -26,6 +26,7 @@ and that you accept its terms.*/
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
+#include <array>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -396,6 +397,44 @@ TEST_CASE("Use/provide test.") {
     auto ptr = dynamic_cast<MyIntProxy*>(model.get_ptr_to_instance("Compo2"));
     REQUIRE(ptr != nullptr);
     CHECK(ptr->get() == 8);
+}
+
+/*
+
+====================================================================================================
+  ~*~ Array classes ~*~
+==================================================================================================*/
+class ComponentArray {
+  public:
+    virtual Component& at(int index) = 0;
+    virtual std::size_t size() = 0;
+};
+
+template <class T, std::size_t n>
+class Array : public ComponentArray, public Component {
+    std::array<T, n> elements;
+
+  public:
+    std::string _debug() override { return "Array"; }  // TODO improve
+
+    Component& at(int index) override { return elements.at(index); }
+
+    std::size_t size() override { return n; }
+};
+
+/*
+============================================== TEST ==============================================*/
+TEST_CASE("Array tests.") {
+    Array<MyCompo, 5> myArray;
+    CHECK(myArray._debug() == "Array");
+    CHECK(myArray.size() == 5);
+    auto& ref0 = dynamic_cast<MyCompo&>(myArray.at(0));
+    auto& ref2 = dynamic_cast<MyCompo&>(myArray.at(2));
+    ref2.i = 17;         // random number
+    CHECK(ref0.i == 5);  // default value for MyCompo
+    CHECK(ref2.i == 17);
+    auto& ref2bis = dynamic_cast<MyCompo&>(myArray.at(2));
+    CHECK(ref2bis.i == 17);
 }
 
 /*
