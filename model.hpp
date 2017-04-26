@@ -427,23 +427,24 @@ class ComponentArray {
 };
 
 template <class T, std::size_t n>
-class Array : public ComponentArray, public Component {
-    std::list<T> elements;
-
+class Array : public ComponentArray, public Component, public Assembly {
   public:
     std::string _debug() override { return "Array"; }  // TODO improve
 
     template <class... Args>
     explicit Array(Args... args) {
         for (int i = 0; i < static_cast<int>(n); i++) {
-            elements.emplace(elements.begin(), std::forward<Args>(args)...);
+            std::stringstream ss;
+            ss << "element" << i;
+            component<T>(ss.str(), std::forward<Args>(args)...);
         }
+        instantiate();
     }
 
     Component& at(int index) override {
-        auto it = elements.begin();
-        std::advance(it, index);
-        return *it;
+        std::stringstream ss;
+        ss << "element" << index;
+        return get_ref_to_instance(ss.str());
     }
 
     std::size_t size() override { return n; }
@@ -572,7 +573,6 @@ TEST_CASE("Array connector tests.") {
 }
 
 /*
-
 
 ====================================================================================================
                                       ~*~*~ FULL TEST ~*~*~
