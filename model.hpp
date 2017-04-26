@@ -429,13 +429,19 @@ class ComponentArray {
 template <class T, std::size_t n>
 class Array : public ComponentArray, public Component, public Assembly {
   public:
-    std::string _debug() override { return "Array"; }  // TODO improve
+    std::string _debug() override {
+        std::stringstream ss;
+        ss << "Array [\n";
+        print_all(ss);
+        ss << "]\n";
+        return ss.str();
+    }
 
     template <class... Args>
     explicit Array(Args... args) {
         for (int i = 0; i < static_cast<int>(n); i++) {
             std::stringstream ss;
-            ss << "element" << i;
+            ss << "Element" << i;
             component<T>(ss.str(), std::forward<Args>(args)...);
         }
         instantiate();
@@ -443,7 +449,7 @@ class Array : public ComponentArray, public Component, public Assembly {
 
     Component& at(int index) override {
         std::stringstream ss;
-        ss << "element" << index;
+        ss << "Element" << index;
         return get_ref_to_instance(ss.str());
     }
 
@@ -453,9 +459,10 @@ class Array : public ComponentArray, public Component, public Assembly {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Array tests.") {
-    Array<MyCompo, 5> myArray(11, 12);
-    CHECK(myArray._debug() == "Array");
-    CHECK(myArray.size() == 5);
+    Array<MyCompo, 3> myArray(11, 12);
+    CHECK(myArray._debug() ==
+          "Array [\nElement0: MyCompo\nElement1: MyCompo\nElement2: MyCompo\n]\n");
+    CHECK(myArray.size() == 3);
     auto& ref0 = dynamic_cast<MyCompo&>(myArray.at(0));
     auto& ref2 = dynamic_cast<MyCompo&>(myArray.at(2));
     ref2.i = 17;          // random number
