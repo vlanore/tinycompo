@@ -448,7 +448,7 @@ TEST_CASE("Array tests.") {
 /*
 
 ====================================================================================================
-  ~*~ Array connectors ~*~
+  ~*~ ArrayOneToOne class ~*~
 ==================================================================================================*/
 template <class Interface>
 class ArrayOneToOne {
@@ -491,6 +491,61 @@ TEST_CASE("Array connector tests.") {
 }
 
 /*
+
+====================================================================================================
+  ~*~ ArrayOneToOne class ~*~
+==================================================================================================*/
+template <class Interface>
+class Reduce {
+  public:
+    static void _connect(Assembly& a, std::string reducer, std::string prop, std::string array) {
+        auto& ref1 = dynamic_cast<Component&>(a.get_ref_to_instance(reducer));
+        auto& ref2 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array));
+        for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
+            auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+            ref1.set(prop, ptr);
+        }
+    }
+};
+
+/*
+============================================== TEST ==============================================*/
+class IntReducer : public Component, public IntInterface {
+    std::vector<IntInterface*> ptrs;
+
+  public:
+    std::string _debug() override { return "IntReducer"; }
+
+    void addPtr(IntInterface* ptr) { ptrs.push_back(ptr); }
+
+    int get() override {
+        int i = 0;
+        for (auto ptr : ptrs) {
+            i += ptr->get();
+        }
+        return i;
+    }
+
+    IntReducer() { port("ptrs", &IntReducer::addPtr); }
+};
+
+TEST_CASE("Array connector tests.") {
+    Assembly model;
+    model.component<Array<MyInt, 5>>("intArray", 12);
+    model.component<IntReducer>("Reducer");
+    model.instantiate();
+    Reduce<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
+    auto& refArray = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
+    auto& refElement1 = dynamic_cast<MyInt&>(refArray.at(1));
+    CHECK(refElement1.get() == 12);
+    refElement1.i = 23;
+    CHECK(refElement1.get() == 23);
+    auto& refReducer = dynamic_cast<IntInterface&>(model.get_ref_to_instance("Reducer"));
+    CHECK(refReducer.get() == 71);
+}
+
+/*
+
 
 ====================================================================================================
                                       ~*~*~ FULL TEST ~*~*~
