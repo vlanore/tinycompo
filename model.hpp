@@ -85,6 +85,7 @@ TEST_CASE("Exception tests") {
     }
     CHECK(ss.str() == "my error");
     CHECK(ss2.str() == "-- Error: my error. Something failed.");
+    TinycompoDebug::set_stream(std::cerr);
 }
 
 /*
@@ -168,7 +169,7 @@ class Component {
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
-            TinycompoDebug e{"Error while trying to set property"};
+            TinycompoDebug e{"Setting property failed"};
             e << "Type " << typeid(_Port<const Args...>).name() << " does not seem to match port "
               << name << ".\n";
             e.fail();
@@ -543,7 +544,7 @@ class ArrayOneToOne {
                 ref1.at(i).set(prop, ptr);
             }
         } else {
-            TinycompoDebug e{"Error while connecting arrays"};
+            TinycompoDebug e{"Array connection failed"};
             e << "Arrays have different sizes. " << array1 << " has size " << array1.size()
               << " while " << array2 << " has size " << array2.size() << ".\n";
             e.fail();
