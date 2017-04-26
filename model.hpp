@@ -43,11 +43,37 @@ and that you accept its terms.*/
 ====================================================================================================
   ~*~ Exceptions ~*~
 ==================================================================================================*/
-class TinycompoException : public std::exception {};
+class TinycompoException : public std::exception {
+  public:
+    static std::ostream* error_stream;
+    std::string message{""};
+
+    explicit TinycompoException(const std::string& init = "") : message{init} {}
+
+    const char* what() const noexcept override { return message.c_str(); }
+
+    static void set_stream(std::ostream& os) { error_stream = &os; }
+
+    void print() const { *error_stream << message; }
+};
+
+std::ostream* TinycompoException::error_stream = &std::cerr;
 
 /*
 ============================================== TEST ==============================================*/
-TEST_CASE("Exception tests") {}
+TEST_CASE("Exception tests") {
+    std::stringstream ss{};
+    std::stringstream ss2{};
+    TinycompoException::set_stream(ss2);
+    try {
+        throw TinycompoException("ERROR");
+    } catch (TinycompoException& e) {
+        ss << e.what();
+        e.print();
+    }
+    CHECK(ss.str() == "ERROR");
+    CHECK(ss2.str() == "ERROR");
+}
 
 /*
 
