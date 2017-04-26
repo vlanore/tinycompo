@@ -433,7 +433,7 @@ class Array : public ComponentArray, public Component, public Assembly {
         std::stringstream ss;
         ss << "Array [\n";
         print_all(ss);
-        ss << "]\n";
+        ss << "]";
         return ss.str();
     }
 
@@ -461,7 +461,7 @@ class Array : public ComponentArray, public Component, public Assembly {
 TEST_CASE("Array tests.") {
     Array<MyCompo, 3> myArray(11, 12);
     CHECK(myArray._debug() ==
-          "Array [\nElement0: MyCompo\nElement1: MyCompo\nElement2: MyCompo\n]\n");
+          "Array [\nElement0: MyCompo\nElement1: MyCompo\nElement2: MyCompo\n]");
     CHECK(myArray.size() == 3);
     auto& ref0 = dynamic_cast<MyCompo&>(myArray.at(0));
     auto& ref2 = dynamic_cast<MyCompo&>(myArray.at(2));
@@ -566,9 +566,14 @@ class IntReducer : public Component, public IntInterface {
 
 TEST_CASE("Array connector tests.") {
     Assembly model;
-    model.component<Array<MyInt, 5>>("intArray", 12);
+    model.component<Array<MyInt, 3>>("intArray", 12);
     model.component<IntReducer>("Reducer");
     model.instantiate();
+    std::stringstream ss;
+    model.print_all(ss);
+    CHECK(ss.str() ==
+          "Reducer: IntReducer\nintArray: Array [\nElement0: MyInt\nElement1: MyInt\nElement2: "
+          "MyInt\n]\n");
     Reduce<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
     auto& refArray = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
     auto& refElement1 = dynamic_cast<MyInt&>(refArray.at(1));
@@ -576,7 +581,7 @@ TEST_CASE("Array connector tests.") {
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
     auto& refReducer = dynamic_cast<IntInterface&>(model.get_ref_to_instance("Reducer"));
-    CHECK(refReducer.get() == 71);
+    CHECK(refReducer.get() == 47);
 }
 
 /*
