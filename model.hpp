@@ -41,35 +41,42 @@ and that you accept its terms.*/
 /*
 
 ====================================================================================================
-  ~*~ Exceptions ~*~
+  ~*~ Debug ~*~
 ==================================================================================================*/
 class TinycompoException : public std::exception {
   public:
-    static std::ostream* error_stream;
     std::string message{""};
-
     explicit TinycompoException(const std::string& init = "") : message{init} {}
-
     const char* what() const noexcept override { return message.c_str(); }
-
-    static void set_stream(std::ostream& os) { error_stream = &os; }
-
-    void print() const { *error_stream << message; }
 };
 
-std::ostream* TinycompoException::error_stream = &std::cerr;
+class TinycompoDebug : public std::stringstream {
+    static std::ostream* error_stream;
+
+  public:
+    static void set_stream(std::ostream& os) { error_stream = &os; }
+
+    explicit TinycompoDebug(const std::string& error_type) { str(error_type); }
+
+    void fail() const {
+        *error_stream << str();
+        throw TinycompoException(str());
+    }
+};
+
+std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Exception tests") {
     std::stringstream ss{};
     std::stringstream ss2{};
-    TinycompoException::set_stream(ss2);
+    TinycompoDebug::set_stream(ss2);
     try {
-        throw TinycompoException("ERROR");
+        TinycompoDebug e{"ERROR"};
+        e.fail();
     } catch (TinycompoException& e) {
         ss << e.what();
-        e.print();
     }
     CHECK(ss.str() == "ERROR");
     CHECK(ss2.str() == "ERROR");
@@ -156,11 +163,10 @@ class Component {
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
-            std::stringstream ss{};
-            ss << "-- Error while trying to set property! Type "
-               << typeid(_Port<const Args...>).name() << " does not seem to match port " << name
-               << ".\n";
-            throw TinycompoException(ss.str());
+            TinycompoDebug e{"Error while trying to set property"};
+            e << "Type " << typeid(_Port<const Args...>).name() << " does not seem to match port "
+              << name << ".\n";
+            e.fail();
         }
     }
 };
@@ -532,11 +538,10 @@ class ArrayOneToOne {
                 ref1.at(i).set(prop, ptr);
             }
         } else {
-            std::stringstream ss{};
-            ss << "-- Error while connecting arrays! Arrays have different sizes. " << array1
-               << " has size " << array1.size() << " while " << array2 << " has size "
-               << array2.size() << ".\n";
-            throw TinycompoException(ss.str());
+            TinycompoDebug e{"Error while connecting arrays"};
+            e << "Arrays have different sizes. " << array1 << " has size " << array1.size()
+              << " while " << array2 << " has size " << array2.size() << ".\n";
+            e.fail();
         }
     }
 };
