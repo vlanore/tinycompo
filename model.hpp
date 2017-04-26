@@ -275,6 +275,9 @@ TEST_CASE("_Connection class tests.") {
 
 ====================================================================================================
   ~*~ Assembly class ~*~
+  A class that represents a component assembly. It provides methods to declare components,
+  connections, properties, to instantiate the assembly and to interact with the instantiated
+  assembly. This class should be used as-is (not by inheriting from it) by users.
 ==================================================================================================*/
 class Assembly {
     std::map<std::string, _Component> components;
@@ -353,7 +356,11 @@ TEST_CASE("Basic test.") {
 /*
 
 ====================================================================================================
-  ~*~ Connector classes ~*~
+  ~*~ UseProvide class ~*~
+  UseProvide is a "connector class", ie a functor that can be passed as template parameter to
+  Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
+  port of one component (the user) to a pointer to an interface of another (the provider). This
+  class should be used as-is to declare assembly connections.
 ==================================================================================================*/
 template <class Interface>
 class UseProvide {
@@ -408,6 +415,10 @@ TEST_CASE("Use/provide test.") {
 
 ====================================================================================================
   ~*~ Array class ~*~
+  Generic specialization of the Component class to represent arrays of components. All component
+  arrays inherit from ComponentArray so that they can be manipulated as arrays of Component whitout
+  knowing the exact class. This class should be used as a template parameter for calls to
+  Assembly::component.
 ==================================================================================================*/
 class ComponentArray {
   public:
@@ -457,6 +468,10 @@ TEST_CASE("Array tests.") {
 
 ====================================================================================================
   ~*~ ArrayOneToOne class ~*~
+  This is a connector that takes two arrays with identical sizes and connects (as if using the
+  UseProvide connector) every i-th element in array1 to its corresponding element in array2 (ie,
+  the i-th element in array2). This class should be used as a template parameter for
+  Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
 class ArrayOneToOne {
@@ -501,7 +516,11 @@ TEST_CASE("Array connector tests.") {
 /*
 
 ====================================================================================================
-  ~*~ ArrayOneToOne class ~*~
+  ~*~ Reduce class ~*~
+  The Reduce class is a connector that connects (as if using the UseProvide connector) one port of
+  one component (the reducer) to every component in an array. This can be seen as a "multiple use"
+  connector (the reducer is the user in multiple use/provide connections). This class should be
+  used as a template parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
 class Reduce {
