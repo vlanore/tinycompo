@@ -52,15 +52,19 @@ class TinycompoException : public std::exception {
 
 class TinycompoDebug : public std::stringstream {
     static std::ostream* error_stream;
+    std::string short_message;
 
   public:
     static void set_stream(std::ostream& os) { error_stream = &os; }
 
-    explicit TinycompoDebug(const std::string& error_type) { str(error_type); }
+    explicit TinycompoDebug(const std::string& error_desc) : short_message(error_desc) {}
 
     void fail() const {
-        *error_stream << str();
-        throw TinycompoException(str());
+        *error_stream << "-- Error: " << short_message;
+        if (str() != "") {
+            *error_stream << ". " << str();
+        }
+        throw TinycompoException(short_message);
     }
 };
 
@@ -73,13 +77,14 @@ TEST_CASE("Exception tests") {
     std::stringstream ss2{};
     TinycompoDebug::set_stream(ss2);
     try {
-        TinycompoDebug e{"ERROR"};
+        TinycompoDebug e{"my error"};
+        e << "Something failed.";
         e.fail();
     } catch (TinycompoException& e) {
         ss << e.what();
     }
-    CHECK(ss.str() == "ERROR");
-    CHECK(ss2.str() == "ERROR");
+    CHECK(ss.str() == "my error");
+    CHECK(ss2.str() == "-- Error: my error. Something failed.");
 }
 
 /*
