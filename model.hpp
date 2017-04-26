@@ -199,6 +199,10 @@ TEST_CASE("_Component class tests.") {
 
 ====================================================================================================
   ~*~ _Property class ~*~
+  A class that is used by Assembly to store a "property" (ie, configuring a component by calling a
+  method with parameters). _Property stores a "partial application" of the call (only missing the
+  assembly pointer) in a std::function. This class is not meant to be encountered by users as
+  denoted by the underscore prefix.
 ==================================================================================================*/
 class _Property {
   public:
@@ -224,6 +228,10 @@ TEST_CASE("_Property class tests.") {
 
 ====================================================================================================
   ~*~ __Connection class ~*~
+  A class that is used by Assembly to store a connection between components. A connection is an
+  operation that can affect several components at once, for example to set a port of one to a
+  pointer to another. This class is for internal tinycompo use and should never be used by users,
+  as denoted by the underscore prefix.
 ==================================================================================================*/
 template <class A>
 class _Connection {
