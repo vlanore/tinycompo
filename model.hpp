@@ -156,10 +156,11 @@ class Component {
         {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
-            std::cerr << "-- Error while trying to set property! Type "
-                      << typeid(_Port<const Args...>).name() << " does not seem to match port "
-                      << name << ".\n";
-            exit(1);  // TODO exception?
+            std::stringstream ss{};
+            ss << "-- Error while trying to set property! Type "
+               << typeid(_Port<const Args...>).name() << " does not seem to match port " << name
+               << ".\n";
+            throw TinycompoException(ss.str());
         }
     }
 };
@@ -531,10 +532,11 @@ class ArrayOneToOne {
                 ref1.at(i).set(prop, ptr);
             }
         } else {
-            std::cerr << "-- Error while connecting arrays! Arrays have different sizes. " << array1
-                      << " has size " << array1.size() << " while " << array2 << " has size "
-                      << array2.size() << ".\n";
-            exit(1);
+            std::stringstream ss{};
+            ss << "-- Error while connecting arrays! Arrays have different sizes. " << array1
+               << " has size " << array1.size() << " while " << array2 << " has size "
+               << array2.size() << ".\n";
+            throw TinycompoException(ss.str());
         }
     }
 };
