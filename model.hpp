@@ -392,6 +392,11 @@ class Assembly {
             os << i.first << ": " << i.second->_debug() << std::endl;
         }
     }
+
+    template <class... Args>
+    void call(const std::string& compo, const std::string& prop, Args... args) const {
+        get_ref(compo).set(prop, std::forward<Args>(args)...);
+    }
 };
 
 /*
@@ -417,6 +422,9 @@ TEST_CASE("Basic test.") {
     CHECK(ref.j == 14);   // base value
     CHECK(ref2.i == 22);  // changed by connector AND THEN by property
     CHECK(ref2.j == 23);  // changed by property
+    a.call("Compo2", "myPort", 77, 79);
+    CHECK(ref2.i == 77);
+    CHECK(ref2.j == 79);
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
