@@ -382,13 +382,9 @@ class Assembly {
         }
     }
 
-    template <class T>
-    T& get_ref(const std::string& name) {
-        return dynamic_cast<T&>(get_ref_to_instance(name));
-    }
-
-    Component& get_ref_to_instance(const std::string& name) const {
-        return *(instances.at(name).get());
+    template <class T = Component>
+    T& get_ref(const std::string& name) const {
+        return dynamic_cast<T&>(*(instances.at(name).get()));
     }
 
     void print_all(std::ostream& os = std::cout) const {
@@ -404,8 +400,8 @@ TEST_CASE("Basic test.") {
     class MyConnector {
       public:
         static void _connect(Assembly& a, int i, int i2) {
-            dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo1")).i = i;
-            dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo2")).i = i2;
+            a.get_ref<MyCompo>("Compo1").i = i;
+            a.get_ref<MyCompo>("Compo2").i = i2;
         }
     };
 
@@ -415,8 +411,8 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     a.connect<MyConnector>(33, 34);
     a.instantiate();
-    auto& ref = dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo1"));
-    auto& ref2 = dynamic_cast<MyCompo&>(a.get_ref_to_instance("Compo2"));
+    auto& ref = a.get_ref<MyCompo&>("Compo1");
+    auto& ref2 = a.get_ref<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector
     CHECK(ref.j == 14);   // base value
     CHECK(ref2.i == 22);  // changed by connector AND THEN by property
@@ -440,9 +436,9 @@ class UseProvide {
   public:
     static void _connect(Assembly& assembly, std::string user, std::string userPort,
                          std::string provider) {
-        auto& refUser = assembly.get_ref_to_instance(user);
-        auto refProvider = dynamic_cast<Interface*>(&assembly.get_ref_to_instance(provider));
-        refUser.set(userPort, refProvider);
+        auto& refUser = assembly.get_ref(user);
+        auto& refProvider = assembly.get_ref<Interface>(provider);
+        refUser.set(userPort, &refProvider);
     }
 };
 
@@ -480,7 +476,7 @@ TEST_CASE("Use/provide test.") {
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    auto& ref = dynamic_cast<MyIntProxy&>(model.get_ref_to_instance("Compo2"));
+    auto& ref = model.get_ref<MyIntProxy>("Compo2");
     CHECK(ref.get() == 8);
 }
 
@@ -523,7 +519,7 @@ class Array : public ComponentArray, public Component, public Assembly {
     Component& at(int index) const override {
         std::stringstream ss;
         ss << "Element" << index;
-        return get_ref_to_instance(ss.str());
+        return get_ref(ss.str());
     }
 
     std::size_t size() const override { return n; }
@@ -558,8 +554,8 @@ template <class Interface>
 class ArrayOneToOne {
   public:
     static void _connect(Assembly& a, std::string array1, std::string prop, std::string array2) {
-        auto& ref1 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array1));
-        auto& ref2 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array2));
+        auto& ref1 = a.get_ref<ComponentArray>(array1);
+        auto& ref2 = a.get_ref<ComponentArray>(array2);
         if (ref1.size() == ref2.size()) {
             for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
                 auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
@@ -582,13 +578,13 @@ TEST_CASE("Array connector tests.") {
     model.component<Array<MyIntProxy, 5>>("proxyArray");
     model.instantiate();
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    auto& refArray1 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
+    auto& refArray1 = model.get_ref<ComponentArray>("intArray");
     CHECK(refArray1.size() == 5);
     auto& refElement1 = dynamic_cast<MyInt&>(refArray1.at(1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refArray2 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("proxyArray"));
+    auto& refArray2 = model.get_ref<ComponentArray>("proxyArray");
     CHECK(refArray2.size() == 5);
     auto& refElement2 = dynamic_cast<MyIntProxy&>(refArray2.at(1));
     CHECK(refElement2.get() == 46);
@@ -630,8 +626,8 @@ template <class Interface>
 class Reduce {
   public:
     static void _connect(Assembly& a, std::string reducer, std::string prop, std::string array) {
-        auto& ref1 = dynamic_cast<Component&>(a.get_ref_to_instance(reducer));
-        auto& ref2 = dynamic_cast<ComponentArray&>(a.get_ref_to_instance(array));
+        auto& ref1 = a.get_ref<Component>(reducer);
+        auto& ref2 = a.get_ref<ComponentArray>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
             ref1.set(prop, ptr);
@@ -671,12 +667,12 @@ TEST_CASE("Reducer tests.") {
           "Reducer: IntReducer\nintArray: Array [\nElement0: MyInt\nElement1: MyInt\nElement2: "
           "MyInt\n]\n");
     Reduce<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
-    auto& refArray = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
+    auto& refArray = model.get_ref<ComponentArray>("intArray");
     auto& refElement1 = dynamic_cast<MyInt&>(refArray.at(1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refReducer = dynamic_cast<IntInterface&>(model.get_ref_to_instance("Reducer"));
+    auto& refReducer = model.get_ref<IntInterface>("Reducer");
     CHECK(refReducer.get() == 47);
 }
 
@@ -728,7 +724,7 @@ TEST_CASE("Large test resembling a real-life situation more than the other tests
     std::stringstream ss;
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
-    auto& ptr = dynamic_cast<MyIntProxy&>(model.get_ref_to_instance("Compo2"));
+    auto& ptr = model.get_ref<MyIntProxy>("Compo2");
     CHECK(ptr.get() == 8);
 }
 
