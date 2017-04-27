@@ -494,7 +494,7 @@ class ComponentArray {
     virtual std::size_t size() const = 0;
     virtual Component& at(int index) const = 0;
 
-    template <class T>
+    template <class T = Component>
     T& get_ref_at(int index) const {
         return dynamic_cast<T&>(at(index));
     }
@@ -585,15 +585,15 @@ TEST_CASE("Array connector tests.") {
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
     auto& refArray1 = model.get_ref<ComponentArray>("intArray");
     CHECK(refArray1.size() == 5);
-    auto& refElement1 = dynamic_cast<MyInt&>(refArray1.at(1));
+    auto& refElement1 = refArray1.get_ref_at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
     auto& refArray2 = model.get_ref<ComponentArray>("proxyArray");
     CHECK(refArray2.size() == 5);
-    auto& refElement2 = dynamic_cast<MyIntProxy&>(refArray2.at(1));
+    auto& refElement2 = refArray2.get_ref_at<MyIntProxy>(1);
     CHECK(refElement2.get() == 46);
-    auto& refElement3 = dynamic_cast<MyIntProxy&>(refArray2.at(4));
+    auto& refElement3 = refArray2.get_ref_at<MyIntProxy>(4);
     CHECK(refElement3.get() == 24);
 }
 
@@ -673,7 +673,7 @@ TEST_CASE("Reducer tests.") {
           "MyInt\n]\n");
     Reduce<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
     auto& refArray = model.get_ref<ComponentArray>("intArray");
-    auto& refElement1 = dynamic_cast<MyInt&>(refArray.at(1));
+    auto& refElement1 = refArray.get_ref_at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
