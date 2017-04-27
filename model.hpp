@@ -689,7 +689,7 @@ TEST_CASE("Reducer tests.") {
 template <class Interface>
 class Map {
   public:
-    static void _connect(Assembly& a, std::string mapper, std::string array, std::string prop) {
+    static void _connect(Assembly& a, std::string array, std::string prop, std::string mapper) {
         auto& ref2 = a.get_ref<ComponentArray&>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             ref2.at(i).set(prop, &a.get_ref<Interface>(mapper));
@@ -704,7 +704,7 @@ TEST_CASE("Map connector tests") {
     model.component<MyInt>("superInt", 17);
     model.component<Array<MyIntProxy, 3>>("proxyArray");
     model.instantiate();
-    Map<IntInterface>::_connect(model, "superInt", "proxyArray", "ptr");
+    Map<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
     auto& arrayRef = model.get_ref<Array<MyIntProxy, 3>>("proxyArray");
     CHECK(arrayRef.get_ref<MyIntProxy>("Element0").get() == 34);
 }
