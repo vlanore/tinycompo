@@ -491,8 +491,13 @@ TEST_CASE("Use/provide test.") {
 ==================================================================================================*/
 class ComponentArray {
   public:
-    virtual Component& at(int index) const = 0;
     virtual std::size_t size() const = 0;
+    virtual Component& at(int index) const = 0;
+
+    template <class T>
+    T& get_ref_at(int index) const {
+        return dynamic_cast<T&>(at(index));
+    }
 };
 
 template <class T, std::size_t n>
@@ -532,12 +537,12 @@ TEST_CASE("Array tests.") {
     CHECK(myArray._debug() ==
           "Array [\nElement0: MyCompo\nElement1: MyCompo\nElement2: MyCompo\n]");
     CHECK(myArray.size() == 3);
-    auto& ref0 = dynamic_cast<MyCompo&>(myArray.at(0));
-    auto& ref2 = dynamic_cast<MyCompo&>(myArray.at(2));
+    auto& ref0 = myArray.get_ref_at<MyCompo>(0);
+    auto& ref2 = myArray.get_ref_at<MyCompo>(2);
     ref2.i = 17;          // random number
     CHECK(ref0.i == 11);  // cf myArray init above
     CHECK(ref2.i == 17);
-    auto& ref2bis = dynamic_cast<MyCompo&>(myArray.at(2));
+    auto& ref2bis = myArray.get_ref_at<MyCompo>(2);
     CHECK(ref2bis.i == 17);
 }
 
