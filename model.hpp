@@ -42,6 +42,7 @@ and that you accept its terms.*/
 
 ====================================================================================================
   ~*~ Debug ~*~
+  A few classes related to debug messages.
 ==================================================================================================*/
 class TinycompoException : public std::exception {
   public:
@@ -205,6 +206,20 @@ TEST_CASE("Basic component tests.") {
     compo.set("myPort", 17, 18);
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
+
+    std::stringstream my_cerr;
+    std::stringstream tmp;
+    try {
+        TinycompoDebug::set_stream(my_cerr);
+        compo.set("myPort", true);  // intentional error
+    } catch (const TinycompoException& e) {
+        tmp << e.what();
+    }
+    CHECK(tmp.str() == "Setting property failed");
+    CHECK(my_cerr.str() ==
+          "-- Error: Setting property failed. Type 5_PortIJKbEE does not seem to match port "
+          "myPort.\n");
+    TinycompoDebug::set_stream(std::cerr);
 }
 
 /*
@@ -544,9 +559,9 @@ class ArrayOneToOne {
                 ref1.at(i).set(prop, ptr);
             }
         } else {
-            TinycompoDebug e{"Array connection failed"};
-            e << "Arrays have different sizes. " << array1 << " has size " << array1.size()
-              << " while " << array2 << " has size " << array2.size() << ".\n";
+            TinycompoDebug e{"Array connection: mismatched sizes"};
+            e << array1 << " has size " << ref1.size() << " while " << array2 << " has size "
+              << ref2.size() << ".\n";
             e.fail();
         }
     }
@@ -561,15 +576,38 @@ TEST_CASE("Array connector tests.") {
     model.instantiate();
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
     auto& refArray1 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("intArray"));
+    CHECK(refArray1.size() == 5);
     auto& refElement1 = dynamic_cast<MyInt&>(refArray1.at(1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
     auto& refArray2 = dynamic_cast<ComponentArray&>(model.get_ref_to_instance("proxyArray"));
+    CHECK(refArray2.size() == 5);
     auto& refElement2 = dynamic_cast<MyIntProxy&>(refArray2.at(1));
     CHECK(refElement2.get() == 46);
     auto& refElement3 = dynamic_cast<MyIntProxy&>(refArray2.at(4));
     CHECK(refElement3.get() == 24);
+}
+
+TEST_CASE("Array connector error test.") {
+    Assembly model;
+    model.component<Array<MyInt, 5>>("intArray", 12);
+    model.component<Array<MyIntProxy, 4>>("proxyArray");  // intentionally mismatched arrays
+    model.instantiate();
+
+    std::stringstream my_cerr{};
+    TinycompoDebug::set_stream(my_cerr);
+    std::stringstream error{};
+    try {
+        ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
+    } catch (const TinycompoException& e) {
+        error << e.what();
+    }
+    CHECK(error.str() == "Array connection: mismatched sizes");
+    CHECK(my_cerr.str() ==
+          "-- Error: Array connection: mismatched sizes. proxyArray has size 4 while intArray has "
+          "size 5.\n");
+    TinycompoDebug::set_stream(std::cerr);
 }
 
 /*
@@ -615,7 +653,7 @@ class IntReducer : public Component, public IntInterface {
     IntReducer() { port("ptrs", &IntReducer::addPtr); }
 };
 
-TEST_CASE("Array connector tests.") {
+TEST_CASE("Reducer tests.") {
     Assembly model;
     model.component<Array<MyInt, 3>>("intArray", 12);
     model.component<IntReducer>("Reducer");
