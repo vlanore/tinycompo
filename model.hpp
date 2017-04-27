@@ -382,7 +382,14 @@ class Assembly {
         }
     }
 
-    Component& get_ref_to_instance(std::string name) const { return *(instances.at(name).get()); }
+    template <class T>
+    T& get_ref(const std::string& name) {
+        return dynamic_cast<T&>(get_ref_to_instance(name));
+    }
+
+    Component& get_ref_to_instance(const std::string& name) const {
+        return *(instances.at(name).get());
+    }
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
@@ -671,6 +678,34 @@ TEST_CASE("Reducer tests.") {
     CHECK(refElement1.get() == 23);
     auto& refReducer = dynamic_cast<IntInterface&>(model.get_ref_to_instance("Reducer"));
     CHECK(refReducer.get() == 47);
+}
+
+/*
+
+====================================================================================================
+  ~*~ Map class ~*~
+==================================================================================================*/
+template <class Interface>
+class Map {
+  public:
+    static void _connect(Assembly& a, std::string mapper, std::string array, std::string prop) {
+        auto& ref2 = a.get_ref<ComponentArray&>(array);
+        for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
+            ref2.at(i).set(prop, &a.get_ref<Interface>(mapper));
+        }
+    }
+};
+
+/*
+============================================== TEST ==============================================*/
+TEST_CASE("Map connector tests") {
+    Assembly model;
+    model.component<MyInt>("superInt", 17);
+    model.component<Array<MyIntProxy, 3>>("proxyArray");
+    model.instantiate();
+    Map<IntInterface>::_connect(model, "superInt", "proxyArray", "ptr");
+    auto& arrayRef = model.get_ref<Array<MyIntProxy, 3>>("proxyArray");
+    CHECK(arrayRef.get_ref<MyIntProxy>("Element0").get() == 34);
 }
 
 /*
