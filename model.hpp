@@ -629,14 +629,14 @@ TEST_CASE("Array connector error test.") {
 /*
 
 ====================================================================================================
-  ~*~ Reduce class ~*~
-  The Reduce class is a connector that connects (as if using the UseProvide connector) one port of
+  ~*~ MultiUse class ~*~
+  The MultiUse class is a connector that connects (as if using the UseProvide connector) one port of
   one component (the reducer) to every component in an array. This can be seen as a "multiple use"
   connector (the reducer is the user in multiple use/provide connections). This class should be
   used as a template parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
-class MultiProvide {
+class MultiUse {
   public:
     static void _connect(Assembly& a, std::string reducer, std::string prop, std::string array) {
         auto& ref1 = a.get_ref<Component>(reducer);
@@ -679,7 +679,7 @@ TEST_CASE("Reducer tests.") {
     CHECK(ss.str() ==
           "Reducer: IntReducer\nintArray: Array [\nElement0: MyInt\nElement1: MyInt\nElement2: "
           "MyInt\n]\n");
-    MultiProvide<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
+    MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
     auto& refArray = model.get_ref<ComponentArray>("intArray");
     auto& refElement1 = refArray.get_ref_at<MyInt>(1);
     CHECK(refElement1.get() == 12);
@@ -692,10 +692,10 @@ TEST_CASE("Reducer tests.") {
 /*
 
 ====================================================================================================
-  ~*~ MultiUse class ~*~
+  ~*~ MultiProvide class ~*~
 ==================================================================================================*/
 template <class Interface>
-class MultiUse {
+class MultiProvide {
   public:
     static void _connect(Assembly& a, std::string array, std::string prop, std::string mapper) {
         auto& ref2 = a.get_ref<ComponentArray&>(array);
@@ -707,12 +707,12 @@ class MultiUse {
 
 /*
 ============================================== TEST ==============================================*/
-TEST_CASE("MultiUse connector tests") {
+TEST_CASE("MultiProvide connector tests") {
     Assembly model;
     model.component<MyInt>("superInt", 17);
     model.component<Array<MyIntProxy, 3>>("proxyArray");
     model.instantiate();
-    MultiUse<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
+    MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
     auto& arrayRef = model.get_ref<Array<MyIntProxy, 3>>("proxyArray");
     CHECK(arrayRef.get_ref<MyIntProxy>("Element0").get() == 34);
 }
