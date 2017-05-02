@@ -346,6 +346,7 @@ TEST_CASE("_Connection class tests.") {
   assembly. This class should be used as-is (not by inheriting from it) by users.
 ==================================================================================================*/
 class Assembly {
+  protected:
     std::map<std::string, _Component> components;
     std::map<std::string, std::unique_ptr<Component>> instances;
     std::vector<std::pair<std::string, _Property>> properties;
@@ -631,9 +632,9 @@ TEST_CASE("Array connector error test.") {
 ====================================================================================================
   ~*~ MultiUse class ~*~
   The MultiUse class is a connector that connects (as if using the UseProvide connector) one port of
-  one component (the reducer) to every component in an array. This can be seen as a "multiple use"
-  connector (the reducer is the user in multiple use/provide connections). This class should be
-  used as a template parameter for Assembly::connect.
+  one component to every component in an array. This can be seen as a "multiple use" connector (the
+  reducer is the user in multiple use/provide connections). This class should be used as a template
+  parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
 class MultiUse {
