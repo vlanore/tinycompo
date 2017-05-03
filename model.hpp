@@ -398,6 +398,8 @@ class Assembly {
         return ref.template at<T>(subKey, std::forward<Args>(args)...);
     }
 
+    std::size_t size() const { return components.size(); }
+
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
             os << i.first << ": " << i.second->_debug() << std::endl;
@@ -425,6 +427,7 @@ TEST_CASE("Basic test.") {
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     a.property("Compo2", "myPort", 22, 23);
+    CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
     a.instantiate();
     auto& ref = a.at<MyCompo&>("Compo1");
@@ -521,8 +524,7 @@ TEST_CASE("Use/provide test.") {
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    auto& ref = model.at<MyIntProxy>("Compo2");
-    CHECK(ref.get() == 8);
+    CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
 }
 
 /*
@@ -533,17 +535,12 @@ TEST_CASE("Use/provide test.") {
 ====================================================================================================
   ~*~ Array class ~*~
   Generic specialization of the Component class to represent arrays of components. All component
-  arrays inherit from ComponentArray so that they can be manipulated as arrays of Component whitout
+  arrays inherit from Assembly<int> so that they can be manipulated as arrays of Component whitout
   knowing the exact class. This class should be used as a template parameter for calls to
   Assembly::component.
 ==================================================================================================*/
-class ComponentArray : public Assembly<int> {
-  public:
-    virtual std::size_t size() const = 0;
-};
-
-template <class T, std::size_t n>
-class Array : public ComponentArray, public Component {
+template <class T>
+class Array : public Assembly<int>, public Component {
   public:
     std::string _debug() const override {
         std::stringstream ss;
@@ -554,20 +551,18 @@ class Array : public ComponentArray, public Component {
     }
 
     template <class... Args>
-    explicit Array(Args... args) {
-        for (int i = 0; i < static_cast<int>(n); i++) {
+    explicit Array(int nbElems, Args... args) {
+        for (int i = 0; i < nbElems; i++) {
             component<T>(i, std::forward<Args>(args)...);
         }
         instantiate();
     }
-
-    std::size_t size() const override { return n; }
 };
 
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Array tests.") {
-    Array<MyCompo, 3> myArray(11, 12);
+    Array<MyCompo> myArray(3, 11, 12);
     CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
     CHECK(myArray.size() == 3);
     auto& ref0 = myArray.at<MyCompo>(0);
@@ -592,8 +587,8 @@ template <class Interface>
 class ArrayOneToOne {
   public:
     static void _connect(Assembly<>& a, std::string array1, std::string prop, std::string array2) {
-        auto& ref1 = a.at<ComponentArray>(array1);
-        auto& ref2 = a.at<ComponentArray>(array2);
+        auto& ref1 = a.at<Assembly<int>>(array1);
+        auto& ref2 = a.at<Assembly<int>>(array2);
         if (ref1.size() == ref2.size()) {
             for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
                 auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
@@ -612,17 +607,17 @@ class ArrayOneToOne {
 ============================================== TEST ==============================================*/
 TEST_CASE("Array connector tests.") {
     Assembly<> model;
-    model.component<Array<MyInt, 5>>("intArray", 12);
-    model.component<Array<MyIntProxy, 5>>("proxyArray");
+    model.component<Array<MyInt>>("intArray", 5, 12);
+    model.component<Array<MyIntProxy>>("proxyArray", 5);
     model.instantiate();
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    auto& refArray1 = model.at<ComponentArray>("intArray");
+    auto& refArray1 = model.at<Assembly<int>>("intArray");
     CHECK(refArray1.size() == 5);
     auto& refElement1 = refArray1.at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refArray2 = model.at<ComponentArray>("proxyArray");
+    auto& refArray2 = model.at<Assembly<int>>("proxyArray");
     CHECK(refArray2.size() == 5);
     auto& refElement2 = refArray2.at<MyIntProxy>(1);
     CHECK(refElement2.get() == 46);
@@ -632,8 +627,8 @@ TEST_CASE("Array connector tests.") {
 
 TEST_CASE("Array connector error test.") {
     Assembly<> model;
-    model.component<Array<MyInt, 5>>("intArray", 12);
-    model.component<Array<MyIntProxy, 4>>("proxyArray");  // intentionally mismatched arrays
+    model.component<Array<MyInt>>("intArray", 5, 12);
+    model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     model.instantiate();
 
     std::stringstream my_cerr{};
@@ -665,7 +660,7 @@ class MultiUse {
   public:
     static void _connect(Assembly<>& a, std::string reducer, std::string prop, std::string array) {
         auto& ref1 = a.at<Component>(reducer);
-        auto& ref2 = a.at<ComponentArray>(array);
+        auto& ref2 = a.at<Assembly<int>>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
             ref1.set(prop, ptr);
@@ -696,7 +691,7 @@ class IntReducer : public Component, public IntInterface {
 
 TEST_CASE("Reducer tests.") {
     Assembly<> model;
-    model.component<Array<MyInt, 3>>("intArray", 12);
+    model.component<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("Reducer");
     model.instantiate();
     std::stringstream ss;
@@ -705,7 +700,7 @@ TEST_CASE("Reducer tests.") {
           "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
     MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
-    auto& refArray = model.at<ComponentArray>("intArray");
+    auto& refArray = model.at<Assembly<int>>("intArray");
     auto& refElement1 = refArray.at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
@@ -723,7 +718,7 @@ template <class Interface>
 class MultiProvide {
   public:
     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
-        auto& ref2 = a.at<ComponentArray&>(array);
+        auto& ref2 = a.at<Assembly<int>&>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             ref2.at(i).set(prop, &a.at<Interface>(mapper));
         }
@@ -734,12 +729,11 @@ class MultiProvide {
 ============================================== TEST ==============================================*/
 TEST_CASE("MultiProvide connector tests") {
     Assembly<> model;
-    model.component<MyInt>("superInt", 17);
-    model.component<Array<MyIntProxy, 3>>("proxyArray");
+    model.component<MyInt>("superInt", 17);  // random number
+    model.component<Array<MyIntProxy>>("proxyArray", 5);
     model.instantiate();
     MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
-    auto& arrayRef = model.at<Array<MyIntProxy, 3>>("proxyArray");
-    CHECK(arrayRef.at<MyIntProxy>(0).get() == 34);
+    CHECK(model.at<MyIntProxy>("proxyArray", 2).get() == 34);
 }
 
 #endif  // MODEL_HPP
