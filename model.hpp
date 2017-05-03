@@ -388,7 +388,7 @@ class Assembly {
     }
 
     template <class T = Component>
-    T& get_ref(Key name) const {
+    T& at(Key name) const {
         return dynamic_cast<T&>(*(instances.at(name).get()));
     }
 
@@ -400,7 +400,7 @@ class Assembly {
 
     template <class... Args>
     void call(const std::string& compo, const std::string& prop, Args... args) const {
-        get_ref(compo).set(prop, std::forward<Args>(args)...);
+        at(compo).set(prop, std::forward<Args>(args)...);
     }
 };
 
@@ -410,8 +410,8 @@ TEST_CASE("Basic test.") {
     class MyConnector {
       public:
         static void _connect(Assembly<>& a, int i, int i2) {
-            a.get_ref<MyCompo>("Compo1").i = i;
-            a.get_ref<MyCompo>("Compo2").i = i2;
+            a.at<MyCompo>("Compo1").i = i;
+            a.at<MyCompo>("Compo2").i = i2;
         }
     };
 
@@ -421,8 +421,8 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     a.connect<MyConnector>(33, 34);
     a.instantiate();
-    auto& ref = a.get_ref<MyCompo&>("Compo1");
-    auto& ref2 = a.get_ref<MyCompo&>("Compo2");
+    auto& ref = a.at<MyCompo&>("Compo1");
+    auto& ref2 = a.at<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector
     CHECK(ref.j == 14);   // base value
     CHECK(ref2.i == 22);  // changed by connector AND THEN by property
@@ -449,8 +449,8 @@ class UseProvide {
   public:
     static void _connect(Assembly<>& assembly, std::string user, std::string userPort,
                          std::string provider) {
-        auto& refUser = assembly.get_ref(user);
-        auto& refProvider = assembly.get_ref<Interface>(provider);
+        auto& refUser = assembly.at(user);
+        auto& refProvider = assembly.at<Interface>(provider);
         refUser.set(userPort, &refProvider);
     }
 };
@@ -489,7 +489,7 @@ TEST_CASE("Use/provide test.") {
     model.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    auto& ref = model.get_ref<MyIntProxy>("Compo2");
+    auto& ref = model.at<MyIntProxy>("Compo2");
     CHECK(ref.get() == 8);
 }
 
@@ -535,12 +535,12 @@ TEST_CASE("Array tests.") {
     Array<MyCompo, 3> myArray(11, 12);
     CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
     CHECK(myArray.size() == 3);
-    auto& ref0 = myArray.get_ref<MyCompo>(0);
-    auto& ref2 = myArray.get_ref<MyCompo>(2);
+    auto& ref0 = myArray.at<MyCompo>(0);
+    auto& ref2 = myArray.at<MyCompo>(2);
     ref2.i = 17;          // random number
     CHECK(ref0.i == 11);  // cf myArray init above
     CHECK(ref2.i == 17);
-    auto& ref2bis = myArray.get_ref<MyCompo>(2);
+    auto& ref2bis = myArray.at<MyCompo>(2);
     CHECK(ref2bis.i == 17);
 }
 
@@ -557,12 +557,12 @@ template <class Interface>
 class ArrayOneToOne {
   public:
     static void _connect(Assembly<>& a, std::string array1, std::string prop, std::string array2) {
-        auto& ref1 = a.get_ref<ComponentArray>(array1);
-        auto& ref2 = a.get_ref<ComponentArray>(array2);
+        auto& ref1 = a.at<ComponentArray>(array1);
+        auto& ref2 = a.at<ComponentArray>(array2);
         if (ref1.size() == ref2.size()) {
             for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
-                auto ptr = dynamic_cast<Interface*>(&ref2.get_ref(i));
-                ref1.get_ref(i).set(prop, ptr);
+                auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+                ref1.at(i).set(prop, ptr);
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
@@ -581,17 +581,17 @@ TEST_CASE("Array connector tests.") {
     model.component<Array<MyIntProxy, 5>>("proxyArray");
     model.instantiate();
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    auto& refArray1 = model.get_ref<ComponentArray>("intArray");
+    auto& refArray1 = model.at<ComponentArray>("intArray");
     CHECK(refArray1.size() == 5);
-    auto& refElement1 = refArray1.get_ref<MyInt>(1);
+    auto& refElement1 = refArray1.at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refArray2 = model.get_ref<ComponentArray>("proxyArray");
+    auto& refArray2 = model.at<ComponentArray>("proxyArray");
     CHECK(refArray2.size() == 5);
-    auto& refElement2 = refArray2.get_ref<MyIntProxy>(1);
+    auto& refElement2 = refArray2.at<MyIntProxy>(1);
     CHECK(refElement2.get() == 46);
-    auto& refElement3 = refArray2.get_ref<MyIntProxy>(4);
+    auto& refElement3 = refArray2.at<MyIntProxy>(4);
     CHECK(refElement3.get() == 24);
 }
 
@@ -629,10 +629,10 @@ template <class Interface>
 class MultiUse {
   public:
     static void _connect(Assembly<>& a, std::string reducer, std::string prop, std::string array) {
-        auto& ref1 = a.get_ref<Component>(reducer);
-        auto& ref2 = a.get_ref<ComponentArray>(array);
+        auto& ref1 = a.at<Component>(reducer);
+        auto& ref2 = a.at<ComponentArray>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
-            auto ptr = dynamic_cast<Interface*>(&ref2.get_ref(i));
+            auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
             ref1.set(prop, ptr);
         }
     }
@@ -670,12 +670,12 @@ TEST_CASE("Reducer tests.") {
           "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
     MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
-    auto& refArray = model.get_ref<ComponentArray>("intArray");
-    auto& refElement1 = refArray.get_ref<MyInt>(1);
+    auto& refArray = model.at<ComponentArray>("intArray");
+    auto& refElement1 = refArray.at<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refReducer = model.get_ref<IntInterface>("Reducer");
+    auto& refReducer = model.at<IntInterface>("Reducer");
     CHECK(refReducer.get() == 47);
 }
 
@@ -688,9 +688,9 @@ template <class Interface>
 class MultiProvide {
   public:
     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
-        auto& ref2 = a.get_ref<ComponentArray&>(array);
+        auto& ref2 = a.at<ComponentArray&>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
-            ref2.get_ref(i).set(prop, &a.get_ref<Interface>(mapper));
+            ref2.at(i).set(prop, &a.at<Interface>(mapper));
         }
     }
 };
@@ -703,8 +703,8 @@ TEST_CASE("MultiProvide connector tests") {
     model.component<Array<MyIntProxy, 3>>("proxyArray");
     model.instantiate();
     MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
-    auto& arrayRef = model.get_ref<Array<MyIntProxy, 3>>("proxyArray");
-    CHECK(arrayRef.get_ref<MyIntProxy>(0).get() == 34);
+    auto& arrayRef = model.at<Array<MyIntProxy, 3>>("proxyArray");
+    CHECK(arrayRef.at<MyIntProxy>(0).get() == 34);
 }
 
 #endif  // MODEL_HPP
