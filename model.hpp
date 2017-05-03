@@ -348,22 +348,23 @@ TEST_CASE("_Connection class tests.") {
   connections, properties, to instantiate the assembly and to interact with the instantiated
   assembly. This class should be used as-is (not by inheriting from it) by users.
 ==================================================================================================*/
+template <class Key = std::string>
 class Assembly {
   protected:
-    std::map<std::string, _Component> components;
-    std::map<std::string, std::unique_ptr<Component>> instances;
-    std::vector<std::pair<std::string, _Property>> properties;
+    std::map<Key, _Component> components;
+    std::map<Key, std::unique_ptr<Component>> instances;
+    std::vector<std::pair<Key, _Property>> properties;
     std::vector<_Connection<Assembly>> connections;
 
   public:
     template <class T, class... Args>
-    void component(std::string name, Args&&... args) {
+    void component(Key name, Args&&... args) {
         components.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     template <class... Args>
-    void property(std::string compoName, std::string propName, Args&&... args) {
+    void property(Key compoName, std::string propName, Args&&... args) {
         properties.emplace_back(
             std::piecewise_construct, std::forward_as_tuple(compoName),
             std::forward_as_tuple(_Property(propName, std::forward<Args>(args)...)));
@@ -387,7 +388,7 @@ class Assembly {
     }
 
     template <class T = Component>
-    T& get_ref(const std::string& name) const {
+    T& get_ref(Key name) const {
         return dynamic_cast<T&>(*(instances.at(name).get()));
     }
 
@@ -408,13 +409,13 @@ class Assembly {
 TEST_CASE("Basic test.") {
     class MyConnector {
       public:
-        static void _connect(Assembly& a, int i, int i2) {
+        static void _connect(Assembly<>& a, int i, int i2) {
             a.get_ref<MyCompo>("Compo1").i = i;
             a.get_ref<MyCompo>("Compo2").i = i2;
         }
     };
 
-    Assembly a;
+    Assembly<> a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     a.property("Compo2", "myPort", 22, 23);
@@ -446,7 +447,7 @@ TEST_CASE("Basic test.") {
 template <class Interface>
 class UseProvide {
   public:
-    static void _connect(Assembly& assembly, std::string user, std::string userPort,
+    static void _connect(Assembly<>& assembly, std::string user, std::string userPort,
                          std::string provider) {
         auto& refUser = assembly.get_ref(user);
         auto& refProvider = assembly.get_ref<Interface>(provider);
@@ -480,7 +481,7 @@ class MyIntProxy : public Component, public IntInterface {
 };
 
 TEST_CASE("Use/provide test.") {
-    Assembly model;
+    Assembly<> model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
     model.instantiate();
@@ -513,7 +514,7 @@ class ComponentArray {
 };
 
 template <class T, std::size_t n>
-class Array : public ComponentArray, public Component, public Assembly {
+class Array : public ComponentArray, public Component, public Assembly<> {
   public:
     std::string _debug() const override {
         std::stringstream ss;
@@ -570,7 +571,7 @@ TEST_CASE("Array tests.") {
 template <class Interface>
 class ArrayOneToOne {
   public:
-    static void _connect(Assembly& a, std::string array1, std::string prop, std::string array2) {
+    static void _connect(Assembly<>& a, std::string array1, std::string prop, std::string array2) {
         auto& ref1 = a.get_ref<ComponentArray>(array1);
         auto& ref2 = a.get_ref<ComponentArray>(array2);
         if (ref1.size() == ref2.size()) {
@@ -590,7 +591,7 @@ class ArrayOneToOne {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("Array connector tests.") {
-    Assembly model;
+    Assembly<> model;
     model.component<Array<MyInt, 5>>("intArray", 12);
     model.component<Array<MyIntProxy, 5>>("proxyArray");
     model.instantiate();
@@ -610,7 +611,7 @@ TEST_CASE("Array connector tests.") {
 }
 
 TEST_CASE("Array connector error test.") {
-    Assembly model;
+    Assembly<> model;
     model.component<Array<MyInt, 5>>("intArray", 12);
     model.component<Array<MyIntProxy, 4>>("proxyArray");  // intentionally mismatched arrays
     model.instantiate();
@@ -642,7 +643,7 @@ TEST_CASE("Array connector error test.") {
 template <class Interface>
 class MultiUse {
   public:
-    static void _connect(Assembly& a, std::string reducer, std::string prop, std::string array) {
+    static void _connect(Assembly<>& a, std::string reducer, std::string prop, std::string array) {
         auto& ref1 = a.get_ref<Component>(reducer);
         auto& ref2 = a.get_ref<ComponentArray>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
@@ -674,7 +675,7 @@ class IntReducer : public Component, public IntInterface {
 };
 
 TEST_CASE("Reducer tests.") {
-    Assembly model;
+    Assembly<> model;
     model.component<Array<MyInt, 3>>("intArray", 12);
     model.component<IntReducer>("Reducer");
     model.instantiate();
@@ -701,7 +702,7 @@ TEST_CASE("Reducer tests.") {
 template <class Interface>
 class MultiProvide {
   public:
-    static void _connect(Assembly& a, std::string array, std::string prop, std::string mapper) {
+    static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
         auto& ref2 = a.get_ref<ComponentArray&>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             ref2.at(i).set(prop, &a.get_ref<Interface>(mapper));
@@ -712,7 +713,7 @@ class MultiProvide {
 /*
 ============================================== TEST ==============================================*/
 TEST_CASE("MultiProvide connector tests") {
-    Assembly model;
+    Assembly<> model;
     model.component<MyInt>("superInt", 17);
     model.component<Array<MyIntProxy, 3>>("proxyArray");
     model.instantiate();
