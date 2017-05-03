@@ -358,8 +358,8 @@ class Assembly {
 
   public:
     template <class T, class... Args>
-    void component(Key name, Args&&... args) {
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+    void component(Key address, Args&&... args) {
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
@@ -388,8 +388,14 @@ class Assembly {
     }
 
     template <class T = Component>
-    T& at(Key name) const {
-        return dynamic_cast<T&>(*(instances.at(name).get()));
+    T& at(Key address) const {
+        return dynamic_cast<T&>(*(instances.at(address).get()));
+    }
+
+    template <class T = Component, class SubKey, class... Args>
+    T& at(Key address, SubKey subKey, Args... args) const {
+        auto& ref = at<Assembly<SubKey>>(address);
+        return ref.template at<T>(subKey, std::forward<Args>(args)...);
     }
 
     void print_all(std::ostream& os = std::cout) const {
@@ -433,6 +439,28 @@ TEST_CASE("Basic test.") {
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
+
+    // sub-addressing tests
+    class MyComposite : public Component, public Assembly<int> {
+      public:
+        std::string _debug() const override { return "MyComposite"; }
+    };
+    Assembly<> b;
+    b.component<MyComposite>("Array");
+    b.instantiate();
+    auto& arrayRef = b.at<MyComposite>("Array");
+    arrayRef.component<MyCompo>(0, 12, 13);
+    arrayRef.component<MyCompo>(1, 15, 19);
+    arrayRef.component<MyComposite>(2);
+    arrayRef.instantiate();
+    auto& subArrayRef = arrayRef.at<MyComposite>(2);
+    subArrayRef.component<MyCompo>(0, 19, 22);
+    subArrayRef.component<MyCompo>(1, 7, 9);
+    subArrayRef.instantiate();
+    auto& subRef = b.at<MyCompo>("Array", 1);
+    auto& subSubRef = b.at<MyCompo>("Array", 2, 1);
+    CHECK(subRef.i == 15);
+    CHECK(subSubRef.i == 7);
 }
 
 /*
@@ -492,6 +520,9 @@ TEST_CASE("Use/provide test.") {
     auto& ref = model.at<MyIntProxy>("Compo2");
     CHECK(ref.get() == 8);
 }
+
+/*
+============================================== TEST ==============================================*/
 
 /*
 
