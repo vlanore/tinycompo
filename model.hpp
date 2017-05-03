@@ -439,8 +439,9 @@ TEST_CASE("Basic test.") {
     std::stringstream ss;
     a.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
+}
 
-    // sub-addressing tests
+TEST_CASE("sub-addressing tests") {
     class MyComposite : public Component, public Assembly<int> {
       public:
         std::string _debug() const override { return "MyComposite"; }
@@ -461,6 +462,9 @@ TEST_CASE("Basic test.") {
     auto& subSubRef = b.at<MyCompo>("Array", 2, 1);
     CHECK(subRef.i == 15);
     CHECK(subSubRef.i == 7);
+    std::stringstream ss;
+    b.print_all(ss);
+    CHECK(ss.str() == "Array: MyComposite\n");
 }
 
 /*
