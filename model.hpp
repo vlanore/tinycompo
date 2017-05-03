@@ -611,18 +611,14 @@ TEST_CASE("Array connector tests.") {
     model.component<Array<MyIntProxy>>("proxyArray", 5);
     model.instantiate();
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    auto& refArray1 = model.at<Assembly<int>>("intArray");
-    CHECK(refArray1.size() == 5);
-    auto& refElement1 = refArray1.at<MyInt>(1);
+    CHECK(model.at<Assembly<int>>("intArray").size() == 5);
+    auto& refElement1 = model.at<MyInt>("intArray", 1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refArray2 = model.at<Assembly<int>>("proxyArray");
-    CHECK(refArray2.size() == 5);
-    auto& refElement2 = refArray2.at<MyIntProxy>(1);
-    CHECK(refElement2.get() == 46);
-    auto& refElement3 = refArray2.at<MyIntProxy>(4);
-    CHECK(refElement3.get() == 24);
+    CHECK(model.at<Assembly<int>>("proxyArray").size() == 5);
+    CHECK(model.at<MyIntProxy>("proxyArray", 1).get() == 46);
+    CHECK(model.at<MyIntProxy>("proxyArray", 4).get() == 24);
 }
 
 TEST_CASE("Array connector error test.") {
@@ -630,7 +626,6 @@ TEST_CASE("Array connector error test.") {
     model.component<Array<MyInt>>("intArray", 5, 12);
     model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     model.instantiate();
-
     std::stringstream my_cerr{};
     TinycompoDebug::set_stream(my_cerr);
     std::stringstream error{};
@@ -700,8 +695,7 @@ TEST_CASE("Reducer tests.") {
           "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
     MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
-    auto& refArray = model.at<Assembly<int>>("intArray");
-    auto& refElement1 = refArray.at<MyInt>(1);
+    auto& refElement1 = model.at<MyInt>("intArray", 1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
