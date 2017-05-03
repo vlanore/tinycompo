@@ -502,19 +502,13 @@ TEST_CASE("Use/provide test.") {
   knowing the exact class. This class should be used as a template parameter for calls to
   Assembly::component.
 ==================================================================================================*/
-class ComponentArray {
+class ComponentArray : public Assembly<int> {
   public:
     virtual std::size_t size() const = 0;
-    virtual Component& at(int index) const = 0;
-
-    template <class T = Component>
-    T& get_ref_at(int index) const {
-        return dynamic_cast<T&>(at(index));
-    }
 };
 
 template <class T, std::size_t n>
-class Array : public ComponentArray, public Component, public Assembly<> {
+class Array : public ComponentArray, public Component {
   public:
     std::string _debug() const override {
         std::stringstream ss;
@@ -527,17 +521,9 @@ class Array : public ComponentArray, public Component, public Assembly<> {
     template <class... Args>
     explicit Array(Args... args) {
         for (int i = 0; i < static_cast<int>(n); i++) {
-            std::stringstream ss;
-            ss << "Element" << i;
-            component<T>(ss.str(), std::forward<Args>(args)...);
+            component<T>(i, std::forward<Args>(args)...);
         }
         instantiate();
-    }
-
-    Component& at(int index) const override {
-        std::stringstream ss;
-        ss << "Element" << index;
-        return get_ref(ss.str());
     }
 
     std::size_t size() const override { return n; }
@@ -547,15 +533,14 @@ class Array : public ComponentArray, public Component, public Assembly<> {
 ============================================== TEST ==============================================*/
 TEST_CASE("Array tests.") {
     Array<MyCompo, 3> myArray(11, 12);
-    CHECK(myArray._debug() ==
-          "Array [\nElement0: MyCompo\nElement1: MyCompo\nElement2: MyCompo\n]");
+    CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
     CHECK(myArray.size() == 3);
-    auto& ref0 = myArray.get_ref_at<MyCompo>(0);
-    auto& ref2 = myArray.get_ref_at<MyCompo>(2);
+    auto& ref0 = myArray.get_ref<MyCompo>(0);
+    auto& ref2 = myArray.get_ref<MyCompo>(2);
     ref2.i = 17;          // random number
     CHECK(ref0.i == 11);  // cf myArray init above
     CHECK(ref2.i == 17);
-    auto& ref2bis = myArray.get_ref_at<MyCompo>(2);
+    auto& ref2bis = myArray.get_ref<MyCompo>(2);
     CHECK(ref2bis.i == 17);
 }
 
@@ -576,8 +561,8 @@ class ArrayOneToOne {
         auto& ref2 = a.get_ref<ComponentArray>(array2);
         if (ref1.size() == ref2.size()) {
             for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
-                auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
-                ref1.at(i).set(prop, ptr);
+                auto ptr = dynamic_cast<Interface*>(&ref2.get_ref(i));
+                ref1.get_ref(i).set(prop, ptr);
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
@@ -598,15 +583,15 @@ TEST_CASE("Array connector tests.") {
     ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
     auto& refArray1 = model.get_ref<ComponentArray>("intArray");
     CHECK(refArray1.size() == 5);
-    auto& refElement1 = refArray1.get_ref_at<MyInt>(1);
+    auto& refElement1 = refArray1.get_ref<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
     auto& refArray2 = model.get_ref<ComponentArray>("proxyArray");
     CHECK(refArray2.size() == 5);
-    auto& refElement2 = refArray2.get_ref_at<MyIntProxy>(1);
+    auto& refElement2 = refArray2.get_ref<MyIntProxy>(1);
     CHECK(refElement2.get() == 46);
-    auto& refElement3 = refArray2.get_ref_at<MyIntProxy>(4);
+    auto& refElement3 = refArray2.get_ref<MyIntProxy>(4);
     CHECK(refElement3.get() == 24);
 }
 
@@ -647,7 +632,7 @@ class MultiUse {
         auto& ref1 = a.get_ref<Component>(reducer);
         auto& ref2 = a.get_ref<ComponentArray>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
-            auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+            auto ptr = dynamic_cast<Interface*>(&ref2.get_ref(i));
             ref1.set(prop, ptr);
         }
     }
@@ -682,11 +667,11 @@ TEST_CASE("Reducer tests.") {
     std::stringstream ss;
     model.print_all(ss);
     CHECK(ss.str() ==
-          "Reducer: IntReducer\nintArray: Array [\nElement0: MyInt\nElement1: MyInt\nElement2: "
+          "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
     MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
     auto& refArray = model.get_ref<ComponentArray>("intArray");
-    auto& refElement1 = refArray.get_ref_at<MyInt>(1);
+    auto& refElement1 = refArray.get_ref<MyInt>(1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
@@ -705,7 +690,7 @@ class MultiProvide {
     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
         auto& ref2 = a.get_ref<ComponentArray&>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
-            ref2.at(i).set(prop, &a.get_ref<Interface>(mapper));
+            ref2.get_ref(i).set(prop, &a.get_ref<Interface>(mapper));
         }
     }
 };
@@ -719,7 +704,7 @@ TEST_CASE("MultiProvide connector tests") {
     model.instantiate();
     MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
     auto& arrayRef = model.get_ref<Array<MyIntProxy, 3>>("proxyArray");
-    CHECK(arrayRef.get_ref<MyIntProxy>("Element0").get() == 34);
+    CHECK(arrayRef.get_ref<MyIntProxy>(0).get() == 34);
 }
 
 #endif  // MODEL_HPP
