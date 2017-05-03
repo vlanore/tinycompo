@@ -1,6 +1,7 @@
 /*
-Copyright (2017) held by the tinycompo authors:
-- Vincent Lanore, CNRS <vincent.lanore@gmail.com>
+Copyright or © or Copr. Centre National de la Recherche Scientifique (CNRS) (2017/05/03)
+Contributors:
+- Vincent Lanore <vincent.lanore@gmail.com>
 
 This software is a computer program whose purpose is to provide the necessary classes to write
 ligntweight component-based c++ applications.
