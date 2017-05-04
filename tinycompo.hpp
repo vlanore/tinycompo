@@ -444,6 +444,11 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
+    try {
+        a.at("Compo1").set("myPort", 3, 3); // triggering uninstantiated exception
+    } catch (const TinycompoException &e) {
+        CHECK(e.what() == "torlolo");
+    }
     a.instantiate();
     auto& ref = a.at<MyCompo&>("Compo1");
     auto& ref2 = a.at<MyCompo&>("Compo2");
