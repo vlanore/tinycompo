@@ -103,6 +103,7 @@ TEST_CASE("Exception tests") {
     CHECK(ss.str() == "my error");
     CHECK(ss2.str() == "-- Error: my error. Something failed.");
     TinycompoDebug::set_stream(std::cerr);
+    CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
 
