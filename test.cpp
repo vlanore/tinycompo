@@ -28,6 +28,6 @@ license and that you accept its terms.*/
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "arrays.hpp"
 #include "doctest.h"
+
 #include "tinycompo.hpp"

@@ -13,7 +13,7 @@ clean:
 	rm -f *.o *_bin *.gcov *.gcno *.gcda *.profraw
 
 format:
-	clang-format -i test.cpp tinycompo.hpp
+	clang-format -i test.cpp tinycompo.hpp arrays.hpp
 
 ready: test format
 	git status

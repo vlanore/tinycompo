@@ -549,4 +549,6 @@ TEST_CASE("Use/provide test.") {
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
 
+#include "arrays.hpp"
+
 #endif  // TINYCOMPO_HPP

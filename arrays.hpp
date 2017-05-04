@@ -215,9 +215,8 @@ template <class Interface>
 class MultiProvide {
   public:
     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
-        auto& ref2 = a.at<Assembly<int>&>(array);
-        for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
-            ref2.at(i).set(prop, &a.at<Interface>(mapper));
+        for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
+            a.at(array, i).set(prop, &a.at<Interface>(mapper));
         }
     }
 };
@@ -235,4 +234,4 @@ TEST_CASE("MultiProvide connector tests") {
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
 
-#endif // ARRAYS_HPP
+#endif  // ARRAYS_HPP
