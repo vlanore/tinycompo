@@ -2,7 +2,7 @@
 
 all: test_bin
 
-test_bin: test.cpp tinycompo.hpp
+test_bin: test.cpp tinycompo.hpp arrays.hpp
 	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) -Wall -Wextra
 
 test: test_bin

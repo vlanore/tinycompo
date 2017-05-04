@@ -94,20 +94,25 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 /*
 ============================================== TEST ==============================================*/
 #ifdef DOCTEST_LIBRARY_INCLUDED
+#define TINYCOMPO_TEST_ERRORS                  \
+    std::stringstream error_short, error_long; \
+    TinycompoDebug::set_stream(error_long);    \
+    try
+#define TINYCOMPO_TEST_ERRORS_END    \
+    catch (TinycompoException & e) { \
+        error_short << e.what();     \
+    }                                \
+    TinycompoDebug::set_stream(std::cerr);
+
 TEST_CASE("Exception tests") {
-    std::stringstream ss{};
-    std::stringstream ss2{};
-    TinycompoDebug::set_stream(ss2);
-    try {
+    TINYCOMPO_TEST_ERRORS {
         TinycompoDebug e{"my error"};
         e << "Something failed.";
         e.fail();
-    } catch (TinycompoException& e) {
-        ss << e.what();
     }
-    CHECK(ss.str() == "my error");
-    CHECK(ss2.str() == "-- Error: my error. Something failed.");
-    TinycompoDebug::set_stream(std::cerr);
+    TINYCOMPO_TEST_ERRORS_END
+    CHECK(error_short.str() == "my error");
+    CHECK(error_long.str() == "-- Error: my error. Something failed.");
     CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
@@ -231,19 +236,14 @@ TEST_CASE("Basic component tests.") {
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
 
-    std::stringstream my_cerr;
-    std::stringstream tmp;
-    try {
-        TinycompoDebug::set_stream(my_cerr);
+    TINYCOMPO_TEST_ERRORS {
         compo.set("myPort", true);  // intentional error
-    } catch (const TinycompoException& e) {
-        tmp << e.what();
     }
-    CHECK(tmp.str() == "Setting property failed");
-    CHECK(my_cerr.str() ==
+    TINYCOMPO_TEST_ERRORS_END
+    CHECK(error_short.str() == "Setting property failed");
+    CHECK(error_long.str() ==
           "-- Error: Setting property failed. Type _Port<bool const> does not seem to match port "
           "myPort.\n");
-    TinycompoDebug::set_stream(std::cerr);
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
 
@@ -438,18 +438,14 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
-    std::stringstream ss2, ss3;
-    try {
-        TinycompoDebug::set_stream(ss3);
+    TINYCOMPO_TEST_ERRORS {
         a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
-    } catch (const TinycompoException& e) {
-        ss2 << e.what();
     }
-    CHECK(ss2.str() == "uninstantiated assembly");
-    CHECK(ss3.str() ==
+    TINYCOMPO_TEST_ERRORS_END
+    CHECK(error_short.str() == "uninstantiated assembly");
+    CHECK(error_long.str() ==
           "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
           "assembly is not instantiated!");
-    TinycompoDebug::set_stream(std::cerr);
     a.instantiate();
     auto& ref = a.at<MyCompo&>("Compo1");
     auto& ref2 = a.at<MyCompo&>("Compo2");

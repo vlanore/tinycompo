@@ -128,16 +128,12 @@ TEST_CASE("Array connector error test.") {
     model.component<Array<MyInt>>("intArray", 5, 12);
     model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     model.instantiate();
-    std::stringstream my_cerr{};
-    TinycompoDebug::set_stream(my_cerr);
-    std::stringstream error{};
-    try {
+    TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    } catch (const TinycompoException& e) {
-        error << e.what();
     }
-    CHECK(error.str() == "Array connection: mismatched sizes");
-    CHECK(my_cerr.str() ==
+    TINYCOMPO_TEST_ERRORS_END
+    CHECK(error_short.str() == "Array connection: mismatched sizes");
+    CHECK(error_long.str() ==
           "-- Error: Array connection: mismatched sizes. proxyArray has size 4 while intArray has "
           "size 5.\n");
     TinycompoDebug::set_stream(std::cerr);
