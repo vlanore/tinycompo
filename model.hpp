@@ -29,6 +29,7 @@ license and that you accept its terms.*/
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
+#include <cxxabi.h>
 #include <exception>
 #include <functional>
 #include <iostream>
@@ -47,6 +48,19 @@ license and that you accept its terms.*/
   ~*~ Debug ~*~
   A few classes related to debug messages.
 ==================================================================================================*/
+#ifdef __GNUG__
+std::string demangle(const char* name) {
+    int status{0};
+
+    std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status),
+                                               std::free};
+
+    return (status == 0) ? res.get() : name;
+}
+#else
+std::string demangle(const char* name) { return name; }
+#endif
+
 class TinycompoException : public std::exception {
   public:
     std::string message{""};
@@ -174,8 +188,8 @@ class Component {
             ptr->_set(std::forward<Args>(args)...);
         } else {  // casting failed, trying to provide useful error message
             TinycompoDebug e{"Setting property failed"};
-            e << "Type " << typeid(_Port<const Args...>).name() << " does not seem to match port "
-              << name << ".\n";
+            e << "Type " << demangle(typeid(_Port<const Args...>).name())
+              << " does not seem to match port " << name << ".\n";
             e.fail();
         }
     }
@@ -220,7 +234,7 @@ TEST_CASE("Basic component tests.") {
     }
     CHECK(tmp.str() == "Setting property failed");
     CHECK(my_cerr.str() ==
-          "-- Error: Setting property failed. Type 5_PortIJKbEE does not seem to match port "
+          "-- Error: Setting property failed. Type _Port<bool const> does not seem to match port "
           "myPort.\n");
     TinycompoDebug::set_stream(std::cerr);
 }
