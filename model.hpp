@@ -40,10 +40,8 @@ license and that you accept its terms.*/
 #include <string>
 #include <utility>
 #include <vector>
-#include "doctest.h"
 
 /*
-
 ====================================================================================================
   ~*~ Debug ~*~
   A few classes related to debug messages.
@@ -59,7 +57,7 @@ std::string demangle(const char* name) {
 }
 #else
 std::string demangle(const char* name) { return name; }
-#endif
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 class TinycompoException : public std::exception {
   public:
@@ -90,6 +88,7 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("Exception tests") {
     std::stringstream ss{};
     std::stringstream ss2{};
@@ -105,9 +104,9 @@ TEST_CASE("Exception tests") {
     CHECK(ss2.str() == "-- Error: my error. Something failed.");
     TinycompoDebug::set_stream(std::cerr);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ _Port class ~*~
   A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
@@ -135,6 +134,7 @@ class _Port : public _VirtualPort {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("_Port tests.") {
     class MyCompo {
       public:
@@ -155,9 +155,9 @@ TEST_CASE("_Port tests.") {
     CHECK(compo.j == 4);
     delete ptr;
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ Component class ~*~
   tinycompo components should always inherit from this class. It is mostly used as a base to be able
@@ -197,6 +197,7 @@ class Component {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 class MyCompo : public Component {  // example of a user creating their own component
   public:                           // by inheriting from the Component class
     int i{1};
@@ -238,9 +239,9 @@ TEST_CASE("Basic component tests.") {
           "myPort.\n");
     TinycompoDebug::set_stream(std::cerr);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ _Component class ~*~
   A small class that is capable of storing a constructor call for any Component child class and
@@ -268,6 +269,7 @@ class _Component {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("_Component class tests.") {
     _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
     auto ptr = compo._constructor();           // instantiate actual object
@@ -277,9 +279,9 @@ TEST_CASE("_Component class tests.") {
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ _Property class ~*~
   A class that is used by Assembly to store a "property" (ie, configuring a component by calling a
@@ -298,6 +300,7 @@ class _Property {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("_Property class tests.") {
     _Property myProp{"myPort", 22, 23};  // note that the property is created BEFORE the instance
     MyCompo compo{11, 12};
@@ -306,9 +309,9 @@ TEST_CASE("_Property class tests.") {
     CHECK(compo.i == 22);
     CHECK(compo.j == 23);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ __Connection class ~*~
   A class that is used by Assembly to store a connection between components. A connection is an
@@ -330,6 +333,7 @@ class _Connection {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("_Connection class tests.") {
     class MyAssembly {
       public:
@@ -353,9 +357,9 @@ TEST_CASE("_Connection class tests.") {
     CHECK(myAssembly.compo2.i == 23);
     CHECK(myAssembly.compo2.j == 19);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ Assembly class ~*~
   A class that represents a component assembly. It provides methods to declare components,
@@ -428,6 +432,7 @@ class Assembly {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("Basic test.") {
     class MyConnector {
       public:
@@ -483,9 +488,9 @@ TEST_CASE("sub-addressing tests") {
     b.print_all(ss);
     CHECK(ss.str() == "Array: MyComposite\n");
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ UseProvide class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
@@ -506,6 +511,7 @@ class UseProvide {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 class IntInterface {
   public:
     virtual int get() const = 0;
@@ -540,12 +546,9 @@ TEST_CASE("Use/provide test.") {
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
     CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-
-/*
-
 ====================================================================================================
   ~*~ Array class ~*~
   Generic specialization of the Component class to represent arrays of components. All component
@@ -575,6 +578,7 @@ class Array : public Assembly<int>, public Component {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("Array tests.") {
     Array<MyCompo> myArray(3, 11, 12);
     CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
@@ -587,9 +591,9 @@ TEST_CASE("Array tests.") {
     auto& ref2bis = myArray.at<MyCompo>(2);
     CHECK(ref2bis.i == 17);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ ArrayOneToOne class ~*~
   This is a connector that takes two arrays with identical sizes and connects (as if using the
@@ -619,6 +623,7 @@ class ArrayOneToOne {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("Array connector tests.") {
     Assembly<> model;
     model.component<Array<MyInt>>("intArray", 5, 12);
@@ -654,9 +659,9 @@ TEST_CASE("Array connector error test.") {
           "size 5.\n");
     TinycompoDebug::set_stream(std::cerr);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ MultiUse class ~*~
   The MultiUse class is a connector that connects (as if using the UseProvide connector) one port of
@@ -679,6 +684,7 @@ class MultiUse {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 class IntReducer : public Component, public IntInterface {
     std::vector<IntInterface*> ptrs;
 
@@ -716,9 +722,9 @@ TEST_CASE("Reducer tests.") {
     auto& refReducer = model.at<IntInterface>("Reducer");
     CHECK(refReducer.get() == 47);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-
 ====================================================================================================
   ~*~ MultiProvide class ~*~
 ==================================================================================================*/
@@ -735,6 +741,7 @@ class MultiProvide {
 
 /*
 ============================================== TEST ==============================================*/
+#ifdef DOCTEST_LIBRARY_INCLUDED
 TEST_CASE("MultiProvide connector tests") {
     Assembly<> model;
     model.component<MyInt>("superInt", 17);  // random number
@@ -743,5 +750,6 @@ TEST_CASE("MultiProvide connector tests") {
     MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
     CHECK(model.at<MyIntProxy>("proxyArray", 2).get() == 34);
 }
+#endif  // DOCTEST_LIBRARY_INCLUDED
 
 #endif  // MODEL_HPP
