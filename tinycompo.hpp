@@ -315,13 +315,7 @@ TEST_CASE("_Operation class tests.") {
       public:
         MyCompo compo1{14, 15};
         MyCompo compo2{18, 19};
-        Component& at(int i) {
-            if (i == 0) {
-                return compo1;
-            } else {
-                return compo2;
-            }
-        }
+        Component& at(int) { return compo1; }
     };
 
     class MyConnector {
