@@ -382,7 +382,7 @@ class Assembly {
 
     void check_instantiation(const std::string& from) const {
         if (!instantiated) {
-            TinycompoDebug error{"Uninstantiated assembly."};
+            TinycompoDebug error{"uninstantiated assembly"};
             error << "Trying to call method " << from
                   << " although the assembly is not instantiated!";
             error.fail();
@@ -444,11 +444,18 @@ TEST_CASE("Basic test.") {
     a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
+    std::stringstream ss2, ss3;
     try {
-        a.at("Compo1").set("myPort", 3, 3); // triggering uninstantiated exception
-    } catch (const TinycompoException &e) {
-        CHECK(e.what() == "torlolo");
+        TinycompoDebug::set_stream(ss3);
+        a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
+    } catch (const TinycompoException& e) {
+        ss2 << e.what();
     }
+    CHECK(ss2.str() == "uninstantiated assembly");
+    CHECK(ss3.str() ==
+          "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
+          "assembly is not instantiated!");
+    TinycompoDebug::set_stream(std::cerr);
     a.instantiate();
     auto& ref = a.at<MyCompo&>("Compo1");
     auto& ref2 = a.at<MyCompo&>("Compo2");
