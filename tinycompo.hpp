@@ -41,6 +41,10 @@ license and that you accept its terms.*/
 #include <utility>
 #include <vector>
 
+#ifdef EDITOR
+#include "doctest.h"
+#endif
+
 /*
 ====================================================================================================
   ~*~ Debug ~*~
@@ -284,49 +288,21 @@ TEST_CASE("_Component class tests.") {
 
 /*
 ====================================================================================================
-  ~*~ _Property class ~*~
-  A class that is used by Assembly to store a "property" (ie, configuring a component by calling a
-  method with parameters). _Property stores a "partial application" of the call (only missing the
-  assembly pointer) in a std::function. This class is not meant to be encountered by users as
-  denoted by the underscore prefix.
+  ~*~ _Operation class ~*~
 ==================================================================================================*/
-class _Property {
-  public:
-    template <class... Args>
-    _Property(const std::string& prop, Args&&... args)
-        : _setter([=](Component* compo) { compo->set(prop, std::forward<const Args>(args)...); }) {}
-
-    std::function<void(Component*)> _setter;
-};
-
-/*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Property class tests.") {
-    _Property myProp{"myPort", 22, 23};  // note that the property is created BEFORE the instance
-    MyCompo compo{11, 12};
-    auto myRef = static_cast<Component*>(&compo);
-    myProp._setter(myRef);
-    CHECK(compo.i == 22);
-    CHECK(compo.j == 23);
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-/*
-====================================================================================================
-  ~*~ __Connection class ~*~
-  A class that is used by Assembly to store a connection between components. A connection is an
-  operation that can affect several components at once, for example to set a port of one to a
-  pointer to another. This class is for internal tinycompo use and should never be used by users,
-  as denoted by the underscore prefix.
-==================================================================================================*/
-template <class A>
-class _Connection {
+template <class A, class Key>
+class _Operation {
   public:
     template <class Connector, class... Args>
-    _Connection(_Type<Connector>, Args&&... args)
+    _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) {
               Connector::_connect(assembly, std::forward<const Args>(args)...);
+          }) {}
+
+    template <class... Args>
+    _Operation(Key component, const std::string& prop, Args&&... args)
+        : _connect([=](A& assembly) {
+              assembly.at(component).set(prop, std::forward<const Args>(args)...);
           }) {}
 
     std::function<void(A&)> _connect;
@@ -335,11 +311,18 @@ class _Connection {
 /*
 ============================================== TEST ==============================================*/
 #ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Connection class tests.") {
+TEST_CASE("_Operation class tests.") {
     class MyAssembly {
       public:
         MyCompo compo1{14, 15};
         MyCompo compo2{18, 19};
+        Component& at(int i) {
+            if (i == 0) {
+                return compo1;
+            } else {
+                return compo2;
+            }
+        }
     };
 
     class MyConnector {
@@ -351,12 +334,16 @@ TEST_CASE("_Connection class tests.") {
     };
 
     MyAssembly myAssembly;
-    _Connection<MyAssembly> myConnection{_Type<MyConnector>(), 22, 23};
+    _Operation<MyAssembly, int> myConnection{_Type<MyConnector>(), 22, 23};
     myConnection._connect(myAssembly);
     CHECK(myAssembly.compo1.i == 22);
     CHECK(myAssembly.compo1.j == 15);
     CHECK(myAssembly.compo2.i == 23);
     CHECK(myAssembly.compo2.j == 19);
+    _Operation<MyAssembly, int> myProperty{0, "myPort", 3, 4};
+    myProperty._connect(myAssembly);
+    CHECK(myAssembly.compo1.i == 3);
+    CHECK(myAssembly.compo1.j == 4);
 }
 #endif  // DOCTEST_LIBRARY_INCLUDED
 
@@ -372,8 +359,7 @@ class Assembly {
   protected:
     std::map<Key, _Component> components;
     std::map<Key, std::unique_ptr<Component>> instances;
-    std::vector<std::pair<Key, _Property>> properties;
-    std::vector<_Connection<Assembly>> connections;
+    std::vector<_Operation<Assembly, Key>> connections;
 
   public:
     template <class T, class... Args>
@@ -384,9 +370,7 @@ class Assembly {
 
     template <class... Args>
     void property(Key compoName, std::string propName, Args&&... args) {
-        properties.emplace_back(
-            std::piecewise_construct, std::forward_as_tuple(compoName),
-            std::forward_as_tuple(_Property(propName, std::forward<Args>(args)...)));
+        connections.emplace_back(compoName, propName, std::forward<Args>(args)...);
     }
 
     template <class C, class... Args>
@@ -400,9 +384,6 @@ class Assembly {
         }
         for (auto c : connections) {
             c._connect(*this);
-        }
-        for (auto p : properties) {
-            p.second._setter(instances[p.first].get());
         }
     }
 
@@ -454,7 +435,7 @@ TEST_CASE("Basic test.") {
     auto& ref2 = a.at<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector
     CHECK(ref.j == 14);   // base value
-    CHECK(ref2.i == 22);  // changed by connector AND THEN by property
+    CHECK(ref2.i == 34);  // changed by property and then by connector (in declaration order)
     CHECK(ref2.j == 23);  // changed by property
     a.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
