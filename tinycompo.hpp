@@ -41,10 +41,6 @@ license and that you accept its terms.*/
 #include <utility>
 #include <vector>
 
-#ifdef EDITOR
-#include "doctest.h"
-#endif
-
 /*
 ====================================================================================================
   ~*~ Debug ~*~
@@ -92,32 +88,6 @@ class TinycompoDebug : public std::stringstream {
 std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-#define TINYCOMPO_TEST_ERRORS                  \
-    std::stringstream error_short, error_long; \
-    TinycompoDebug::set_stream(error_long);    \
-    try
-#define TINYCOMPO_TEST_ERRORS_END    \
-    catch (TinycompoException & e) { \
-        error_short << e.what();     \
-    }                                \
-    TinycompoDebug::set_stream(std::cerr);
-
-TEST_CASE("Exception tests") {
-    TINYCOMPO_TEST_ERRORS {
-        TinycompoDebug e{"my error"};
-        e << "Something failed.";
-        e.fail();
-    }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "my error");
-    CHECK(error_long.str() == "-- Error: my error. Something failed.");
-    CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-/*
 ====================================================================================================
   ~*~ _Port class ~*~
   A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
@@ -142,31 +112,6 @@ class _Port : public _VirtualPort {
     explicit _Port(C* ref, void (C::*prop)(Args...))
         : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
 };
-
-/*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Port tests.") {
-    class MyCompo {
-      public:
-        int i{1};
-        int j{2};
-        void setIJ(int iin, int jin) {
-            i = iin;
-            j = jin;
-        }
-    };
-
-    MyCompo compo;
-    auto ptr = static_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
-    auto ptr2 = dynamic_cast<_Port<int, int>*>(ptr);
-    REQUIRE(ptr2 != nullptr);
-    ptr2->_set(3, 4);
-    CHECK(compo.i == 3);
-    CHECK(compo.j == 4);
-    delete ptr;
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
 ====================================================================================================
@@ -207,47 +152,6 @@ class Component {
 };
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-class MyCompo : public Component {  // example of a user creating their own component
-  public:                           // by inheriting from the Component class
-    int i{1};
-    int j{2};
-
-    MyCompo(const MyCompo&) = default;  // does not work (Component's copy constructor is deleted)
-
-    MyCompo(int i = 5, int j = 6) : i(i), j(j) {
-        port("myPort", &MyCompo::setIJ);  // how to declare a port
-    }
-
-    void setIJ(int iin, int jin) {  // the setter method that acts as our port
-        i = iin;
-        j = jin;
-    }
-
-    std::string _debug() const override { return "MyCompo"; }
-};
-
-TEST_CASE("Basic component tests.") {
-    MyCompo compo{};
-    // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
-    CHECK(compo._debug() == "MyCompo");
-    compo.set("myPort", 17, 18);
-    CHECK(compo.i == 17);
-    CHECK(compo.j == 18);
-
-    TINYCOMPO_TEST_ERRORS {
-        compo.set("myPort", true);  // intentional error
-    }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "Setting property failed");
-    CHECK(error_long.str() ==
-          "-- Error: Setting property failed. Type _Port<bool const> does not seem to match port "
-          "myPort.\n");
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-/*
 ====================================================================================================
   ~*~ _Component class ~*~
   A small class that is capable of storing a constructor call for any Component child class and
@@ -272,20 +176,6 @@ class _Component {
 };
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Component class tests.") {
-    _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
-    auto ptr = compo._constructor();           // instantiate actual object
-    auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
-    REQUIRE(ptr2 != nullptr);
-    CHECK(ptr2->i == 3);
-    CHECK(ptr2->j == 4);
-    CHECK(ptr->_debug() == "MyCompo");
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-/*
 ====================================================================================================
   ~*~ _Operation class ~*~
 ==================================================================================================*/
@@ -306,39 +196,6 @@ class _Operation {
 
     std::function<void(A&)> _connect;
 };
-
-/*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Operation class tests.") {
-    class MyAssembly {
-      public:
-        MyCompo compo1{14, 15};
-        MyCompo compo2{18, 19};
-        Component& at(int) { return compo1; }
-    };
-
-    class MyConnector {
-      public:
-        static void _connect(MyAssembly& a, int i, int i2) {
-            a.compo1.i = i;
-            a.compo2.i = i2;
-        }
-    };
-
-    MyAssembly myAssembly;
-    _Operation<MyAssembly, int> myConnection{_Type<MyConnector>(), 22, 23};
-    myConnection._connect(myAssembly);
-    CHECK(myAssembly.compo1.i == 22);
-    CHECK(myAssembly.compo1.j == 15);
-    CHECK(myAssembly.compo2.i == 23);
-    CHECK(myAssembly.compo2.j == 19);
-    _Operation<MyAssembly, int> myProperty{0, "myPort", 3, 4};
-    myProperty._connect(myAssembly);
-    CHECK(myAssembly.compo1.i == 3);
-    CHECK(myAssembly.compo1.j == 4);
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
 ====================================================================================================
@@ -421,74 +278,6 @@ class Assembly {
 };
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("Basic test.") {
-    class MyConnector {
-      public:
-        static void _connect(Assembly<>& a, int i, int i2) {
-            a.at<MyCompo>("Compo1").i = i;
-            a.at<MyCompo>("Compo2").i = i2;
-        }
-    };
-
-    Assembly<> a;
-    a.component<MyCompo>("Compo1", 13, 14);
-    a.component<MyCompo>("Compo2", 15, 16);
-    a.property("Compo2", "myPort", 22, 23);
-    CHECK(a.size() == 2);
-    a.connect<MyConnector>(33, 34);
-    TINYCOMPO_TEST_ERRORS {
-        a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
-    }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "uninstantiated assembly");
-    CHECK(error_long.str() ==
-          "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
-          "assembly is not instantiated!");
-    a.instantiate();
-    auto& ref = a.at<MyCompo&>("Compo1");
-    auto& ref2 = a.at<MyCompo&>("Compo2");
-    CHECK(ref.i == 33);   // changed by connector
-    CHECK(ref.j == 14);   // base value
-    CHECK(ref2.i == 34);  // changed by property and then by connector (in declaration order)
-    CHECK(ref2.j == 23);  // changed by property
-    a.call("Compo2", "myPort", 77, 79);
-    CHECK(ref2.i == 77);
-    CHECK(ref2.j == 79);
-    std::stringstream ss;
-    a.print_all(ss);
-    CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
-}
-
-TEST_CASE("sub-addressing tests") {
-    class MyComposite : public Component, public Assembly<int> {
-      public:
-        std::string _debug() const override { return "MyComposite"; }
-    };
-    Assembly<> b;
-    b.component<MyComposite>("Array");
-    b.instantiate();
-    auto& arrayRef = b.at<MyComposite>("Array");
-    arrayRef.component<MyCompo>(0, 12, 13);
-    arrayRef.component<MyCompo>(1, 15, 19);
-    arrayRef.component<MyComposite>(2);
-    arrayRef.instantiate();
-    auto& subArrayRef = arrayRef.at<MyComposite>(2);
-    subArrayRef.component<MyCompo>(0, 19, 22);
-    subArrayRef.component<MyCompo>(1, 7, 9);
-    subArrayRef.instantiate();
-    auto& subRef = b.at<MyCompo>("Array", 1);
-    auto& subSubRef = b.at<MyCompo>("Array", 2, 1);
-    CHECK(subRef.i == 15);
-    CHECK(subSubRef.i == 7);
-    std::stringstream ss;
-    b.print_all(ss);
-    CHECK(ss.str() == "Array: MyComposite\n");
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-/*
 ====================================================================================================
   ~*~ UseProvide class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
@@ -508,44 +297,94 @@ class UseProvide {
 };
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-class IntInterface {
+====================================================================================================
+  ~*~ Array class ~*~
+  Generic specialization of the Component class to represent arrays of components. All component
+  arrays inherit from Assembly<int> so that they can be manipulated as arrays of Component whitout
+  knowing the exact class. This class should be used as a template parameter for calls to
+  Assembly::component.
+==================================================================================================*/
+template <class T>
+class Array : public Assembly<int>, public Component {
   public:
-    virtual int get() const = 0;
+    std::string _debug() const override {
+        std::stringstream ss;
+        ss << "Array [\n";
+        print_all(ss);
+        ss << "]";
+        return ss.str();
+    }
+
+    template <class... Args>
+    explicit Array(int nbElems, Args... args) {
+        for (int i = 0; i < nbElems; i++) {
+            component<T>(i, std::forward<Args>(args)...);
+        }
+        instantiate();
+    }
 };
 
-class MyInt : public Component, public IntInterface {
+/*
+====================================================================================================
+  ~*~ ArrayOneToOne class ~*~
+  This is a connector that takes two arrays with identical sizes and connects (as if using the
+  UseProvide connector) every i-th element in array1 to its corresponding element in array2 (ie,
+  the i-th element in array2). This class should be used as a template parameter for
+  Assembly::connect.
+==================================================================================================*/
+template <class Interface>
+class ArrayOneToOne {
   public:
-    int i{1};
-    explicit MyInt(int i = 0) : i(i) {}
-    std::string _debug() const override { return "MyInt"; }
-    int get() const override { return i; }
+    static void _connect(Assembly<>& a, std::string array1, std::string prop, std::string array2) {
+        auto& ref1 = a.at<Assembly<int>>(array1);
+        auto& ref2 = a.at<Assembly<int>>(array2);
+        if (ref1.size() == ref2.size()) {
+            for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
+                auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+                ref1.at(i).set(prop, ptr);
+            }
+        } else {
+            TinycompoDebug e{"Array connection: mismatched sizes"};
+            e << array1 << " has size " << ref1.size() << " while " << array2 << " has size "
+              << ref2.size() << ".\n";
+            e.fail();
+        }
+    }
 };
 
-class MyIntProxy : public Component, public IntInterface {
-    IntInterface* ptr{nullptr};
-
+/*
+====================================================================================================
+  ~*~ MultiUse class ~*~
+  The MultiUse class is a connector that connects (as if using the UseProvide connector) one port of
+  one component to every component in an array. This can be seen as a "multiple use" connector (the
+  reducer is the user in multiple use/provide connections). This class should be used as a template
+  parameter for Assembly::connect.
+==================================================================================================*/
+template <class Interface>
+class MultiUse {
   public:
-    MyIntProxy() { port("ptr", &MyIntProxy::set_ptr); }
-    void set_ptr(IntInterface* ptrin) { ptr = ptrin; }
-    std::string _debug() const override { return "MyIntProxy"; }
-    int get() const override { return 2 * ptr->get(); }
+    static void _connect(Assembly<>& a, std::string reducer, std::string prop, std::string array) {
+        auto& ref1 = a.at<Component>(reducer);
+        auto& ref2 = a.at<Assembly<int>>(array);
+        for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
+            auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
+            ref1.set(prop, ptr);
+        }
+    }
 };
 
-TEST_CASE("Use/provide test.") {
-    Assembly<> model;
-    model.component<MyInt>("Compo1", 4);
-    model.component<MyIntProxy>("Compo2");
-    model.instantiate();
-    std::stringstream ss;
-    model.print_all(ss);
-    CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
-    UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
-}
-#endif  // DOCTEST_LIBRARY_INCLUDED
-
-#include "arrays.hpp"
+/*
+====================================================================================================
+  ~*~ MultiProvide class ~*~
+==================================================================================================*/
+template <class Interface>
+class MultiProvide {
+  public:
+    static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
+        for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
+            a.at(array, i).set(prop, &a.at<Interface>(mapper));
+        }
+    }
+};
 
 #endif  // TINYCOMPO_HPP
