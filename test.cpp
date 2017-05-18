@@ -33,9 +33,7 @@ license and that you accept its terms.*/
 #include "tinycompo.hpp"
 
 /*
-  ============================================== TEST
-  ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+============================================= DEBUG ==============================================*/
 #define TINYCOMPO_TEST_ERRORS                  \
     std::stringstream error_short, error_long; \
     TinycompoDebug::set_stream(error_long);    \
@@ -57,12 +55,9 @@ TEST_CASE("Exception tests") {
     CHECK(error_long.str() == "-- Error: my error. Something failed.");
     CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-  ============================================== TEST
-  ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+============================================= _PORT ==============================================*/
 TEST_CASE("_Port tests.") {
     class MyCompo {
       public:
@@ -83,11 +78,9 @@ TEST_CASE("_Port tests.") {
     CHECK(compo.j == 4);
     delete ptr;
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+=========================================== COMPONENT ============================================*/
 class MyCompo : public Component {  // example of a user creating their own component
   public:                           // by inheriting from the Component class
     int i{1};
@@ -107,7 +100,7 @@ class MyCompo : public Component {  // example of a user creating their own comp
     std::string _debug() const override { return "MyCompo"; }
 };
 
-TEST_CASE("Basic component tests.") {
+TEST_CASE("Component tests.") {
     MyCompo compo{};
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
     CHECK(compo._debug() == "MyCompo");
@@ -124,13 +117,10 @@ TEST_CASE("Basic component tests.") {
           "-- Error: Setting property failed. Type _Port<bool const> does not seem to match port "
           "myPort.\n");
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-  ============================================== TEST
-  ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Component class tests.") {
+=========================================== _COMPONENT ===========================================*/
+TEST_CASE("_Component tests.") {
     _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
     auto ptr = compo._constructor();           // instantiate actual object
     auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
@@ -139,12 +129,10 @@ TEST_CASE("_Component class tests.") {
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("_Operation class tests.") {
+=========================================== _OPERATION ===========================================*/
+TEST_CASE("_Operation tests.") {
     class MyAssembly {
       public:
         MyCompo compo1{14, 15};
@@ -172,12 +160,10 @@ TEST_CASE("_Operation class tests.") {
     CHECK(myAssembly.compo1.i == 3);
     CHECK(myAssembly.compo1.j == 4);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("Basic test.") {
+============================================ ASSEMBLY ============================================*/
+TEST_CASE("Assembly tests.") {
     class MyConnector {
       public:
         static void _connect(Assembly<>& a, int i, int i2) {
@@ -240,11 +226,9 @@ TEST_CASE("sub-addressing tests") {
     b.print_all(ss);
     CHECK(ss.str() == "Array: MyComposite\n");
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+========================================== USE/PROVIDE ===========================================*/
 class IntInterface {
   public:
     virtual int get() const = 0;
@@ -279,12 +263,9 @@ TEST_CASE("Use/provide test.") {
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
     CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-  ============================================== TEST
-  ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+============================================= ARRAY ==============================================*/
 TEST_CASE("Array tests.") {
     Array<MyCompo> myArray(3, 11, 12);
     CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
@@ -297,11 +278,9 @@ TEST_CASE("Array tests.") {
     auto& ref2bis = myArray.at<MyCompo>(2);
     CHECK(ref2bis.i == 17);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+========================================= ARRAYONETOONE ==========================================*/
 TEST_CASE("Array connector tests.") {
     Assembly<> model;
     model.component<Array<MyInt>>("intArray", 5, 12);
@@ -333,11 +312,9 @@ TEST_CASE("Array connector error test.") {
           "size 5.\n");
     TinycompoDebug::set_stream(std::cerr);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-============================================== TEST ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
+============================================ MULTIUSE ============================================*/
 class IntReducer : public Component, public IntInterface {
     std::vector<IntInterface*> ptrs;
 
@@ -357,7 +334,7 @@ class IntReducer : public Component, public IntInterface {
     IntReducer() { port("ptrs", &IntReducer::addPtr); }
 };
 
-TEST_CASE("Reducer tests.") {
+TEST_CASE("MultiUse tests.") {
     Assembly<> model;
     model.component<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("Reducer");
@@ -375,13 +352,10 @@ TEST_CASE("Reducer tests.") {
     auto& refReducer = model.at<IntInterface>("Reducer");
     CHECK(refReducer.get() == 47);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
 
 /*
-  ============================================== TEST
-  ==============================================*/
-#ifdef DOCTEST_LIBRARY_INCLUDED
-TEST_CASE("MultiProvide connector tests") {
+========================================== MULTIPROVIDE ==========================================*/
+TEST_CASE("MultiProvide connector tests.") {
     Assembly<> model;
     model.component<MyInt>("superInt", 17);  // random number
     model.component<Array<MyIntProxy>>("proxyArray", 5);
@@ -389,4 +363,3 @@ TEST_CASE("MultiProvide connector tests") {
     MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
     CHECK(model.at<MyIntProxy>("proxyArray", 2).get() == 34);
 }
-#endif  // DOCTEST_LIBRARY_INCLUDED
