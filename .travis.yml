@@ -31,4 +31,4 @@ script:
   - make && make test
 
 after_success:
-  - if [ "$CXX" == "g++-6" ]; then coveralls --exclude doctest.h -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR; fi
+  - if [ "$CXX" == "g++-6" ]; then coveralls --exclude doctest.h --exclude test.cpp -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR; fi
