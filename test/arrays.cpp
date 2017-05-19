@@ -85,25 +85,6 @@ TEST_CASE("Array connector error test.") {
 ====================================================================================================
   ~*~ Multiuse ~*~
 ==================================================================================================*/
-class IntReducer : public Component, public IntInterface {
-    std::vector<IntInterface*> ptrs;
-
-  public:
-    std::string _debug() const override { return "IntReducer"; }
-
-    void addPtr(IntInterface* ptr) { ptrs.push_back(ptr); }
-
-    int get() const override {
-        int i = 0;
-        for (auto ptr : ptrs) {
-            i += ptr->get();
-        }
-        return i;
-    }
-
-    IntReducer() { port("ptrs", &IntReducer::addPtr); }
-};
-
 TEST_CASE("MultiUse tests.") {
     Assembly<> model;
     model.component<Array<MyInt>>("intArray", 3, 12);
@@ -114,7 +95,7 @@ TEST_CASE("MultiUse tests.") {
     CHECK(ss.str() ==
           "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
-    MultiUse<IntInterface>::_connect(model, "Reducer", "ptrs", "intArray");
+    MultiUse<IntInterface>::_connect(model, "Reducer", "ptr", "intArray");
     auto& refElement1 = model.at<MyInt>("intArray", 1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;

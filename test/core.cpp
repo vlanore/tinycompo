@@ -249,3 +249,22 @@ TEST_CASE("Tree tests.") {
     CHECK(error_short.str() == "trying to add root to non-empty Tree.");
     CHECK(error_long.str() == "-- Error: trying to add root to non-empty Tree.");
 }
+
+/*
+====================================================================================================
+  ~*~ ToChildren ~*~
+==================================================================================================*/
+TEST_CASE("ToChildren tests.") {
+    Assembly<> model;
+    model.component<Tree>("tree");
+    model.instantiate();
+    auto& treeRef = model.at<Tree>("tree");
+    auto root = treeRef.addRoot<IntReducer>();
+    auto leaf = treeRef.addChild<MyInt>(root, 11);
+    auto child = treeRef.addChild<MyIntProxy>(root);
+    treeRef.addChild<MyInt>(child, 3);
+    CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
+    treeRef.instantiate();
+    ToChildren<IntInterface>::_connect(model, "tree", "ptr");
+    CHECK(treeRef.at<IntReducer>(root).get() == 17); // 11 + 2*3
+}

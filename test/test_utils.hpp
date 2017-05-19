@@ -85,4 +85,23 @@ public:
     int get() const override { return 2 * ptr->get(); }
 };
 
+class IntReducer : public Component, public IntInterface {
+    std::vector<IntInterface*> ptrs;
+
+public:
+    std::string _debug() const override { return "IntReducer"; }
+
+    void addPtr(IntInterface* ptr) { ptrs.push_back(ptr); }
+
+    int get() const override {
+        int i = 0;
+        for (auto ptr : ptrs) {
+            i += ptr->get();
+        }
+        return i;
+    }
+
+    IntReducer() { port("ptr", &IntReducer::addPtr); }
+};
+
 #endif // TEST_UTILS
