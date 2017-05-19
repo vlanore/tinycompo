@@ -394,8 +394,8 @@ class MultiProvide {
 using TreeRef = int;
 
 class Tree : public Assembly<TreeRef>, public Component {
-    std::vector<int> parent;
-    std::vector<std::vector<int>> children;
+    std::vector<TreeRef> parent;
+    std::vector<std::vector<TreeRef>> children;
 
   public:
     Tree() = default;
@@ -425,6 +425,27 @@ class Tree : public Assembly<TreeRef>, public Component {
     }
 
     TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
+
+    std::vector<TreeRef> getChildren(TreeRef refParent) { return children.at(refParent); }
+};
+
+/*
+====================================================================================================
+  ~*~ ToChildren ~*~
+  A tree connector that connects every node to its children.
+==================================================================================================*/
+template <class Interface, class Key = std::string>
+class ToChildren {
+  public:
+    void _connect(Assembly<>& a, Key tree, std::string prop) {
+        auto treeRef = a.at<Tree>(tree);
+        for (auto i{0}; i < treeRef.size(); i++) {  // for each node...
+            auto nodeRef = treeRef.at(i);
+            for (auto j{0}; j < treeRef.getChildren(i); j++) {  // for every one of its children...
+                nodeRef.set(prop, treeRef.template at<Interface>(j));
+            }
+        }
+    }
 };
 
 #endif  // TINYCOMPO_HPP

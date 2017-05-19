@@ -241,6 +241,8 @@ TEST_CASE("Tree tests.") {
     CHECK(myTree.at<MyCompo>(ref3).i == 11);
     CHECK(myTree._debug() == "Tree");
 
+    //TODO test getChildren
+
     Tree myFaultyTree;
     myFaultyTree.addRoot<MyCompo>(1, 1);
     TINYCOMPO_TEST_ERRORS { myFaultyTree.addRoot<MyCompo>(0, 0); }
