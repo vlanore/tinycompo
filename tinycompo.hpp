@@ -386,4 +386,45 @@ class MultiProvide {
     }
 };
 
+/*
+====================================================================================================
+  ~*~ Tree ~*~
+  A special composite whose internal components form a tree.
+==================================================================================================*/
+using TreeRef = int;
+
+class Tree : public Assembly<TreeRef>, public Component {
+    std::vector<int> parent;
+    std::vector<std::vector<int>> children;
+
+  public:
+    Tree() = default;
+
+    std::string _debug() const override { return "Tree"; }
+
+    template <class T, class... Args>
+    TreeRef addRoot(Args&&... args) {
+        if (size() != 0) {
+            TinycompoDebug("trying to add root to non-empty Tree.").fail();
+        } else {
+            component<T>(0, std::forward<Args>(args)...);
+            children.emplace_back();  // empty children list for root
+            parent.push_back(-1);     // root has no parents :'(
+            return 0;
+        }
+    }
+
+    template <class T, class... Args>
+    TreeRef addChild(TreeRef refParent, Args&&... args) {
+        auto nodeRef = parent.size();
+        component<T>(nodeRef, std::forward<Args>(args)...);
+        parent.push_back(refParent);
+        children.emplace_back();  // empty children list for newly added node
+        children.at(refParent).push_back(nodeRef);
+        return nodeRef;
+    }
+
+    TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
+};
+
 #endif  // TINYCOMPO_HPP

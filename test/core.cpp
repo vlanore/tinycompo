@@ -223,3 +223,27 @@ TEST_CASE("Use/provide test.") {
     UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
     CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
 }
+
+/*
+====================================================================================================
+  ~*~ Tree ~*~
+==================================================================================================*/
+TEST_CASE("Tree tests.") {
+    Tree myTree;
+    auto ref1 = myTree.addRoot<MyCompo>(7, 7);
+    auto ref2 = myTree.addChild<MyCompo>(ref1, 9, 9);
+    myTree.addChild<MyCompo>(ref1, 10, 10);
+    auto ref3 = myTree.addChild<MyCompo>(ref2, 11, 11);
+    CHECK(myTree.getParent(ref1) == -1);
+    CHECK(myTree.getParent(ref2) == ref1);
+    CHECK(myTree.getParent(ref3) == ref2);
+    myTree.instantiate();
+    CHECK(myTree.at<MyCompo>(ref3).i == 11);
+
+    Tree myFaultyTree;
+    myFaultyTree.addRoot<MyCompo>(1, 1);
+    TINYCOMPO_TEST_ERRORS { myFaultyTree.addRoot<MyCompo>(0, 0); }
+    TINYCOMPO_TEST_ERRORS_END
+    CHECK(error_short.str() == "trying to add root to non-empty Tree.");
+    CHECK(error_long.str() == "-- Error: trying to add root to non-empty Tree.");
+}
