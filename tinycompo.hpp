@@ -57,7 +57,7 @@ std::string demangle(const char* name) {
 }
 #else
 std::string demangle(const char* name) { return name; }
-#endif  // DOCTEST_LIBRARY_INCLUDED
+#endif
 
 class TinycompoException : public std::exception {
   public:
@@ -73,16 +73,15 @@ class TinycompoDebug : public std::stringstream {
   public:
     static void set_stream(std::ostream& os) { error_stream = &os; }
 
-    explicit TinycompoDebug(const std::string& error_desc)
-        : short_message(error_desc){}
-
-              [[noreturn]] void fail() const {
+    [[noreturn]] void fail() const {
         *error_stream << "-- Error: " << short_message;
         if (str() != "") {
             *error_stream << ". " << str();
         }
         throw TinycompoException(short_message);
     }
+
+    explicit TinycompoDebug(const std::string& error_desc) : short_message(error_desc) {}
 };
 
 std::ostream* TinycompoDebug::error_stream = &std::cerr;
