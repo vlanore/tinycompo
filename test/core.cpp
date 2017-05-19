@@ -239,6 +239,7 @@ TEST_CASE("Tree tests.") {
     CHECK(myTree.getParent(ref3) == ref2);
     myTree.instantiate();
     CHECK(myTree.at<MyCompo>(ref3).i == 11);
+    CHECK(myTree._debug() == "Tree");
 
     Tree myFaultyTree;
     myFaultyTree.addRoot<MyCompo>(1, 1);
