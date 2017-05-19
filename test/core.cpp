@@ -232,16 +232,15 @@ TEST_CASE("Tree tests.") {
     Tree myTree;
     auto ref1 = myTree.addRoot<MyCompo>(7, 7);
     auto ref2 = myTree.addChild<MyCompo>(ref1, 9, 9);
-    myTree.addChild<MyCompo>(ref1, 10, 10);
-    auto ref3 = myTree.addChild<MyCompo>(ref2, 11, 11);
+    auto ref3 = myTree.addChild<MyCompo>(ref1, 10, 10);
+    auto ref4 = myTree.addChild<MyCompo>(ref2, 11, 11);
     CHECK(myTree.getParent(ref1) == -1);
     CHECK(myTree.getParent(ref2) == ref1);
-    CHECK(myTree.getParent(ref3) == ref2);
+    CHECK(myTree.getParent(ref4) == ref2);
+    CHECK(myTree.getChildren(ref1) == (std::vector<TreeRef>{ref2, ref3}));
     myTree.instantiate();
-    CHECK(myTree.at<MyCompo>(ref3).i == 11);
+    CHECK(myTree.at<MyCompo>(ref4).i == 11);
     CHECK(myTree._debug() == "Tree");
-
-    //TODO test getChildren
 
     Tree myFaultyTree;
     myFaultyTree.addRoot<MyCompo>(1, 1);
