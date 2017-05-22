@@ -214,7 +214,7 @@ TEST_CASE("internal data tests.") {
     a.component<MyCompo>("first int", 17, 18);
     b.component<MyCompo>("second int", 3, 4);
     a.property("second int", "myPort", 15, 16);
-    a.merge(b.data());
+    a.merge(b.model());
     CHECK(a.size() == 2);
     CHECK(b.size() == 1);
     a.instantiate();

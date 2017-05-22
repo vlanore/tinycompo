@@ -20,7 +20,7 @@ modifying and/or developing or reproducing the software by the user in light of 
 of free software, that may mean that it is complicated to manipulate, and that also therefore means
 that it is reserved for developers and experienced professionals having in-depth computer knowledge.
 Users are therefore encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or globalData to be ensured
+requirements in conditions enabling the security of their systems and/or globalModel to be ensured
 and,
 more generally, to use and operate it in the same conditions as regards security.
 
@@ -206,11 +206,11 @@ class _Operation {
 ==================================================================================================*/
 template <class Key = std::string>
 class Assembly {
-    class AssemblyData {
+    class Model {
       public:
         std::map<Key, _Component> components;
         std::vector<_Operation<Assembly<Key>, Key>> operations;
-        void merge(const AssemblyData& newData) {
+        void merge(const Model& newData) {
             components.insert(newData.components.begin(), newData.components.end());
             operations.insert(operations.end(), newData.operations.begin(),
                               newData.operations.end());
@@ -219,32 +219,32 @@ class Assembly {
 
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    AssemblyData globalData;
+    Model globalModel;
     bool instantiated{false};
 
   public:
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        globalData.components.emplace(
+        globalModel.components.emplace(
             std::piecewise_construct, std::forward_as_tuple(address),
             std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     template <class... Args>
     void property(Key compoName, std::string propName, Args&&... args) {
-        globalData.operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
+        globalModel.operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
     }
 
     template <class C, class... Args>
     void connect(Args&&... args) {
-        globalData.operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+        globalModel.operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    void merge(const AssemblyData& newData) { globalData.merge(newData); }
+    void merge(const Model& newData) { globalModel.merge(newData); }
 
-    const AssemblyData& data() const { return globalData; }
+    const Model& model() const { return globalModel; }
 
-    std::size_t size() const { return globalData.components.size(); }
+    std::size_t size() const { return globalModel.components.size(); }
 
     void check_instantiation(const std::string& from) const {
         if (!instantiated) {
@@ -257,10 +257,10 @@ class Assembly {
 
     void instantiate() {
         instantiated = true;
-        for (auto c : globalData.components) {
+        for (auto c : globalModel.components) {
             instances.emplace(c.first, c.second._constructor());
         }
-        for (auto c : globalData.operations) {
+        for (auto c : globalModel.operations) {
             c._connect(*this);
         }
     }
