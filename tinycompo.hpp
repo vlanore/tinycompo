@@ -338,7 +338,7 @@ class Array : public Assembly<int>, public Component {
     }
 
     template <class... Args>
-    explicit Array(int nbElems, Args... args) {
+    explicit Array(int nbElems, Args... args) : Assembly<int>(Model<int>()) {
         for (int i = 0; i < nbElems; i++) {
             model.component<T>(i, std::forward<Args>(args)...);
         }

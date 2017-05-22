@@ -50,28 +50,28 @@ TEST_CASE("Array tests.") {
 ~*~ ArrayOneToOne ~*~
 ==================================================================================================*/
 TEST_CASE("Array connector tests.") {
-    Assembly<> model;
+    Model<> model;
     model.component<Array<MyInt>>("intArray", 5, 12);
     model.component<Array<MyIntProxy>>("proxyArray", 5);
-    model.instantiate();
-    ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
-    CHECK(model.at<Assembly<int>>("intArray").size() == 5);
-    auto& refElement1 = model.at<MyInt>("intArray", 1);
+    Assembly<> assembly(model);
+    ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
+    CHECK(assembly.at<Assembly<int>>("intArray").size() == 5);
+    auto& refElement1 = assembly.at<MyInt>("intArray", 1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    CHECK(model.at<Assembly<int>>("proxyArray").size() == 5);
-    CHECK(model.at<MyIntProxy>("proxyArray", 1).get() == 46);
-    CHECK(model.at<MyIntProxy>("proxyArray", 4).get() == 24);
+    CHECK(assembly.at<Assembly<int>>("proxyArray").size() == 5);
+    CHECK(assembly.at<MyIntProxy>("proxyArray", 1).get() == 46);
+    CHECK(assembly.at<MyIntProxy>("proxyArray", 4).get() == 24);
 }
 
 TEST_CASE("Array connector error test.") {
-    Assembly<> model;
+    Model<> model;
     model.component<Array<MyInt>>("intArray", 5, 12);
     model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
-    model.instantiate();
+    Assembly<> assembly(model);
     TINYCOMPO_TEST_ERRORS {
-        ArrayOneToOne<IntInterface>::_connect(model, "proxyArray", "ptr", "intArray");
+        ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
     }
     TINYCOMPO_TEST_ERRORS_END
     CHECK(error_short.str() == "Array connection: mismatched sizes");
@@ -86,21 +86,21 @@ TEST_CASE("Array connector error test.") {
   ~*~ Multiuse ~*~
 ==================================================================================================*/
 TEST_CASE("MultiUse tests.") {
-    Assembly<> model;
+    Model<> model;
     model.component<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("Reducer");
-    model.instantiate();
+    Assembly<> assembly(model);
     std::stringstream ss;
-    model.print_all(ss);
+    assembly.print_all(ss);
     CHECK(ss.str() ==
           "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
           "MyInt\n]\n");
-    MultiUse<IntInterface>::_connect(model, "Reducer", "ptr", "intArray");
-    auto& refElement1 = model.at<MyInt>("intArray", 1);
+    MultiUse<IntInterface>::_connect(assembly, "Reducer", "ptr", "intArray");
+    auto& refElement1 = assembly.at<MyInt>("intArray", 1);
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refReducer = model.at<IntInterface>("Reducer");
+    auto& refReducer = assembly.at<IntInterface>("Reducer");
     CHECK(refReducer.get() == 47);
 }
 
@@ -109,10 +109,10 @@ TEST_CASE("MultiUse tests.") {
   ~*~ Multiprovide ~*~
 ==================================================================================================*/
 TEST_CASE("MultiProvide connector tests.") {
-    Assembly<> model;
+    Model<> model;
     model.component<MyInt>("superInt", 17);  // random number
     model.component<Array<MyIntProxy>>("proxyArray", 5);
-    model.instantiate();
-    MultiProvide<IntInterface>::_connect(model, "proxyArray", "ptr", "superInt");
-    CHECK(model.at<MyIntProxy>("proxyArray", 2).get() == 34);
+    Assembly<> assembly(model);
+    MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
+    CHECK(assembly.at<MyIntProxy>("proxyArray", 2).get() == 34);
 }
