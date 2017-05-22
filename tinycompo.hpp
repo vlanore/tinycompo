@@ -199,6 +199,42 @@ class _Operation {
 
 /*
 ====================================================================================================
+  ~*~ Model ~*~
+==================================================================================================*/
+template <class Key>
+class Assembly;  // forward-decl
+
+template <class Key = std::string>
+class Model {
+  public:
+    std::map<Key, _Component> components;
+    std::vector<_Operation<Assembly<Key>, Key>> operations;
+    void merge(const Model& newData) {
+        components.insert(newData.components.begin(), newData.components.end());
+        operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
+    }
+
+    template <class T, class... Args>
+    void component(Key address, Args&&... args) {
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
+                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+    }
+
+    template <class... Args>
+    void property(Key compoName, std::string propName, Args&&... args) {
+        operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
+    }
+
+    template <class C, class... Args>
+    void connect(Args&&... args) {
+        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    std::size_t size() const { return components.size(); }
+};
+
+/*
+====================================================================================================
   ~*~ Assembly class ~*~
   A class that represents a component assembly. It provides methods to declare components,
   connections, properties, to instantiate the assembly and to interact with the instantiated
@@ -206,80 +242,51 @@ class _Operation {
 ==================================================================================================*/
 template <class Key = std::string>
 class Assembly {
-    class Model {
-      public:
-        std::map<Key, _Component> components;
-        std::vector<_Operation<Assembly<Key>, Key>> operations;
-        void merge(const Model& newData) {
-            components.insert(newData.components.begin(), newData.components.end());
-            operations.insert(operations.end(), newData.operations.begin(),
-                              newData.operations.end());
-        }
-    };
-
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    Model globalModel;
+    Model<Key> model;
     bool instantiated{false};
 
   public:
-    template <class T, class... Args>
-    void component(Key address, Args&&... args) {
-        globalModel.components.emplace(
-            std::piecewise_construct, std::forward_as_tuple(address),
-            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
-    }
+    Assembly() = delete;
+    explicit Assembly(const Model<Key>& model) : model(model) { instantiate(); }
 
-    template <class... Args>
-    void property(Key compoName, std::string propName, Args&&... args) {
-        globalModel.operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
-    }
+    std::size_t size() const { return model.size(); }
 
-    template <class C, class... Args>
-    void connect(Args&&... args) {
-        globalModel.operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
-    }
-
-    void merge(const Model& newData) { globalModel.merge(newData); }
-
-    const Model& model() const { return globalModel; }
-
-    std::size_t size() const { return globalModel.components.size(); }
-
-    void check_instantiation(const std::string& from) const {
-        if (!instantiated) {
-            TinycompoDebug error{"uninstantiated assembly"};
-            error << "Trying to call method " << from
-                  << " although the assembly is not instantiated!";
-            error.fail();
-        }
-    }
+    // void check_instantiation(const std::string& from) const {
+    //     if (!instantiated) {
+    //         TinycompoDebug error{"uninstantiated assembly"};
+    //         error << "Trying to call method " << from
+    //               << " although the assembly is not instantiated!";
+    //         error.fail();
+    //     }
+    // }
 
     void instantiate() {
         instantiated = true;
-        for (auto c : globalModel.components) {
+        for (auto c : model.components) {
             instances.emplace(c.first, c.second._constructor());
         }
-        for (auto c : globalModel.operations) {
+        for (auto c : model.operations) {
             c._connect(*this);
         }
     }
 
     template <class T = Component>
     T& at(Key address) const {
-        check_instantiation("at (direct)");
+        // check_instantiation("at (direct)");
         return dynamic_cast<T&>(*(instances.at(address).get()));
     }
 
     template <class T = Component, class SubKey, class... Args>
     T& at(Key address, SubKey subKey, Args... args) const {
-        check_instantiation("at (sub-adressing)");
+        // check_instantiation("at (sub-adressing)");
         auto& ref = at<Assembly<SubKey>>(address);
         return ref.template at<T>(subKey, std::forward<Args>(args)...);
     }
 
     void print_all(std::ostream& os = std::cout) const {
-        check_instantiation("print_all");
+        // check_instantiation("print_all");
         for (auto& i : instances) {
             os << i.first << ": " << i.second->_debug() << std::endl;
         }
@@ -287,7 +294,7 @@ class Assembly {
 
     template <class... Args>
     void call(const std::string& compo, const std::string& prop, Args... args) const {
-        check_instantiation("call");
+        // check_instantiation("call");
         at(compo).set(prop, std::forward<Args>(args)...);
     }
 };
@@ -333,7 +340,7 @@ class Array : public Assembly<int>, public Component {
     template <class... Args>
     explicit Array(int nbElems, Args... args) {
         for (int i = 0; i < nbElems; i++) {
-            component<T>(i, std::forward<Args>(args)...);
+            model.component<T>(i, std::forward<Args>(args)...);
         }
         instantiate();
     }
@@ -414,7 +421,7 @@ class Tree : public Assembly<TreeRef>, public Component {
     std::vector<std::vector<TreeRef>> children;
 
   public:
-    Tree() = default;
+    explicit Tree(const Model<TreeRef>& model = Model<TreeRef>()) : Assembly<TreeRef>(model) {}
 
     std::string _debug() const override { return "Tree"; }
 
@@ -423,7 +430,7 @@ class Tree : public Assembly<TreeRef>, public Component {
         if (size() != 0) {
             TinycompoDebug("trying to add root to non-empty Tree.").fail();
         } else {
-            component<T>(0, std::forward<Args>(args)...);
+            model.component<T>(0, std::forward<Args>(args)...);
             children.emplace_back();  // empty children list for root
             parent.push_back(-1);     // root has no parents :'(
             return 0;
@@ -433,7 +440,7 @@ class Tree : public Assembly<TreeRef>, public Component {
     template <class T, class... Args>
     TreeRef addChild(TreeRef refParent, Args&&... args) {
         auto nodeRef = parent.size();
-        component<T>(nodeRef, std::forward<Args>(args)...);
+        model.component<T>(nodeRef, std::forward<Args>(args)...);
         parent.push_back(refParent);
         children.emplace_back();  // empty children list for newly added node
         children.at(refParent).push_back(nodeRef);

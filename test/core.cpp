@@ -153,89 +153,77 @@ TEST_CASE("Assembly tests.") {
         }
     };
 
-    Assembly<> a;
+    Model<> a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
-    TINYCOMPO_TEST_ERRORS {
-        a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
-    }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "uninstantiated assembly");
-    CHECK(error_long.str() ==
-          "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
-          "assembly is not instantiated!");
-    a.instantiate();
-    auto& ref = a.at<MyCompo&>("Compo1");
-    auto& ref2 = a.at<MyCompo&>("Compo2");
+    // TINYCOMPO_TEST_ERRORS {
+    //     a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
+    // }
+    // TINYCOMPO_TEST_ERRORS_END
+    // CHECK(error_short.str() == "uninstantiated assembly");
+    // CHECK(error_long.str() ==
+    //       "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
+    //       "assembly is not instantiated!");
+    Assembly<> b(a);
+    b.instantiate();
+    auto& ref = b.at<MyCompo&>("Compo1");
+    auto& ref2 = b.at<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector
     CHECK(ref.j == 14);   // base value
     CHECK(ref2.i == 34);  // changed by property and then by connector (in declaration order)
     CHECK(ref2.j == 23);  // changed by property
-    a.call("Compo2", "myPort", 77, 79);
+    b.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
     CHECK(ref2.j == 79);
     std::stringstream ss;
-    a.print_all(ss);
+    b.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
 }
 
-TEST_CASE("sub-addressing tests.") {
-    class MyComposite : public Component, public Assembly<int> {
-      public:
-        std::string _debug() const override { return "MyComposite"; }
-    };
-    Assembly<> b;
-    b.component<MyComposite>("Array");
-    b.instantiate();
-    auto& arrayRef = b.at<MyComposite>("Array");
-    arrayRef.component<MyCompo>(0, 12, 13);
-    arrayRef.component<MyCompo>(1, 15, 19);
-    arrayRef.component<MyComposite>(2);
-    arrayRef.instantiate();
-    auto& subArrayRef = arrayRef.at<MyComposite>(2);
-    subArrayRef.component<MyCompo>(0, 19, 22);
-    subArrayRef.component<MyCompo>(1, 7, 9);
-    subArrayRef.instantiate();
-    auto& subRef = b.at<MyCompo>("Array", 1);
-    auto& subSubRef = b.at<MyCompo>("Array", 2, 1);
-    CHECK(subRef.i == 15);
-    CHECK(subSubRef.i == 7);
-    std::stringstream ss;
-    b.print_all(ss);
-    CHECK(ss.str() == "Array: MyComposite\n");
-}
-
-TEST_CASE("internal data tests.") {
-    Assembly<> a;
-    Assembly<> b;
-    a.component<MyCompo>("first int", 17, 18);
-    b.component<MyCompo>("second int", 3, 4);
-    a.property("second int", "myPort", 15, 16);
-    a.merge(b.model());
-    CHECK(a.size() == 2);
-    CHECK(b.size() == 1);
-    a.instantiate();
-    b.instantiate();
-    CHECK(a.at<MyCompo>("second int").i == 15);
-}
+// TEST_CASE("sub-addressing tests.") {
+//     class MyComposite : public Component, public Assembly<int> {
+//       public:
+//         std::string _debug() const override { return "MyComposite"; }
+//     };
+//     Model<> b;
+//     b.component<MyComposite>("Array");
+//     Assembly<> c(b);
+//     c.instantiate();
+//     auto& arrayRef = c.at<MyComposite>("Array");
+//     arrayRef.component<MyCompo>(0, 12, 13);
+//     arrayRef.component<MyCompo>(1, 15, 19);
+//     arrayRef.component<MyComposite>(2);
+//     arrayRef.instantiate();
+//     auto& subArrayRef = arrayRef.at<MyComposite>(2);
+//     subArrayRef.component<MyCompo>(0, 19, 22);
+//     subArrayRef.component<MyCompo>(1, 7, 9);
+//     subArrayRef.instantiate();
+//     auto& subRef = c.at<MyCompo>("Array", 1);
+//     auto& subSubRef = c.at<MyCompo>("Array", 2, 1);
+//     CHECK(subRef.i == 15);
+//     CHECK(subSubRef.i == 7);
+//     std::stringstream ss;
+//     c.print_all(ss);
+//     CHECK(ss.str() == "Array: MyComposite\n");
+// }
 
 /*
 ====================================================================================================
   ~*~ Use/Provide ~*~
 ==================================================================================================*/
 TEST_CASE("Use/provide test.") {
-    Assembly<> model;
+    Model<> model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
-    model.instantiate();
+    Assembly<> assembly(model);
     std::stringstream ss;
-    model.print_all(ss);
+    assembly.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
-    UseProvide<IntInterface>::_connect(model, "Compo2", "ptr", "Compo1");
-    CHECK(model.at<MyIntProxy>("Compo2").get() == 8);
+    UseProvide<IntInterface>::_connect(assembly, "Compo2", "ptr", "Compo1");
+    CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
 /*
@@ -269,16 +257,16 @@ TEST_CASE("Tree tests.") {
   ~*~ ToChildren ~*~
 ==================================================================================================*/
 TEST_CASE("ToChildren tests.") {
-    Assembly<> model;
+    Model<> model;
     model.component<Tree>("tree");
-    model.instantiate();
-    auto& treeRef = model.at<Tree>("tree");
+    Assembly<> assembly(model);
+    auto& treeRef = assembly.at<Tree>("tree");
     auto root = treeRef.addRoot<IntReducer>();
     auto leaf = treeRef.addChild<MyInt>(root, 11);
     auto child = treeRef.addChild<MyIntProxy>(root);
     treeRef.addChild<MyInt>(child, 3);
     CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
     treeRef.instantiate();
-    ToChildren<IntInterface>::_connect(model, "tree", "ptr");
+    ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");
     CHECK(treeRef.at<IntReducer>(root).get() == 17);  // 11 + 2*3
 }
