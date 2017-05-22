@@ -205,30 +205,35 @@ class _Operation {
 ==================================================================================================*/
 template <class Key = std::string>
 class Assembly {
+    class AssemblyData {
+      public:
+        std::map<Key, _Component> components;
+        std::vector<_Operation<Assembly<Key>, Key>> operations;
+    };
+
   protected:
-    std::map<Key, _Component> components;
     std::map<Key, std::unique_ptr<Component>> instances;
-    std::vector<_Operation<Assembly, Key>> operations;
+    AssemblyData data;
     bool instantiated{false};
 
   public:
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
-                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+        data.components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
+                                std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     template <class... Args>
     void property(Key compoName, std::string propName, Args&&... args) {
-        operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
+        data.operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
     }
 
     template <class C, class... Args>
     void connect(Args&&... args) {
-        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+        data.operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    std::size_t size() const { return components.size(); }
+    std::size_t size() const { return data.components.size(); }
 
     void check_instantiation(const std::string& from) const {
         if (!instantiated) {
@@ -241,10 +246,10 @@ class Assembly {
 
     void instantiate() {
         instantiated = true;
-        for (auto c : components) {
+        for (auto c : data.components) {
             instances.emplace(c.first, c.second._constructor());
         }
-        for (auto c : operations) {
+        for (auto c : data.operations) {
             c._connect(*this);
         }
     }
