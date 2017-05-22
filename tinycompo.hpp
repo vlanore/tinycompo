@@ -199,6 +199,32 @@ class _Operation {
 
 /*
 ====================================================================================================
+  ~*~ Address ~*~
+==================================================================================================*/
+template <class Key, class... Keys>
+class _Address {
+  public:
+    Key key;
+    bool final{false};
+    _Address<Keys...> rest;
+    explicit _Address(Key key, Keys&&... keys) : key(key), rest(std::forward<Keys>(keys)...) {}
+};
+
+template <class Key>
+class _Address<Key> {
+  public:
+    Key key;
+    bool final{true};
+    _Address(Key key) : key(key) {}
+};
+
+template <class... Keys>
+_Address<Keys...> Address(Keys&&... keys) {
+    return _Address<Keys...>(std::forward<Keys>(keys)...);
+}
+
+/*
+====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
 template <class Key>
@@ -243,6 +269,7 @@ class Composite : public Model<Key>, public _AbstractComposite {};
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
+
 template <class Key = std::string>
 class Assembly {
   protected:
