@@ -182,7 +182,7 @@ TEST_CASE("Assembly tests.") {
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
 }
 
-TEST_CASE("sub-addressing tests") {
+TEST_CASE("sub-addressing tests.") {
     class MyComposite : public Component, public Assembly<int> {
       public:
         std::string _debug() const override { return "MyComposite"; }
@@ -206,6 +206,20 @@ TEST_CASE("sub-addressing tests") {
     std::stringstream ss;
     b.print_all(ss);
     CHECK(ss.str() == "Array: MyComposite\n");
+}
+
+TEST_CASE("internal data tests.") {
+    Assembly<> a;
+    Assembly<> b;
+    a.component<MyCompo>("first int", 17, 18);
+    b.component<MyCompo>("second int", 3, 4);
+    a.property("second int", "myPort", 15, 16);
+    a.merge(b.data());
+    CHECK(a.size() == 2);
+    CHECK(b.size() == 1);
+    a.instantiate();
+    b.instantiate();
+    CHECK(a.at<MyCompo>("second int").i == 15);
 }
 
 /*
@@ -266,5 +280,5 @@ TEST_CASE("ToChildren tests.") {
     CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
     treeRef.instantiate();
     ToChildren<IntInterface>::_connect(model, "tree", "ptr");
-    CHECK(treeRef.at<IntReducer>(root).get() == 17); // 11 + 2*3
+    CHECK(treeRef.at<IntReducer>(root).get() == 17);  // 11 + 2*3
 }
