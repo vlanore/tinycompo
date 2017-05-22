@@ -168,7 +168,7 @@ class _Component {
     _Component(_Type<T>, Args&&... args) {
         _constructor = [=]() {
             return std::unique_ptr<Component>(
-                static_cast<Component*>(new T(std::forward<const Args>(args)...)));
+                dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
         };
     }
 
@@ -230,13 +230,34 @@ _Address<Keys...> Address(Keys&&... keys) {
 template <class Key>
 class Assembly;  // forward-decl
 
-class _AbstractComposite {};  // inheritance-only class
+class _AbstractComposite {
+  public:
+    virtual ~_AbstractComposite() = default;
+};  // inheritance-only class
 
 template <class Key = std::string>
 class Model {
+    template <bool>
+    class _Toggle {};
+
+    template <class T, class... Args>
+    void _component(Key address, Args&&... args) {
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
+                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+    }
+
+    template <class T, class... Args>
+    void _composite(Key address, Args&&... args) {
+        composites.emplace(
+            std::piecewise_construct, std::forward_as_tuple(address),
+            std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
+                dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
+    }
+
   public:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
+    std::map<std::string, std::unique_ptr<_AbstractComposite>> composites;
 
     void merge(const Model& newData) {
         components.insert(newData.components.begin(), newData.components.end());
@@ -245,8 +266,22 @@ class Model {
 
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
-                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+        _component<T, Args...>(address, std::forward<Args>(args)...);
+    }
+
+    template <class T, class Key1, class... Args>
+    void component(_Address<Key1> address, Args&&... args) {
+        component<T>(address.key, std::forward<Args>(args)...);
+    }
+
+    template <class T, class Key1, class Key2, class... Keys, class... Args>
+    void component(_Address<Key1, Key2, Keys...> address, Args&&... args) {
+        if (composites.find(address.key) != composites.end()) {
+            dynamic_cast<Model<Key2>*>(composites[address.key].get())
+                ->template component<T>(address.rest, std::forward<Args>(args)...);
+        } else {
+            TinycompoDebug("composite does not exist").fail();
+        }
     }
 
     template <class... Args>
@@ -315,7 +350,8 @@ class Assembly {
 ====================================================================================================
   ~*~ UseProvide class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
-  Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
+  Assembly::connect. This particular connector implements the "use/provide" connection, ie
+setting a
   port of one component (the user) to a pointer to an interface of another (the provider). This
   class should be used as-is to declare assembly connections.
 ==================================================================================================*/
@@ -376,9 +412,12 @@ class ArrayOneToOne {
 /*
 ====================================================================================================
   ~*~ MultiUse class ~*~
-  The MultiUse class is a connector that connects (as if using the UseProvide connector) one port of
-  one component to every component in an array. This can be seen as a "multiple use" connector (the
-  reducer is the user in multiple use/provide connections). This class should be used as a template
+  The MultiUse class is a connector that connects (as if using the UseProvide connector) one
+port of
+  one component to every component in an array. This can be seen as a "multiple use" connector
+(the
+  reducer is the user in multiple use/provide connections). This class should be used as a
+template
   parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>

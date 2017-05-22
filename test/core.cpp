@@ -153,6 +153,20 @@ TEST_CASE("address tests.") {
     CHECK(a.final == false);
     CHECK(a.rest.rest.rest.final == true);
 }
+
+/*
+====================================================================================================
+  ~*~ Model ~*~
+==================================================================================================*/
+TEST_CASE("model tests.") {
+    class MyComposite : public Composite<int> {};
+    Model<> model;
+    model.component<MyComposite>("compo0");
+    // model.component<MyInt>(Address("compo0", 1), 5);
+    // model.component<MyComposite>(Address("compo0", 2));
+    // model.component<MyInt>(Address("compo0", 2, 1), 3);
+}
+
 /*
 ====================================================================================================
   ~*~ Assembly ~*~
