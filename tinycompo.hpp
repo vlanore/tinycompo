@@ -204,11 +204,14 @@ class _Operation {
 template <class Key>
 class Assembly;  // forward-decl
 
+class _AbstractComposite {};  // inheritance-only class
+
 template <class Key = std::string>
 class Model {
   public:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
+
     void merge(const Model& newData) {
         components.insert(newData.components.begin(), newData.components.end());
         operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
@@ -233,27 +236,21 @@ class Model {
     std::size_t size() const { return components.size(); }
 };
 
+template <class Key>
+class Composite : public Model<Key>, public _AbstractComposite {};
+
 /*
 ====================================================================================================
   ~*~ Assembly class ~*~
-  A class that represents a component assembly. It provides methods to declare components,
-  connections, properties, to instantiate the assembly and to interact with the instantiated
-  assembly. This class should be used as-is (not by inheriting from it) by users.
 ==================================================================================================*/
 template <class Key = std::string>
 class Assembly {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    Model<Key> model;  // FIXME could be removed and replaced by instantiate param
-                       // bool instantiated{false};
 
   public:
     Assembly() = delete;
-    explicit Assembly(const Model<Key>& model) : model(model) { instantiate(); }
-
-    std::size_t size() const { return model.size(); }
-
-    void instantiate() {
+    explicit Assembly(const Model<Key>& model) {
         for (auto c : model.components) {
             instances.emplace(c.first, c.second._constructor());
         }
@@ -261,6 +258,8 @@ class Assembly {
             o._connect(*this);
         }
     }
+
+    std::size_t size() const { return instances.size(); }
 
     template <class T = Component>
     T& at(Key address) const {
@@ -307,28 +306,15 @@ class UseProvide {
 /*
 ====================================================================================================
   ~*~ Array class ~*~
-  Generic specialization of the Component class to represent arrays of components. All component
-  arrays inherit from Assembly<int> so that they can be manipulated as arrays of Component whitout
-  knowing the exact class. This class should be used as a template parameter for calls to
-  Assembly::component.
 ==================================================================================================*/
 template <class T>
-class Array : public Assembly<int>, public Component {
+class Array : public Composite<int> {
   public:
-    std::string _debug() const override {
-        std::stringstream ss;
-        ss << "Array [\n";
-        print_all(ss);
-        ss << "]";
-        return ss.str();
-    }
-
     template <class... Args>
-    explicit Array(int nbElems, Args... args) : Assembly<int>(Model<int>()) {
+    explicit Array(int nbElems, Args... args) {
         for (int i = 0; i < nbElems; i++) {
-            model.component<T>(i, std::forward<Args>(args)...);
+            component<T>(i, std::forward<Args>(args)...);
         }
-        instantiate();
     }
 };
 
@@ -400,62 +386,62 @@ class MultiProvide {
   ~*~ Tree ~*~
   A special composite whose internal components form a tree.
 ==================================================================================================*/
-using TreeRef = int;
+// using TreeRef = int;
 
-class Tree : public Assembly<TreeRef>, public Component {
-    std::vector<TreeRef> parent;
-    std::vector<std::vector<TreeRef>> children;
+// class Tree : public Assembly<TreeRef>, public Component {
+//     std::vector<TreeRef> parent;
+//     std::vector<std::vector<TreeRef>> children;
 
-  public:
-    explicit Tree(const Model<TreeRef>& model = Model<TreeRef>()) : Assembly<TreeRef>(model) {}
+//   public:
+//     explicit Tree(const Model<TreeRef>& model = Model<TreeRef>()) : Assembly<TreeRef>(model) {}
 
-    std::string _debug() const override { return "Tree"; }
+//     std::string _debug() const override { return "Tree"; }
 
-    template <class T, class... Args>
-    TreeRef addRoot(Args&&... args) {
-        if (size() != 0) {
-            TinycompoDebug("trying to add root to non-empty Tree.").fail();
-        } else {
-            model.component<T>(0, std::forward<Args>(args)...);
-            children.emplace_back();  // empty children list for root
-            parent.push_back(-1);     // root has no parents :'(
-            return 0;
-        }
-    }
+//     template <class T, class... Args>
+//     TreeRef addRoot(Args&&... args) {
+//         if (size() != 0) {
+//             TinycompoDebug("trying to add root to non-empty Tree.").fail();
+//         } else {
+//             model.component<T>(0, std::forward<Args>(args)...);
+//             children.emplace_back();  // empty children list for root
+//             parent.push_back(-1);     // root has no parents :'(
+//             return 0;
+//         }
+//     }
 
-    template <class T, class... Args>
-    TreeRef addChild(TreeRef refParent, Args&&... args) {
-        auto nodeRef = parent.size();
-        model.component<T>(nodeRef, std::forward<Args>(args)...);
-        parent.push_back(refParent);
-        children.emplace_back();  // empty children list for newly added node
-        children.at(refParent).push_back(nodeRef);
-        return nodeRef;
-    }
+//     template <class T, class... Args>
+//     TreeRef addChild(TreeRef refParent, Args&&... args) {
+//         auto nodeRef = parent.size();
+//         model.component<T>(nodeRef, std::forward<Args>(args)...);
+//         parent.push_back(refParent);
+//         children.emplace_back();  // empty children list for newly added node
+//         children.at(refParent).push_back(nodeRef);
+//         return nodeRef;
+//     }
 
-    TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
+//     TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
 
-    const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
-};
+//     const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
+// };
 
-/*
-====================================================================================================
-  ~*~ ToChildren ~*~
-  A tree connector that connects every node to its children.
-==================================================================================================*/
-template <class Interface, class Key = std::string>
-class ToChildren {
-  public:
-    static void _connect(Assembly<>& a, Key tree, std::string prop) {
-        auto& treeRef = a.at<Tree>(tree);
-        for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
-            auto& nodeRef = treeRef.at(i);
-            auto& children = treeRef.getChildren(i);
-            for (auto j : children) {  // for every one of its children...
-                nodeRef.set(prop, &treeRef.template at<Interface>(j));
-            }
-        }
-    }
-};
+// /*
+// ====================================================================================================
+//   ~*~ ToChildren ~*~
+//   A tree connector that connects every node to its children.
+// ==================================================================================================*/
+// template <class Interface, class Key = std::string>
+// class ToChildren {
+//   public:
+//     static void _connect(Assembly<>& a, Key tree, std::string prop) {
+//         auto& treeRef = a.at<Tree>(tree);
+//         for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
+//             auto& nodeRef = treeRef.at(i);
+//             auto& children = treeRef.getChildren(i);
+//             for (auto j : children) {  // for every one of its children...
+//                 nodeRef.set(prop, &treeRef.template at<Interface>(j));
+//             }
+//         }
+//     }
+// };
 
 #endif  // TINYCOMPO_HPP
