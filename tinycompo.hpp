@@ -204,18 +204,18 @@ class _Operation {
 template <class Key, class... Keys>
 class _Address {
   public:
-    Key key;
-    bool final{false};
-    _Address<Keys...> rest;
+    const Key key;
+    const bool final{false};
+    const _Address<Keys...> rest;
     explicit _Address(Key key, Keys&&... keys) : key(key), rest(std::forward<Keys>(keys)...) {}
 };
 
 template <class Key>
 class _Address<Key> {
   public:
-    Key key;
-    bool final{true};
-    _Address(Key key) : key(key) {}
+    const Key key;
+    const bool final{true};
+    explicit _Address(Key key) : key(key) {}
 };
 
 template <class... Keys>
