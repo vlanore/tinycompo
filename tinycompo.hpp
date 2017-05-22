@@ -253,40 +253,27 @@ class Assembly {
 
     std::size_t size() const { return model.size(); }
 
-    // void check_instantiation(const std::string& from) const {
-    //     if (!instantiated) {
-    //         TinycompoDebug error{"uninstantiated assembly"};
-    //         error << "Trying to call method " << from
-    //               << " although the assembly is not instantiated!";
-    //         error.fail();
-    //     }
-    // }
-
     void instantiate() {
-        // instantiated = true;
         for (auto c : model.components) {
             instances.emplace(c.first, c.second._constructor());
         }
-        for (auto c : model.operations) {
-            c._connect(*this);
+        for (auto o : model.operations) {
+            o._connect(*this);
         }
     }
 
     template <class T = Component>
     T& at(Key address) const {
-        // check_instantiation("at (direct)");
         return dynamic_cast<T&>(*(instances.at(address).get()));
     }
 
     template <class T = Component, class SubKey, class... Args>
     T& at(Key address, SubKey subKey, Args... args) const {
-        // check_instantiation("at (sub-adressing)");
         auto& ref = at<Assembly<SubKey>>(address);
         return ref.template at<T>(subKey, std::forward<Args>(args)...);
     }
 
     void print_all(std::ostream& os = std::cout) const {
-        // check_instantiation("print_all");
         for (auto& i : instances) {
             os << i.first << ": " << i.second->_debug() << std::endl;
         }
@@ -294,7 +281,6 @@ class Assembly {
 
     template <class... Args>
     void call(const std::string& compo, const std::string& prop, Args... args) const {
-        // check_instantiation("call");
         at(compo).set(prop, std::forward<Args>(args)...);
     }
 };
