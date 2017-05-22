@@ -168,7 +168,6 @@ TEST_CASE("Assembly tests.") {
     //       "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
     //       "assembly is not instantiated!");
     Assembly<> b(a);
-    b.instantiate();
     auto& ref = b.at<MyCompo&>("Compo1");
     auto& ref2 = b.at<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector

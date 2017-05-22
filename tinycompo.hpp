@@ -244,8 +244,8 @@ template <class Key = std::string>
 class Assembly {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    Model<Key> model;
-    bool instantiated{false};
+    Model<Key> model;  // FIXME could be removed and replaced by instantiate param
+                       // bool instantiated{false};
 
   public:
     Assembly() = delete;
@@ -263,7 +263,7 @@ class Assembly {
     // }
 
     void instantiate() {
-        instantiated = true;
+        // instantiated = true;
         for (auto c : model.components) {
             instances.emplace(c.first, c.second._constructor());
         }
