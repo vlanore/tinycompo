@@ -243,6 +243,15 @@ TEST_CASE("Use/provide test.") {
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
+TEST_CASE("Use/provide + Assemlby: connection test") {
+    Model<> model;
+    model.component<MyInt>("Compo1", 4);
+    model.component<MyIntProxy>("Compo2");
+    model.connect<UseProvide<IntInterface>>(Address("Compo2"), "ptr", Address("Compo1"));
+    Assembly<> assembly(model);
+    CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
+}
+
 /*
 ====================================================================================================
   ~*~ Tree ~*~

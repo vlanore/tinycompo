@@ -207,6 +207,7 @@ class _Address {
     const Key key;
     const bool final{false};
     const _Address<Keys...> rest;
+    // TODO need a conversion operator here?
     _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
 };
 
