@@ -237,27 +237,33 @@ class _AbstractComposite {
 
 template <class Key = std::string>
 class Model {
-    template <bool>
-    class _Toggle {};
+    template <class T, bool t = std::is_base_of<_AbstractComposite, T>::value>
+    class _ToggleComposite {
+      public:
+        template <class... Args>
+        static void _do(Model<Key>& model, Key address, Args&&... args) {
+            model.components.emplace(
+                std::piecewise_construct, std::forward_as_tuple(address),
+                std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+        }
+    };
 
-    template <class T, class... Args>
-    void _component(Key address, Args&&... args) {
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
-                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
-    }
-
-    template <class T, class... Args>
-    void _composite(Key address, Args&&... args) {
-        composites.emplace(
-            std::piecewise_construct, std::forward_as_tuple(address),
-            std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
-                dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
-    }
+    template <class T>
+    class _ToggleComposite<T, true> {
+      public:
+        template <class... Args>
+        static void _do(Model<Key>& model, Key address, Args&&... args) {
+            model.composites.emplace(
+                std::piecewise_construct, std::forward_as_tuple(address),
+                std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
+                    dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
+        }
+    };
 
   public:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<std::string, std::unique_ptr<_AbstractComposite>> composites;
+    std::map<Key, std::unique_ptr<_AbstractComposite>> composites;
 
     void merge(const Model& newData) {
         components.insert(newData.components.begin(), newData.components.end());
@@ -266,7 +272,7 @@ class Model {
 
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        _component<T, Args...>(address, std::forward<Args>(args)...);
+        _ToggleComposite<T>::_do(*this, address, std::forward<Args>(args)...);
     }
 
     template <class T, class Key1, class... Args>
@@ -285,7 +291,7 @@ class Model {
     }
 
     template <class... Args>
-    void property(Key compoName, std::string propName, Args&&... args) {
+    void property(Key compoName, const std::string& propName, Args&&... args) {
         operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
     }
 

@@ -162,9 +162,9 @@ TEST_CASE("model tests.") {
     class MyComposite : public Composite<int> {};
     Model<> model;
     model.component<MyComposite>("compo0");
-    // model.component<MyInt>(Address("compo0", 1), 5);
-    // model.component<MyComposite>(Address("compo0", 2));
-    // model.component<MyInt>(Address("compo0", 2, 1), 3);
+    model.component<MyInt>(Address("compo0", 1), 5);
+    model.component<MyComposite>(Address("compo0", 2));
+    model.component<MyInt>(Address("compo0", 2, 1), 3);
 }
 
 /*
