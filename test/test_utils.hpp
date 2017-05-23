@@ -29,22 +29,24 @@ license and that you accept its terms.*/
 #ifndef TEST_UTILS
 #define TEST_UTILS
 
-#include "doctest.h"
 #include "../tinycompo.hpp"
+#include "doctest.h"
 
-#define TINYCOMPO_TEST_ERRORS                   \
-    std::stringstream error_short, error_long;  \
-    TinycompoDebug::set_stream(error_long);     \
+#define TINYCOMPO_TEST_ERRORS                  \
+    std::stringstream error_short, error_long; \
+    TinycompoDebug::set_stream(error_long);    \
     try
 
-#define TINYCOMPO_TEST_ERRORS_END               \
-    catch (TinycompoException & e) {            \
-        error_short << e.what();                \
-    }                                           \
-    TinycompoDebug::set_stream(std::cerr);
+#define TINYCOMPO_TEST_ERRORS_END(short, long) \
+    catch (TinycompoException & e) {           \
+        error_short << e.what();               \
+    }                                          \
+    TinycompoDebug::set_stream(std::cerr);     \
+    CHECK(error_short.str() == short);         \
+    CHECK(error_long.str() == long);
 
 class MyCompo : public Component {  // example of a user creating their own component
-public:                           // by inheriting from the Component class
+  public:                           // by inheriting from the Component class
     int i{1};
     int j{2};
 
@@ -63,12 +65,12 @@ public:                           // by inheriting from the Component class
 };
 
 class IntInterface {
-public:
+  public:
     virtual int get() const = 0;
 };
 
 class MyInt : public Component, public IntInterface {
-public:
+  public:
     int i{1};
     explicit MyInt(int i = 0) : i(i) {}
     std::string _debug() const override { return "MyInt"; }
@@ -78,7 +80,7 @@ public:
 class MyIntProxy : public Component, public IntInterface {
     IntInterface* ptr{nullptr};
 
-public:
+  public:
     MyIntProxy() { port("ptr", &MyIntProxy::set_ptr); }
     void set_ptr(IntInterface* ptrin) { ptr = ptrin; }
     std::string _debug() const override { return "MyIntProxy"; }
@@ -88,7 +90,7 @@ public:
 class IntReducer : public Component, public IntInterface {
     std::vector<IntInterface*> ptrs;
 
-public:
+  public:
     std::string _debug() const override { return "IntReducer"; }
 
     void addPtr(IntInterface* ptr) { ptrs.push_back(ptr); }
@@ -104,4 +106,4 @@ public:
     IntReducer() { port("ptr", &IntReducer::addPtr); }
 };
 
-#endif // TEST_UTILS
+#endif  // TEST_UTILS

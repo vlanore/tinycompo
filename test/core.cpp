@@ -40,9 +40,7 @@ TEST_CASE("Exception tests") {
         e << "Something failed.";
         e.fail();
     }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "my error");
-    CHECK(error_long.str() == "-- Error: my error. Something failed.");
+    TINYCOMPO_TEST_ERRORS_END("my error", "-- Error: my error. Something failed.");
     CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
 }
 
@@ -86,11 +84,9 @@ TEST_CASE("Component tests.") {
     TINYCOMPO_TEST_ERRORS {
         compo.set("myPort", true);  // intentional error
     }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "Setting property failed");
-    CHECK(error_long.str() ==
-          "-- Error: Setting property failed. Type _Port<bool const> does not seem to match port "
-          "myPort.\n");
+    TINYCOMPO_TEST_ERRORS_END("Setting property failed",
+                              "-- Error: Setting property failed. Type _Port<bool const> does not "
+                              "seem to match port myPort.\n");
 }
 
 /*
@@ -165,11 +161,14 @@ TEST_CASE("model tests.") {
     model.component<MyInt>(Address("compo0", 1), 5);
     model.component<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
-    CHECK(model.size() == 1); // top level contains only one composite
+    CHECK(model.size() == 1);  // top level contains only one composite
     auto& compo0 = dynamic_cast<Model<int>&>(*model.composites["compo0"].get());
     CHECK(compo0.size() == 2);
     auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
     CHECK(compo0_2.size() == 1);
+    TINYCOMPO_TEST_ERRORS {
+        model.component<MyInt>(Address("badAddress", 1), 2);
+    } TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist");
 }
 
 /*
