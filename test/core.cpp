@@ -165,6 +165,11 @@ TEST_CASE("model tests.") {
     model.component<MyInt>(Address("compo0", 1), 5);
     model.component<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
+    CHECK(model.size() == 1); // top level contains only one composite
+    auto& compo0 = dynamic_cast<Model<int>&>(*model.composites["compo0"].get());
+    CHECK(compo0.size() == 2);
+    auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
+    CHECK(compo0_2.size() == 1);
 }
 
 /*

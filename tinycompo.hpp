@@ -300,7 +300,7 @@ class Model {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    std::size_t size() const { return components.size(); }
+    std::size_t size() const { return components.size() + composites.size(); }
 };
 
 template <class Key>
