@@ -187,16 +187,15 @@ TEST_CASE("Assembly tests.") {
     Model<> a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
-    a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
     Assembly<> b(a);
     auto& ref = b.at<MyCompo&>("Compo1");
     auto& ref2 = b.at<MyCompo&>("Compo2");
     CHECK(ref.i == 33);   // changed by connector
-    CHECK(ref.j == 14);   // base value
-    CHECK(ref2.i == 34);  // changed by property and then by connector (in declaration order)
-    CHECK(ref2.j == 23);  // changed by property
+    CHECK(ref.j == 14);
+    CHECK(ref2.i == 34);  // changed by connector
+    CHECK(ref2.j == 16);
     b.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
     CHECK(ref2.j == 79);

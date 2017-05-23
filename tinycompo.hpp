@@ -291,11 +291,6 @@ class Model {
         }
     }
 
-    template <class... Args>
-    void property(Key compoName, const std::string& propName, Args&&... args) {
-        operations.emplace_back(compoName, propName, std::forward<Args>(args)...);
-    }
-
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
