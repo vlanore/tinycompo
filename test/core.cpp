@@ -175,26 +175,15 @@ TEST_CASE("model test: components in composites") {
 ====================================================================================================
   ~*~ Assembly ~*~
 ==================================================================================================*/
-TEST_CASE("Assembly tests.") {
-    class MyConnector {
-      public:
-        static void _connect(Assembly<>& a, int i, int i2) {
-            a.at<MyCompo>("Compo1").i = i;
-            a.at<MyCompo>("Compo2").i = i2;
-        }
-    };
-
+TEST_CASE("Assembly test: instances and call.") {
     Model<> a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     CHECK(a.size() == 2);
-    a.connect<MyConnector>(33, 34);
     Assembly<> b(a);
     auto& ref = b.at<MyCompo&>("Compo1");
     auto& ref2 = b.at<MyCompo&>("Compo2");
-    CHECK(ref.i == 33);   // changed by connector
     CHECK(ref.j == 14);
-    CHECK(ref2.i == 34);  // changed by connector
     CHECK(ref2.j == 16);
     b.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
@@ -202,6 +191,17 @@ TEST_CASE("Assembly tests.") {
     std::stringstream ss;
     b.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
+}
+
+TEST_CASE("Assembly test: instantiating composites.") {
+    class MyComposite : public Composite<int> {};
+    Model<> model;
+    model.component<MyComposite>("composite");
+    model.component<MyInt>(Address("composite", 0), 12);
+    Assembly<> assembly(model);
+    auto& refComposite = assembly.at<Assembly<int>>("composite");
+    CHECK(refComposite.size() == 1);
+    CHECK(refComposite.at<MyInt>(0).get() == 12);
 }
 
 // TEST_CASE("sub-addressing tests.") {
