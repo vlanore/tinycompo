@@ -199,6 +199,9 @@ TEST_CASE("Assembly test: instantiating composites.") {
     model.component<MyComposite>("composite");
     model.component<MyInt>(Address("composite", 0), 12);
     Assembly<> assembly(model);
+    std::stringstream ss;
+    assembly.print_all(ss);
+    CHECK(ss.str() == "composite: Composite\n");
     auto& refComposite = assembly.at<Assembly<int>>("composite");
     CHECK(refComposite.size() == 1);
     CHECK(refComposite.at<MyInt>(0).get() == 12);
