@@ -207,7 +207,7 @@ class _Address {
     const Key key;
     const bool final{false};
     const _Address<Keys...> rest;
-    explicit _Address(Key key, Keys&&... keys) : key(key), rest(std::forward<Keys>(keys)...) {}
+    _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
 };
 
 template <class Key>
@@ -215,12 +215,18 @@ class _Address<Key> {
   public:
     const Key key;
     const bool final{true};
+
+    template <class T>
+    operator _Address<T>() {
+        return _Address<T>(key);
+    }
+
     explicit _Address(Key key) : key(key) {}
 };
 
 template <class... Keys>
-_Address<Keys...> Address(Keys&&... keys) {
-    return _Address<Keys...>(std::forward<Keys>(keys)...);
+_Address<Keys...> Address(Keys... keys) {
+    return _Address<Keys...>(keys...);
 }
 
 /*
@@ -372,10 +378,11 @@ class Assembly : public Component {
 template <class Interface>
 class UseProvide {
   public:
-    static void _connect(Assembly<>& assembly, std::string user, std::string userPort,
-                         std::string provider) {
+    template <class Key, class... Keys, class... Keys2>
+    static void _connect(Assembly<Key>& assembly, _Address<Keys...> user, std::string userPort,
+                         _Address<Keys2...> provider) {
         auto& refUser = assembly.at(user);
-        auto& refProvider = assembly.at<Interface>(provider);
+        auto& refProvider = assembly.template at<Interface>(provider);
         refUser.set(userPort, &refProvider);
     }
 };

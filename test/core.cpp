@@ -239,7 +239,7 @@ TEST_CASE("Use/provide test.") {
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
-    UseProvide<IntInterface>::_connect(assembly, "Compo2", "ptr", "Compo1");
+    UseProvide<IntInterface>::_connect(assembly, Address("Compo2"), "ptr", Address("Compo1"));
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
