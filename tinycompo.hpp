@@ -230,10 +230,11 @@ _Address<Keys...> Address(Keys&&... keys) {
 template <class Key>
 class Assembly;  // forward-decl
 
-class _AbstractComposite {
+class _AbstractComposite {  // inheritance-only class
   public:
     virtual ~_AbstractComposite() = default;
-};  // inheritance-only class
+    virtual Component* _constructor() const = 0;
+};
 
 template <class Key = std::string>
 class Model {
@@ -304,40 +305,43 @@ class Model {
 };
 
 template <class Key>
-class Composite : public Model<Key>, public _AbstractComposite {};
+class Composite : public Model<Key>, public _AbstractComposite {
+  public:
+    virtual Component* _constructor() const override {
+        return static_cast<Component*>(new Assembly<Key>(*this));
+    }
+};
 
 /*
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
-
 template <class Key = std::string>
-class Assembly {
+class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
 
   public:
     Assembly() = delete;
     explicit Assembly(const Model<Key>& model) {
-        for (auto c : model.components) {
+        for (auto& c : model.components) {
             instances.emplace(c.first, c.second._constructor());
         }
-        for (auto o : model.operations) {
+        for (auto& c : model.composites) {
+            instances.emplace(c.first, c.second->_constructor());
+        }
+        for (auto& o : model.operations) {
             o._connect(*this);
         }
     }
+
+    std::string _debug() const override { return "Composite"; }
 
     std::size_t size() const { return instances.size(); }
 
     template <class T = Component>
     T& at(Key address) const {
         return dynamic_cast<T&>(*(instances.at(address).get()));
-    }
-
-    template <class T = Component, class SubKey, class... Args>
-    T& at(Key address, SubKey subKey, Args... args) const {
-        auto& ref = at<Assembly<SubKey>>(address);
-        return ref.template at<T>(subKey, std::forward<Args>(args)...);
     }
 
     void print_all(std::ostream& os = std::cout) const {
@@ -418,13 +422,10 @@ class ArrayOneToOne {
 /*
 ====================================================================================================
   ~*~ MultiUse class ~*~
-  The MultiUse class is a connector that connects (as if using the UseProvide connector) one
-port of
-  one component to every component in an array. This can be seen as a "multiple use" connector
-(the
-  reducer is the user in multiple use/provide connections). This class should be used as a
-template
-  parameter for Assembly::connect.
+The MultiUse class is a connector that connects (as if using the UseProvide connector) one port
+of one component to every component in an array. This can be seen as a "multiple use" connector (the
+reducer is the user in multiple use/provide connections). This class should be used as a template
+parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
 class MultiUse {
@@ -443,15 +444,16 @@ class MultiUse {
 ====================================================================================================
   ~*~ MultiProvide class ~*~
 ==================================================================================================*/
-template <class Interface>
-class MultiProvide {
-  public:
-    static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper) {
-        for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
-            a.at(array, i).set(prop, &a.at<Interface>(mapper));
-        }
-    }
-};
+// template <class Interface>
+// class MultiProvide {
+//   public:
+//     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper)
+//     {
+//         for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
+//             a.at(array, i).set(prop, &a.at<Interface>(mapper));
+//         }
+//     }
+// };
 
 /*
 ====================================================================================================

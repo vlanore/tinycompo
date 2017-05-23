@@ -154,14 +154,14 @@ TEST_CASE("address tests.") {
 ====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
-TEST_CASE("model tests.") {
+TEST_CASE("model test: components in composites") {
     class MyComposite : public Composite<int> {};
     Model<> model;
     model.component<MyComposite>("compo0");
     model.component<MyInt>(Address("compo0", 1), 5);
     model.component<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
-    CHECK(model.size() == 1);  // top level contains only one composite
+    CHECK(model.size() == 1);  // top level contains only one component which is a composite
     auto& compo0 = dynamic_cast<Model<int>&>(*model.composites["compo0"].get());
     CHECK(compo0.size() == 2);
     auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
@@ -190,14 +190,6 @@ TEST_CASE("Assembly tests.") {
     a.property("Compo2", "myPort", 22, 23);
     CHECK(a.size() == 2);
     a.connect<MyConnector>(33, 34);
-    // TINYCOMPO_TEST_ERRORS {
-    //     a.at("Compo1").set("myPort", 3, 3);  // triggering uninstantiated exception
-    // }
-    // TINYCOMPO_TEST_ERRORS_END
-    // CHECK(error_short.str() == "uninstantiated assembly");
-    // CHECK(error_long.str() ==
-    //       "-- Error: uninstantiated assembly. Trying to call method at (direct) although the "
-    //       "assembly is not instantiated!");
     Assembly<> b(a);
     auto& ref = b.at<MyCompo&>("Compo1");
     auto& ref2 = b.at<MyCompo&>("Compo2");
