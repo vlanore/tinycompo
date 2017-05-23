@@ -209,20 +209,21 @@ TEST_CASE("Assembly test: instantiating composites.") {
 
 TEST_CASE("Assembly test: sub-addressing tests.") {
     class MyComposite : public Composite<int> {};
+    class MyOtherComposite : public Composite<const char*> {};
     Model<> model;
     model.component<MyComposite>("Array");
     model.component<MyCompo>(Address("Array", 0), 12, 13);
     model.component<MyCompo>(Address("Array", 1), 15, 19);
-    model.component<MyComposite>(Address("Array",2));
-    model.component<MyCompo>(Address("Array", 2, 1), 7, 9);
+    model.component<MyOtherComposite>(Address("Array", 2));
+    model.component<MyCompo>(Address("Array", 2, "youpi"), 7, 9);
     Assembly<> assembly(model);
 
     auto& arrayRef = assembly.at<Assembly<int>>("Array");
     CHECK(arrayRef.size() == 3);
-    auto& subArrayRef = assembly.at<Assembly<int>>(Address("Array", 2));
+    auto& subArrayRef = assembly.at<Assembly<const char*>>(Address("Array", 2));
     CHECK(subArrayRef.size() == 1);
     auto& subRef = assembly.at<MyCompo>(Address("Array", 1));
-    auto& subSubRef = assembly.at<MyCompo>(Address("Array", 2, 1));
+    auto& subSubRef = assembly.at<MyCompo>(Address("Array", 2, "youpi"));
     CHECK(subRef.i == 15);
     CHECK(subSubRef.i == 7);
 }

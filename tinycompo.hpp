@@ -291,8 +291,11 @@ class Model {
     template <class T, class Key1, class Key2, class... Keys, class... Args>
     void component(_Address<Key1, Key2, Keys...> address, Args&&... args) {
         if (composites.find(address.key) != composites.end()) {
-            dynamic_cast<Model<Key2>*>(composites[address.key].get())
-                ->template component<T>(address.rest, std::forward<Args>(args)...);
+            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
+            if (ptr == nullptr) {
+                TinycompoDebug("composite key type does not match address").fail();
+            }
+            ptr->template component<T>(address.rest, std::forward<Args>(args)...);
         } else {
             TinycompoDebug("composite does not exist").fail();
         }
