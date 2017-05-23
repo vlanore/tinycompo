@@ -207,32 +207,25 @@ TEST_CASE("Assembly test: instantiating composites.") {
     CHECK(refComposite.at<MyInt>(0).get() == 12);
 }
 
-// TEST_CASE("sub-addressing tests.") {
-//     class MyComposite : public Component, public Assembly<int> {
-//       public:
-//         std::string _debug() const override { return "MyComposite"; }
-//     };
-//     Model<> b;
-//     b.component<MyComposite>("Array");
-//     Assembly<> c(b);
-//     c.instantiate();
-//     auto& arrayRef = c.at<MyComposite>("Array");
-//     arrayRef.component<MyCompo>(0, 12, 13);
-//     arrayRef.component<MyCompo>(1, 15, 19);
-//     arrayRef.component<MyComposite>(2);
-//     arrayRef.instantiate();
-//     auto& subArrayRef = arrayRef.at<MyComposite>(2);
-//     subArrayRef.component<MyCompo>(0, 19, 22);
-//     subArrayRef.component<MyCompo>(1, 7, 9);
-//     subArrayRef.instantiate();
-//     auto& subRef = c.at<MyCompo>("Array", 1);
-//     auto& subSubRef = c.at<MyCompo>("Array", 2, 1);
-//     CHECK(subRef.i == 15);
-//     CHECK(subSubRef.i == 7);
-//     std::stringstream ss;
-//     c.print_all(ss);
-//     CHECK(ss.str() == "Array: MyComposite\n");
-// }
+TEST_CASE("Assembly test: sub-addressing tests.") {
+    class MyComposite : public Composite<int> {};
+    Model<> model;
+    model.component<MyComposite>("Array");
+    model.component<MyCompo>(Address("Array", 0), 12, 13);
+    model.component<MyCompo>(Address("Array", 1), 15, 19);
+    model.component<MyComposite>(Address("Array",2));
+    model.component<MyCompo>(Address("Array", 2, 1), 7, 9);
+    Assembly<> assembly(model);
+
+    auto& arrayRef = assembly.at<Assembly<int>>("Array");
+    CHECK(arrayRef.size() == 3);
+    auto& subArrayRef = assembly.at<Assembly<int>>(Address("Array", 2));
+    CHECK(subArrayRef.size() == 1);
+    auto& subRef = assembly.at<MyCompo>(Address("Array", 1));
+    auto& subSubRef = assembly.at<MyCompo>(Address("Array", 2, 1));
+    CHECK(subRef.i == 15);
+    CHECK(subSubRef.i == 7);
+}
 
 /*
 ====================================================================================================

@@ -339,6 +339,16 @@ class Assembly : public Component {
         return dynamic_cast<T&>(*(instances.at(address).get()));
     }
 
+    template <class T = Component, class Key1 = bool>
+    T& at(const _Address<Key>& address) const {
+        return at<T>(address.key);
+    }
+
+    template <class T = Component, class Key1 = bool, class Key2 = bool, class... Keys>
+    T& at(const _Address<Key1, Key2, Keys...>& address) const {
+        return at<Assembly<Key2>>(address.key).template at<T>(address.rest);
+    }
+
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
             os << i.first << ": " << i.second->_debug() << std::endl;
@@ -355,8 +365,7 @@ class Assembly : public Component {
 ====================================================================================================
   ~*~ UseProvide class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
-  Assembly::connect. This particular connector implements the "use/provide" connection, ie
-setting a
+  Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
   port of one component (the user) to a pointer to an interface of another (the provider). This
   class should be used as-is to declare assembly connections.
 ==================================================================================================*/
