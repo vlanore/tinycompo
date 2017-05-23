@@ -34,15 +34,11 @@ license and that you accept its terms.*/
 ==================================================================================================*/
 TEST_CASE("Array tests.") {
     Array<MyCompo> myArray(3, 11, 12);
-    CHECK(myArray._debug() == "Array [\n0: MyCompo\n1: MyCompo\n2: MyCompo\n]");
     CHECK(myArray.size() == 3);
-    auto& ref0 = myArray.at<MyCompo>(0);
-    auto& ref2 = myArray.at<MyCompo>(2);
-    ref2.i = 17;          // random number
-    CHECK(ref0.i == 11);  // cf myArray init above
-    CHECK(ref2.i == 17);
-    auto& ref2bis = myArray.at<MyCompo>(2);
-    CHECK(ref2bis.i == 17);
+    Assembly<int> array(myArray);
+    array.at<MyCompo>(2).i = 17;
+    CHECK(array.at<MyCompo>(2).i == 17);
+    CHECK(array.at<MyCompo>(0).i == 11);
 }
 
 /*
@@ -56,13 +52,13 @@ TEST_CASE("Array connector tests.") {
     Assembly<> assembly(model);
     ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
     CHECK(assembly.at<Assembly<int>>("intArray").size() == 5);
-    auto& refElement1 = assembly.at<MyInt>("intArray", 1);
+    auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
     CHECK(assembly.at<Assembly<int>>("proxyArray").size() == 5);
-    CHECK(assembly.at<MyIntProxy>("proxyArray", 1).get() == 46);
-    CHECK(assembly.at<MyIntProxy>("proxyArray", 4).get() == 24);
+    CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 1)).get() == 46);
+    CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 4)).get() == 24);
 }
 
 TEST_CASE("Array connector error test.") {
@@ -73,12 +69,7 @@ TEST_CASE("Array connector error test.") {
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
     }
-    TINYCOMPO_TEST_ERRORS_END
-    CHECK(error_short.str() == "Array connection: mismatched sizes");
-    CHECK(error_long.str() ==
-          "-- Error: Array connection: mismatched sizes. proxyArray has size 4 while intArray has "
-          "size 5.\n");
-    TinycompoDebug::set_stream(std::cerr);
+    TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes", "-- Error: Array connection: mismatched sizes. proxyArray has size 4 while intArray has size 5.\n");
 }
 
 /*
@@ -93,10 +84,10 @@ TEST_CASE("MultiUse tests.") {
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() ==
-          "Reducer: IntReducer\nintArray: Array [\n0: MyInt\n1: MyInt\n2: "
-          "MyInt\n]\n");
+          "Reducer: IntReducer\nintArray: Composite {\n0: MyInt\n1: MyInt\n2: "
+          "MyInt\n}\n");
     MultiUse<IntInterface>::_connect(assembly, "Reducer", "ptr", "intArray");
-    auto& refElement1 = assembly.at<MyInt>("intArray", 1);
+    auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
@@ -107,12 +98,12 @@ TEST_CASE("MultiUse tests.") {
 /*
 ====================================================================================================
   ~*~ Multiprovide ~*~
-==================================================================================================*/
-TEST_CASE("MultiProvide connector tests.") {
-    Model<> model;
-    model.component<MyInt>("superInt", 17);  // random number
-    model.component<Array<MyIntProxy>>("proxyArray", 5);
-    Assembly<> assembly(model);
-    MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
-    CHECK(assembly.at<MyIntProxy>("proxyArray", 2).get() == 34);
-}
+// ==================================================================================================*/
+// TEST_CASE("MultiProvide connector tests.") {
+//     Model<> model;
+//     model.component<MyInt>("superInt", 17);  // random number
+//     model.component<Array<MyIntProxy>>("proxyArray", 5);
+//     Assembly<> assembly(model);
+//     MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
+//     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
+// }

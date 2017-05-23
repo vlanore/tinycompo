@@ -337,7 +337,13 @@ class Assembly : public Component {
         }
     }
 
-    std::string _debug() const override { return "Composite"; }
+    std::string _debug() const override {
+        std::stringstream ss;
+        ss << "Composite {\n";
+        print_all(ss);
+        ss << "}";
+        return ss.str();
+    }
 
     std::size_t size() const { return instances.size(); }
 

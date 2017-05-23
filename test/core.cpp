@@ -201,7 +201,7 @@ TEST_CASE("Assembly test: instantiating composites.") {
     Assembly<> assembly(model);
     std::stringstream ss;
     assembly.print_all(ss);
-    CHECK(ss.str() == "composite: Composite\n");
+    CHECK(ss.str() == "composite: Composite {\n0: MyInt\n}\n");
     auto& refComposite = assembly.at<Assembly<int>>("composite");
     CHECK(refComposite.size() == 1);
     CHECK(refComposite.at<MyInt>(0).get() == 12);
@@ -243,7 +243,7 @@ TEST_CASE("Use/provide test.") {
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
-TEST_CASE("Use/provide + Assemlby: connection test") {
+TEST_CASE("Use/provide + Assembly: connection test") {
     Model<> model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
