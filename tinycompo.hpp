@@ -243,7 +243,7 @@ class _AbstractComposite {  // inheritance-only class
     virtual Component* _constructor() const = 0;
 };
 
-template <class Key = std::string>
+template <class Key = const char*>
 class Model {
     template <class T, bool t = std::is_base_of<_AbstractComposite, T>::value>
     class _ToggleComposite {
@@ -321,7 +321,7 @@ class Composite : public Model<Key>, public _AbstractComposite {
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
-template <class Key = std::string>
+template <class Key = const char*>
 class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
@@ -372,7 +372,7 @@ class Assembly : public Component {
     }
 
     template <class... Args>
-    void call(const std::string& compo, const std::string& prop, Args... args) const {
+    void call(const char* compo, const std::string& prop, Args... args) const {
         at(compo).set(prop, std::forward<Args>(args)...);
     }
 };
@@ -423,7 +423,7 @@ class Array : public Composite<int> {
 template <class Interface>
 class ArrayOneToOne {
   public:
-    static void _connect(Assembly<>& a, std::string array1, std::string prop, std::string array2) {
+    static void _connect(Assembly<>& a, const char* array1, std::string prop, const char* array2) {
         auto& ref1 = a.at<Assembly<int>>(array1);
         auto& ref2 = a.at<Assembly<int>>(array2);
         if (ref1.size() == ref2.size()) {
@@ -451,7 +451,7 @@ parameter for Assembly::connect.
 template <class Interface>
 class MultiUse {
   public:
-    static void _connect(Assembly<>& a, std::string reducer, std::string prop, std::string array) {
+    static void _connect(Assembly<>& a, const char* reducer, std::string prop, const char* array) {
         auto& ref1 = a.at<Component>(reducer);
         auto& ref2 = a.at<Assembly<int>>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {

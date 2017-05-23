@@ -84,8 +84,8 @@ TEST_CASE("MultiUse tests.") {
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() ==
-          "Reducer: IntReducer\nintArray: Composite {\n0: MyInt\n1: MyInt\n2: "
-          "MyInt\n}\n");
+          "intArray: Composite {\n0: MyInt\n1: MyInt\n2: "
+          "MyInt\n}\nReducer: IntReducer\n");
     MultiUse<IntInterface>::_connect(assembly, "Reducer", "ptr", "intArray");
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
