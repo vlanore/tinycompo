@@ -320,10 +320,10 @@ class Assembly : public Component {
     Assembly() = delete;
     explicit Assembly(const Model<Key>& model) {
         for (auto& c : model.components) {
-            instances.emplace(c.first, c.second._constructor());
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
         for (auto& c : model.composites) {
-            instances.emplace(c.first, c.second->_constructor());
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second->_constructor()));
         }
         for (auto& o : model.operations) {
             o._connect(*this);
