@@ -143,16 +143,22 @@ class Component {
     }
 
     template <class... Args>
-    void set(std::string name, Args... args) {  // no perfect forwarding to avoid references
-        auto ptr = dynamic_cast<_Port<const Args...>*>(_ports[name].get());
-        if (ptr != nullptr)  // casting succeedeed
-        {
-            ptr->_set(std::forward<Args>(args)...);
-        } else {  // casting failed, trying to provide useful error message
-            TinycompoDebug e{"Setting property failed"};
-            e << "Type " << demangle(typeid(_Port<const Args...>).name())
-              << " does not seem to match port " << name << '.';
+    void set(std::string name, Args... args) {    // no perfect forwarding to avoid references
+        if (_ports.find(name) == _ports.end()) {  // there exists no port with this name
+            TinycompoDebug e{"port name not found"};
+            e << "Could not find port " << name << " in component " << _debug() << ".";
             e.fail();
+        } else {  // there exists a port with this name
+            auto ptr = dynamic_cast<_Port<const Args...>*>(_ports[name].get());
+            if (ptr != nullptr)  // casting succeedeed
+            {
+                ptr->_set(std::forward<Args>(args)...);
+            } else {  // casting failed, trying to provide useful error message
+                TinycompoDebug e{"setting property failed"};
+                e << "Type " << demangle(typeid(_Port<const Args...>).name())
+                  << " does not seem to match port " << name << '.';
+                e.fail();
+            }
         }
     }
 };

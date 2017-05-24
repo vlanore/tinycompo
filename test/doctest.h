@@ -803,7 +803,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 #pragma warning(disable : 4389)  // 'operator' : signed/unsigned mismatch
 #pragma warning(disable : 4018)  // 'expression' : signed/unsigned mismatch
 //#pragma warning(disable : 4805) // 'operation' : unsafe mix of type 'type' and type 'type' in
-//operation
+// operation
 #endif  // _MSC_VER
 
 #endif  // DOCTEST_CONFIG_NO_COMPARISON_WARNING_SUPPRESSION
@@ -2846,7 +2846,7 @@ namespace doctest {
             if (!parseFlagImpl(argc, argv, pattern))
                 return parseFlagImpl(argc, argv, pattern + 3);  // 3 for "dt-"
             return true;
-#else   // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
+#else  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
             return parseFlagImpl(argc, argv, pattern);
 #endif  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
         }
@@ -2886,7 +2886,7 @@ namespace doctest {
             if (!parseOptionImpl(argc, argv, pattern, res))
                 return parseOptionImpl(argc, argv, pattern + 3, res);  // 3 for "dt-"
             return true;
-#else  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
+#else   // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
             return parseOptionImpl(argc, argv, pattern, res);
 #endif  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
         }

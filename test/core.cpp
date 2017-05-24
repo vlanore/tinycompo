@@ -80,13 +80,14 @@ TEST_CASE("Component tests.") {
     compo.set("myPort", 17, 18);
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
-
-    TINYCOMPO_TEST_ERRORS {
-        compo.set("myPort", true);  // intentional error
-    }
-    TINYCOMPO_TEST_ERRORS_END("Setting property failed",
-                              "-- Error: Setting property failed. Type _Port<bool const> does not "
+    TINYCOMPO_TEST_ERRORS { compo.set("myPort", true); }
+    TINYCOMPO_TEST_ERRORS_END("setting property failed",
+                              "-- Error: setting property failed. Type _Port<bool const> does not "
                               "seem to match port myPort.\n");
+    TINYCOMPO_TEST_MORE_ERRORS { compo.set("badPort", 1, 2); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "port name not found",
+        "-- Error: port name not found. Could not find port badPort in component MyCompo.\n");
 }
 
 /*
@@ -167,7 +168,9 @@ TEST_CASE("model test: components in composites") {
     auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
-    TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist. Assembly contains no composite at address badAddress.\n");
+    TINYCOMPO_TEST_ERRORS_END("composite does not exist",
+                              "-- Error: composite does not exist. Assembly contains no composite "
+                              "at address badAddress.\n");
     TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
     TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
                               "-- Error: key type does not match composite key type. Key has type "
