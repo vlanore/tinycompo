@@ -37,6 +37,12 @@ license and that you accept its terms.*/
     TinycompoDebug::set_stream(error_long);    \
     try
 
+#define TINYCOMPO_TEST_MORE_ERRORS \
+    error_short.str(""); \
+    error_long.str(""); \
+    TinycompoDebug::set_stream(error_long); \
+    try
+
 #define TINYCOMPO_TEST_ERRORS_END(short, long) \
     catch (TinycompoException & e) {           \
         error_short << e.what();               \
