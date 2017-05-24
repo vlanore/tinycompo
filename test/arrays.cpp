@@ -69,7 +69,9 @@ TEST_CASE("Array connector error test.") {
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
     }
-    TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes", "-- Error: Array connection: mismatched sizes. proxyArray has size 4 while intArray has size 5.\n");
+    TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes",
+                              "-- Error: Array connection: mismatched sizes. proxyArray has size 4 "
+                              "while intArray has size 5.\n");
 }
 
 /*
@@ -98,7 +100,8 @@ TEST_CASE("MultiUse tests.") {
 /*
 ====================================================================================================
   ~*~ Multiprovide ~*~
-// ==================================================================================================*/
+//
+==================================================================================================*/
 // TEST_CASE("MultiProvide connector tests.") {
 //     Model<> model;
 //     model.component<MyInt>("superInt", 17);  // random number

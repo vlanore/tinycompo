@@ -15,7 +15,7 @@ clean:
 	rm -f *.o *_bin *.gcov *.gcno *.gcda *.profraw
 
 format:
-	clang-format -i test.cpp tinycompo.hpp
+	clang-format -i test.cpp tinycompo.hpp $(TEST_FILES)
 
 ready: test format
 	git status
