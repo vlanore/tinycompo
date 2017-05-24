@@ -167,7 +167,7 @@ TEST_CASE("model test: components in composites") {
     auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
-    TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist\n");
+    TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist. Assembly contains no composite at address badAddress.\n");
     TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
     TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
                               "-- Error: key type does not match composite key type. Key has type "

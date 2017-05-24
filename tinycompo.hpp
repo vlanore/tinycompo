@@ -306,7 +306,9 @@ class Model {
             }
             ptr->template component<T>(address.rest, std::forward<Args>(args)...);
         } else {
-            TinycompoDebug("composite does not exist").fail();
+            TinycompoDebug e("composite does not exist");
+            e << "Assembly contains no composite at address " << address.key << '.';
+            e.fail();
         }
     }
 
