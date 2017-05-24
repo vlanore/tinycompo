@@ -74,11 +74,17 @@ class TinycompoDebug : public std::stringstream {
   public:
     static void set_stream(std::ostream& os) { error_stream = &os; }
 
+    template <class T>
+    static std::string type() {
+        return demangle(typeid(T).name());
+    }
+
     [[noreturn]] void fail() const {
         *error_stream << "-- Error: " << short_message;
         if (str() != "") {
             *error_stream << ". " << str();
         }
+        *error_stream << std::endl;
         throw TinycompoException(short_message);
     }
 
@@ -145,7 +151,7 @@ class Component {
         } else {  // casting failed, trying to provide useful error message
             TinycompoDebug e{"Setting property failed"};
             e << "Type " << demangle(typeid(_Port<const Args...>).name())
-              << " does not seem to match port " << name << ".\n";
+              << " does not seem to match port " << name << '.';
             e.fail();
         }
     }
@@ -293,7 +299,10 @@ class Model {
         if (composites.find(address.key) != composites.end()) {
             auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
             if (ptr == nullptr) {
-                TinycompoDebug("composite key type does not match address").fail();
+                TinycompoDebug e("key type does not match composite key type");
+                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
+                  << address.key << " seems to have another key type.";
+                e.fail();
             }
             ptr->template component<T>(address.rest, std::forward<Args>(args)...);
         } else {
@@ -434,7 +443,7 @@ class ArrayOneToOne {
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
             e << array1 << " has size " << ref1.size() << " while " << array2 << " has size "
-              << ref2.size() << ".\n";
+              << ref2.size() << ".";
             e.fail();
         }
     }

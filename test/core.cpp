@@ -40,7 +40,7 @@ TEST_CASE("Exception tests") {
         e << "Something failed.";
         e.fail();
     }
-    TINYCOMPO_TEST_ERRORS_END("my error", "-- Error: my error. Something failed.");
+    TINYCOMPO_TEST_ERRORS_END("my error", "-- Error: my error. Something failed.\n");
     CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
 }
 
@@ -167,10 +167,10 @@ TEST_CASE("model test: components in composites") {
     auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites[2].get());
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
-    TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist");
+    TINYCOMPO_TEST_ERRORS_END("composite does not exist", "-- Error: composite does not exist\n");
     TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
-    TINYCOMPO_TEST_ERRORS_END("composite key type does not match address",
-                              "-- Error: composite key type does not match address");
+    TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
+                              "-- Error: key type does not match composite key type. Key has type char const* while composite compo0 seems to have another key type.\n");
 }
 
 /*
