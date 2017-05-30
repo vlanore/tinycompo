@@ -482,16 +482,15 @@ class MultiUse {
 ====================================================================================================
   ~*~ MultiProvide class ~*~
 ==================================================================================================*/
-// template <class Interface>
-// class MultiProvide {
-//   public:
-//     static void _connect(Assembly<>& a, std::string array, std::string prop, std::string mapper)
-//     {
-//         for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
-//             a.at(array, i).set(prop, &a.at<Interface>(mapper));
-//         }
-//     }
-// };
+template <class Interface>
+class MultiProvide {
+  public:
+    static void _connect(Assembly<>& a, const char* array, std::string prop, const char* mapper) {
+        for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
+            a.at(Address(array, i)).set(prop, &a.at<Interface>(mapper));
+        }
+    }
+};
 
 /*
 ====================================================================================================

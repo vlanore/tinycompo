@@ -100,13 +100,12 @@ TEST_CASE("MultiUse tests.") {
 /*
 ====================================================================================================
   ~*~ Multiprovide ~*~
-//
 ==================================================================================================*/
-// TEST_CASE("MultiProvide connector tests.") {
-//     Model<> model;
-//     model.component<MyInt>("superInt", 17);  // random number
-//     model.component<Array<MyIntProxy>>("proxyArray", 5);
-//     Assembly<> assembly(model);
-//     MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
-//     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
-// }
+TEST_CASE("MultiProvide connector tests.") {
+    Model<> model;
+    model.component<MyInt>("superInt", 17);  // random number
+    model.component<Array<MyIntProxy>>("proxyArray", 5);
+    Assembly<> assembly(model);
+    MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
+    CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
+}
