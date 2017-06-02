@@ -178,6 +178,18 @@ TEST_CASE("model test: components in composites") {
                               "type.\n");
 }
 
+TEST_CASE("model test: composite referencees") {
+    class MyComposite : public Composite<int> {};
+
+    Model<> model;
+    model.component<MyComposite>("compo0");
+    auto& compo0ref = model.composite<MyComposite>("compo0");
+    compo0ref.component<MyCompo>(1, 17, 18);
+    compo0ref.component<MyCompo>(2, 21, 22);
+    CHECK(model.size() == 1);
+    CHECK(model.composite<MyComposite>("compo0").size() == 2);
+}
+
 /*
 ====================================================================================================
   ~*~ Assembly ~*~

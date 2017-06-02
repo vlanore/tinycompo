@@ -318,6 +318,11 @@ class Model {
         }
     }
 
+    template <class CompositeType>
+    CompositeType& composite(const Key& address) {
+        return dynamic_cast<CompositeType&>(*composites[address].get());
+    }
+
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
