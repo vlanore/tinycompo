@@ -497,43 +497,39 @@ class MultiProvide {
   ~*~ Tree ~*~
   A special composite whose internal components form a tree.
 ==================================================================================================*/
-// using TreeRef = int;
+using TreeRef = int;
 
-// class Tree : public Assembly<TreeRef>, public Component {
-//     std::vector<TreeRef> parent;
-//     std::vector<std::vector<TreeRef>> children;
+class Tree : public Composite<TreeRef> {
+    std::vector<TreeRef> parent;
+    std::vector<std::vector<TreeRef>> children;
 
-//   public:
-//     explicit Tree(const Model<TreeRef>& model = Model<TreeRef>()) : Assembly<TreeRef>(model) {}
+  public:
+    template <class T, class... Args>
+    TreeRef addRoot(Args&&... args) {
+        if (size() != 0) {
+            TinycompoDebug("trying to add root to non-empty Tree.").fail();
+        } else {
+            component<T>(0, std::forward<Args>(args)...);
+            children.emplace_back();  // empty children list for root
+            parent.push_back(-1);     // root has no parents :'(
+            return 0;
+        }
+    }
 
-//     std::string _debug() const override { return "Tree"; }
+    template <class T, class... Args>
+    TreeRef addChild(TreeRef refParent, Args&&... args) {
+        auto nodeRef = parent.size();
+        component<T>(nodeRef, std::forward<Args>(args)...);
+        parent.push_back(refParent);
+        children.emplace_back();  // empty children list for newly added node
+        children.at(refParent).push_back(nodeRef);
+        return nodeRef;
+    }
 
-//     template <class T, class... Args>
-//     TreeRef addRoot(Args&&... args) {
-//         if (size() != 0) {
-//             TinycompoDebug("trying to add root to non-empty Tree.").fail();
-//         } else {
-//             model.component<T>(0, std::forward<Args>(args)...);
-//             children.emplace_back();  // empty children list for root
-//             parent.push_back(-1);     // root has no parents :'(
-//             return 0;
-//         }
-//     }
+    TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
 
-//     template <class T, class... Args>
-//     TreeRef addChild(TreeRef refParent, Args&&... args) {
-//         auto nodeRef = parent.size();
-//         model.component<T>(nodeRef, std::forward<Args>(args)...);
-//         parent.push_back(refParent);
-//         children.emplace_back();  // empty children list for newly added node
-//         children.at(refParent).push_back(nodeRef);
-//         return nodeRef;
-//     }
-
-//     TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
-
-//     const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
-// };
+    const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
+};
 
 // /*
 // ====================================================================================================
