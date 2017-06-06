@@ -248,12 +248,16 @@ _Address<Keys...> Address(Keys... keys) {
 ==================================================================================================*/
 template <class Key>
 class Assembly;  // forward-decl
+template <class Key>
+class Model;  // forward-decl
 
 class _AbstractComposite {  // inheritance-only class
   public:
     virtual ~_AbstractComposite() = default;
-    virtual Component* _constructor() = 0;
 };
+
+template <class Key>
+class Composite : public Model<Key>, public _AbstractComposite {};
 
 class _Composite {
     std::unique_ptr<_AbstractComposite> ptr;
@@ -379,14 +383,6 @@ class Model {
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
-};
-
-template <class Key>
-class Composite : public Model<Key>, public _AbstractComposite {
-  public:
-    virtual Component* _constructor() override {
-        return static_cast<Component*>(new Assembly<Key>(*this));
-    }
 };
 
 /*
