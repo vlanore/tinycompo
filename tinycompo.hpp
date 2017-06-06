@@ -361,7 +361,7 @@ template <class Key = const char*>
 class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    Model<Key> &internal_model;
+    Model<Key>& internal_model;
 
   public:
     Assembly() = delete;
@@ -402,7 +402,7 @@ class Assembly : public Component {
         return at<Assembly<Key2>>(address.key).template at<T>(address.rest);
     }
 
-    // const Model<Key>& model() { return model; }
+    Model<Key>& model() const { return internal_model; }
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
@@ -553,25 +553,25 @@ class Tree : public Composite<TreeRef> {
     const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
 };
 
-// /*
-// ====================================================================================================
-//   ~*~ ToChildren ~*~
-//   A tree connector that connects every node to its children.
-// ==================================================================================================*/
-// template <class Interface, class Key = const char*>
-// class ToChildren {
-//   public:
-//     static void _connect(Assembly<>& a, Key tree, std::string prop) {
-//         auto& treeRef = a.at<Assembly<TreeRef>>(tree);
-//         auto& treeModelRef = a.model().composite<Tree>(tree);
-//         for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
-//             auto& nodeRef = treeRef.at(i);
-//             auto& children = treeModelRef.getChildren(i);
-//             for (auto j : children) {  // for every one of its children...
-//                 nodeRef.set(prop, &treeRef.template at<Interface>(j));
-//             }
-//         }
-//     }
-// };
+/*
+====================================================================================================
+  ~*~ ToChildren ~*~
+  A tree connector that connects every node to its children.
+==================================================================================================*/
+template <class Interface, class Key = const char*>
+class ToChildren {
+  public:
+    static void _connect(Assembly<>& a, Key tree, std::string prop) {
+        auto& treeRef = a.at<Assembly<TreeRef>>(tree);
+        auto& treeModelRef = a.model().compositeRef<Tree>(tree);
+        for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
+            auto& nodeRef = treeRef.at(i);
+            auto& children = treeModelRef.getChildren(i);
+            for (auto j : children) {  // for every one of its children...
+                nodeRef.set(prop, &treeRef.template at<Interface>(j));
+            }
+        }
+    }
+};
 
 #endif  // TINYCOMPO_HPP

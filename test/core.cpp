@@ -316,16 +316,16 @@ TEST_CASE("Tree tests.") {
 ====================================================================================================
   ~*~ ToChildren ~*~
 ==================================================================================================*/
-// TEST_CASE("ToChildren tests.") {
-//     Model<> model;
-//     model.component<Tree>("tree");
-//     auto& treeRef = model.composite<Tree>("tree");
-//     auto root = treeRef.addRoot<IntReducer>();
-//     auto leaf = treeRef.addChild<MyInt>(root, 11);
-//     auto child = treeRef.addChild<MyIntProxy>(root);
-//     treeRef.addChild<MyInt>(child, 3);
-//     CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
-//     Assembly<> assembly(model);
-//     ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");
-//     CHECK(assembly.at<IntReducer>(Address("tree", root)).get() == 17);  // 11 + 2*3
-// }
+TEST_CASE("ToChildren tests.") {
+    Model<> model;
+    model.composite<Tree>("tree");
+    auto& treeRef = model.compositeRef<Tree>("tree");
+    auto root = treeRef.addRoot<IntReducer>();
+    auto leaf = treeRef.addChild<MyInt>(root, 11);
+    auto child = treeRef.addChild<MyIntProxy>(root);
+    treeRef.addChild<MyInt>(child, 3);
+    CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
+    Assembly<> assembly(model);
+    ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");
+    CHECK(assembly.at<IntReducer>(Address("tree", root)).get() == 17);  // 11 + 2*3
+}
