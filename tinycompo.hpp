@@ -298,6 +298,8 @@ class Model {
 
     template <class T, class... Args>
     void composite(Key address, Args&&... args) {
+        static_assert(std::is_base_of<_AbstractComposite, T>::value,
+                      "Trying to declare a composite that does not inherit from Composite<T>!");
         composites.emplace(
             std::piecewise_construct, std::forward_as_tuple(address),
             std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
