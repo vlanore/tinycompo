@@ -299,7 +299,7 @@ class Model {
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
-            TinycompoDebug("Trying to declare a component that does not inherit from Component!")
+            TinycompoDebug("trying to declare a component that does not inherit from Component")
                 .fail();
         }
         components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
@@ -315,7 +315,7 @@ class Model {
     void composite(Key key, Args&&... args) {
         if (!std::is_base_of<_AbstractComposite, T>::value) {
             TinycompoDebug(
-                "Trying to declare a composite that does not inherit from Composite<Key>!")
+                "trying to declare a composite that does not inherit from Composite<Key>")
                 .fail();
         }
         composites.emplace(

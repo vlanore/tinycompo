@@ -178,6 +178,19 @@ TEST_CASE("model test: components in composites") {
                               "type.\n");
 }
 
+TEST_CASE("model test: composite/component inheritance mismatch") {
+    class MyClass : public Composite<int> {};
+    Model<> model;
+    TINYCOMPO_TEST_ERRORS { model.component<MyClass>("hello"); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "trying to declare a component that does not inherit from Component",
+        "-- Error: trying to declare a component that does not inherit from Component\n");
+    TINYCOMPO_TEST_MORE_ERRORS { model.composite<MyCompo>("test"); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "trying to declare a composite that does not inherit from Composite<Key>",
+        "-- Error: trying to declare a composite that does not inherit from Composite<Key>\n");
+}
+
 TEST_CASE("model test: composite referencees") {
     class MyComposite : public Composite<int> {};
 
