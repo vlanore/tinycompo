@@ -178,6 +178,15 @@ TEST_CASE("model test: components in composites") {
                               "type.\n");
 }
 
+TEST_CASE("model test: model copy") {
+    Model<> model;
+    model.component<MyInt>("compo0", 17);
+    auto model2 = model;
+    model2.component<MyInt>("compo1", 19);
+    CHECK(model.size() == 1);
+    CHECK(model2.size() == 2);
+}
+
 TEST_CASE("model test: composite/component inheritance mismatch") {
     class MyClass : public Composite<int> {};
     Model<> model;

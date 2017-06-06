@@ -312,7 +312,6 @@ class Model {
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, _Composite> composites;
 
-    // Model(const Model&) = delete;
     Model() = default;
 
     void merge(const Model& newData) {
