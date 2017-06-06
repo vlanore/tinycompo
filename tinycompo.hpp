@@ -317,7 +317,7 @@ class Model {
     void merge(const Model& newData) {
         components.insert(newData.components.begin(), newData.components.end());
         operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
-        // TODO add composites
+        composites.insert(composites.end(), newData.composites.begin(), newData.composites.end());
     }
 
     template <bool isComposite, class T, class Key1, class... Args>

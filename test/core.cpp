@@ -179,10 +179,12 @@ TEST_CASE("model test: components in composites") {
 }
 
 TEST_CASE("model test: model copy") {
+    class MyComposite : public Composite<int> {};
     Model<> model;
-    model.component<MyInt>("compo0", 17);
+    model.composite<MyComposite>("compo0");
     auto model2 = model;
-    model2.component<MyInt>("compo1", 19);
+    model2.component<MyInt>(Address("compo0", 1), 19);
+    model2.component<MyInt>("compo1", 17);
     CHECK(model.size() == 1);
     CHECK(model2.size() == 2);
 }
