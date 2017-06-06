@@ -81,19 +81,19 @@ TEST_CASE("Array connector error test.") {
 TEST_CASE("MultiUse tests.") {
     Model<> model;
     model.composite<Array<MyInt>>("intArray", 3, 12);
-    model.component<IntReducer>("Reducer");
+    model.component<IntReducer>("reducer");
     Assembly<> assembly(model);
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() ==
-          "Reducer: IntReducer\n"
-          "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\n");
-    MultiUse<IntInterface>::_connect(assembly, "Reducer", "ptr", "intArray");
+          ""
+          "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
+    MultiUse<IntInterface>::_connect(assembly, "reducer", "ptr", "intArray");
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    auto& refReducer = assembly.at<IntInterface>("Reducer");
+    auto& refReducer = assembly.at<IntInterface>("reducer");
     CHECK(refReducer.get() == 47);
 }
 
