@@ -269,6 +269,8 @@ class Model {
 
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
+        static_assert(std::is_base_of<Component, T>::value,
+                      "Trying to declare a component that does not inherit from Component!");
         components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
