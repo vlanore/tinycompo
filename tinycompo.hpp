@@ -252,7 +252,7 @@ class Assembly;  // forward-decl
 class _AbstractComposite {  // inheritance-only class
   public:
     virtual ~_AbstractComposite() = default;
-    virtual Component* _constructor() const = 0;
+    virtual Component* _constructor() = 0;
 };
 
 template <class Key = const char*>
@@ -260,6 +260,18 @@ class Model {
     using _InstanceType = int;
 
   public:
+    std::map<Key, _Component> components;
+    std::vector<_Operation<Assembly<Key>, Key>> operations;
+    std::map<Key, std::unique_ptr<_AbstractComposite>> composites;
+
+    Model(const Model&) = delete;
+    Model() = default;
+
+    void merge(const Model& newData) {
+        components.insert(newData.components.begin(), newData.components.end());
+        operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
+    }
+
     template <class T, class Key1, class... Args>
     void _route(_InstanceType itype, _Address<Key1> address, Args&&... args) {
         if (itype == 0) {  // composite
@@ -285,15 +297,6 @@ class Model {
             e << "Assembly contains no composite at address " << address.key << '.';
             e.fail();
         }
-    }
-
-    std::map<Key, _Component> components;
-    std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, std::unique_ptr<_AbstractComposite>> composites;
-
-    void merge(const Model& newData) {
-        components.insert(newData.components.begin(), newData.components.end());
-        operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
     }
 
     template <class T, class... Args>
@@ -345,7 +348,7 @@ class Model {
 template <class Key>
 class Composite : public Model<Key>, public _AbstractComposite {
   public:
-    virtual Component* _constructor() const override {
+    virtual Component* _constructor() override {
         return static_cast<Component*>(new Assembly<Key>(*this));
     }
 };
@@ -358,11 +361,11 @@ template <class Key = const char*>
 class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
-    // Model<Key> internal_model;
+    Model<Key> &internal_model;
 
   public:
     Assembly() = delete;
-    explicit Assembly(const Model<Key>& model) /*: internal_model(model)*/ {
+    explicit Assembly(Model<Key>& model) : internal_model(model) {
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
