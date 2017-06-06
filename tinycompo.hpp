@@ -257,7 +257,36 @@ class _AbstractComposite {  // inheritance-only class
 
 template <class Key = const char*>
 class Model {
+    using _InstanceType = int;
+
   public:
+    template <class T, class Key1, class... Args>
+    void _route(_InstanceType itype, _Address<Key1> address, Args&&... args) {
+        if (itype == 0) {  // composite
+            composite<T>(address.key, std::forward<Args>(args)...);
+        } else {  // component
+            component<T>(address.key, std::forward<Args>(args)...);
+        }
+    }
+
+    template <class T, class Key1, class Key2, class... Keys, class... Args>
+    void _route(_InstanceType itype, _Address<Key1, Key2, Keys...> address, Args&&... args) {
+        if (composites.find(address.key) != composites.end()) {
+            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
+            if (ptr == nullptr) {
+                TinycompoDebug e("key type does not match composite key type");
+                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
+                  << address.key << " seems to have another key type.";
+                e.fail();
+            }
+            ptr->template _route<T>(itype, address.rest, std::forward<Args>(args)...);
+        } else {
+            TinycompoDebug e("composite does not exist");
+            e << "Assembly contains no composite at address " << address.key << '.';
+            e.fail();
+        }
+    }
+
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, std::unique_ptr<_AbstractComposite>> composites;
@@ -269,66 +298,35 @@ class Model {
 
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        static_assert(std::is_base_of<Component, T>::value,
-                      "Trying to declare a component that does not inherit from Component!");
+        if (!std::is_base_of<Component, T>::value) {
+            TinycompoDebug("Trying to declare a component that does not inherit from Component!")
+                .fail();
+        }
         components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
-    template <class T, class Key1, class... Args>
-    void component(_Address<Key1> address, Args&&... args) {
-        component<T>(address.key, std::forward<Args>(args)...);
-    }
-
     template <class T, class Key1, class Key2, class... Keys, class... Args>
     void component(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        if (composites.find(address.key) != composites.end()) {
-            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
-            if (ptr == nullptr) {
-                TinycompoDebug e("key type does not match composite key type");
-                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
-                  << address.key << " seems to have another key type.";
-                e.fail();
-            }
-            ptr->template component<T>(address.rest, std::forward<Args>(args)...);
-        } else {
-            TinycompoDebug e("composite does not exist");
-            e << "Assembly contains no composite at address " << address.key << '.';
-            e.fail();
-        }
+        _route<T>(1, address, std::forward<Args>(args)...);
     }
 
     template <class T, class... Args>
-    void composite(Key address, Args&&... args) {
-        static_assert(std::is_base_of<_AbstractComposite, T>::value,
-                      "Trying to declare a composite that does not inherit from Composite<T>!");
+    void composite(Key key, Args&&... args) {
+        if (!std::is_base_of<_AbstractComposite, T>::value) {
+            TinycompoDebug(
+                "Trying to declare a composite that does not inherit from Composite<Key>!")
+                .fail();
+        }
         composites.emplace(
-            std::piecewise_construct, std::forward_as_tuple(address),
+            std::piecewise_construct, std::forward_as_tuple(key),
             std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
                 dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
     }
 
-    template <class T, class Key1, class... Args>
-    void composite(_Address<Key1> address, Args&&... args) {
-        composite<T>(address.key, std::forward<Args>(args)...);
-    }
-
-    template <class T, class Key1, class Key2, class... Keys, class... Args>
-    void composite(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        if (composites.find(address.key) != composites.end()) {
-            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
-            if (ptr == nullptr) {
-                TinycompoDebug e("key type does not match composite key type");
-                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
-                  << address.key << " seems to have another key type.";
-                e.fail();
-            }
-            ptr->template composite<T>(address.rest, std::forward<Args>(args)...);
-        } else {
-            TinycompoDebug e("composite does not exist");
-            e << "Assembly contains no composite at address " << address.key << '.';
-            e.fail();
-        }
+    template <class T, class... Keys, class... Args>
+    void composite(_Address<Keys...> address, Args&&... args) {
+        _route<T>(0, address, args...);
     }
 
     template <class CompositeType>
