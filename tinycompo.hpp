@@ -255,43 +255,85 @@ class _AbstractComposite {  // inheritance-only class
     virtual Component* _constructor() = 0;
 };
 
+class _Composite {
+    std::unique_ptr<_AbstractComposite> ptr;
+    std::function<_AbstractComposite*()> _clone;
+
+  public:
+    std::function<Component*()> _constructor;
+
+    _Composite() = delete;
+
+    template <class T, class... Args>
+    explicit _Composite(_Type<T>, Args&&... args)
+        : ptr(std::unique_ptr<_AbstractComposite>(new T(std::forward<Args>(args)...))),
+          _clone([=]() {
+              return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get())));
+          }),
+          _constructor([=]() {
+              return static_cast<Component*>(
+                  new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get())));
+          }) {}
+
+    _Composite(const _Composite& other)
+        : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
+
+    _AbstractComposite* get() { return ptr.get(); }
+};
+
 template <class Key = const char*>
 class Model {
     using _InstanceType = int;
 
+    template <class T, bool b>
+    struct _Helper {
+        template <class... Args>
+        static void declare(Model<Key>& model, Args&&... args) {
+            model.component<T>(std::forward<Args>(args)...);
+        }
+    };
+
+    template <class T>
+    struct _Helper<T, true> {
+        template <class... Args>
+        static void declare(Model<Key>& model, Args&&... args) {
+            model.composite<T>(std::forward<Args>(args)...);
+        }
+    };
+
   public:
+    using KeyType = Key;
+
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, std::unique_ptr<_AbstractComposite>> composites;
+    std::map<Key, _Composite> composites;
 
-    Model(const Model&) = delete;
+    // Model(const Model&) = delete;
     Model() = default;
 
     void merge(const Model& newData) {
         components.insert(newData.components.begin(), newData.components.end());
         operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
+        // TODO add composites
     }
 
-    template <class T, class Key1, class... Args>
-    void _route(_InstanceType itype, _Address<Key1> address, Args&&... args) {
-        if (itype == 0) {  // composite
-            composite<T>(address.key, std::forward<Args>(args)...);
-        } else {  // component
-            component<T>(address.key, std::forward<Args>(args)...);
-        }
+    template <bool isComposite, class T, class Key1, class... Args>
+    void _route(_Address<Key1> address, Args&&... args) {
+        _Helper<T, isComposite>::declare(*this, address.key, std::forward<Args>(args)...);
     }
 
-    template <class T, class Key1, class Key2, class... Keys, class... Args>
-    void _route(_InstanceType itype, _Address<Key1, Key2, Keys...> address, Args&&... args) {
-        if (composites.find(address.key) != composites.end()) {
-            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
+    template <bool isComposite, class T, class Key1, class Key2, class... Keys, class... Args>
+    void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
+        auto compositeIt = composites.find(address.key);
+        if (compositeIt != composites.end()) {
+            auto ptr = dynamic_cast<Model<Key2>*>(compositeIt->second.get());
             if (ptr == nullptr) {
                 TinycompoDebug e("key type does not match composite key type");
                 e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
                   << address.key << " seems to have another key type.";
                 e.fail();
             }
-            ptr->template _route<T>(itype, address.rest, std::forward<Args>(args)...);
+            ptr->template _route<isComposite, T>(address.rest, std::forward<Args>(args)...);
         } else {
             TinycompoDebug e("composite does not exist");
             e << "Assembly contains no composite at address " << address.key << '.';
@@ -311,7 +353,7 @@ class Model {
 
     template <class T, class Key1, class Key2, class... Keys, class... Args>
     void component(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        _route<T>(1, address, std::forward<Args>(args)...);
+        _route<false, T>(address, std::forward<Args>(args)...);
     }
 
     template <class T, class... Args>
@@ -321,20 +363,19 @@ class Model {
                 "trying to declare a composite that does not inherit from Composite<Key>")
                 .fail();
         }
-        composites.emplace(
-            std::piecewise_construct, std::forward_as_tuple(key),
-            std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
-                dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
+        composites.emplace(std::piecewise_construct, std::forward_as_tuple(key),
+                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     template <class T, class... Keys, class... Args>
     void composite(_Address<Keys...> address, Args&&... args) {
-        _route<T>(0, address, args...);
+        _route<true, T>(address, args...);
     }
 
     template <class CompositeType>
     CompositeType& compositeRef(const Key& address) {
-        return dynamic_cast<CompositeType&>(*composites[address].get());
+        auto compositeIt = composites.find(address);
+        return dynamic_cast<CompositeType&>(*compositeIt->second.get());
     }
 
     template <class C, class... Args>
@@ -370,7 +411,7 @@ class Assembly : public Component {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
         for (auto& c : model.composites) {
-            instances.emplace(c.first, std::unique_ptr<Component>(c.second->_constructor()));
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
         for (auto& o : model.operations) {
             o._connect(*this);
