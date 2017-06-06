@@ -158,9 +158,9 @@ TEST_CASE("address tests.") {
 TEST_CASE("model test: components in composites") {
     class MyComposite : public Composite<int> {};
     Model<> model;
-    model.component<MyComposite>("compo0");
+    model.composite<MyComposite>("compo0");
     model.component<MyInt>(Address("compo0", 1), 5);
-    model.component<MyComposite>(Address("compo0", 2));
+    model.composite<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
     CHECK(model.size() == 1);  // top level contains only one component which is a composite
     auto& compo0 = dynamic_cast<Model<int>&>(*model.composites["compo0"].get());
@@ -182,12 +182,12 @@ TEST_CASE("model test: composite referencees") {
     class MyComposite : public Composite<int> {};
 
     Model<> model;
-    model.component<MyComposite>("compo0");
-    auto& compo0ref = model.composite<MyComposite>("compo0");
+    model.composite<MyComposite>("compo0");
+    auto& compo0ref = model.compositeRef<MyComposite>("compo0");
     compo0ref.component<MyCompo>(1, 17, 18);
     compo0ref.component<MyCompo>(2, 21, 22);
     CHECK(model.size() == 1);
-    CHECK(model.composite<MyComposite>("compo0").size() == 2);
+    CHECK(model.compositeRef<MyComposite>("compo0").size() == 2);
 }
 
 /*
@@ -215,7 +215,7 @@ TEST_CASE("Assembly test: instances and call.") {
 TEST_CASE("Assembly test: instantiating composites.") {
     class MyComposite : public Composite<int> {};
     Model<> model;
-    model.component<MyComposite>("composite");
+    model.composite<MyComposite>("composite");
     model.component<MyInt>(Address("composite", 0), 12);
     Assembly<> assembly(model);
     std::stringstream ss;
@@ -230,10 +230,10 @@ TEST_CASE("Assembly test: sub-addressing tests.") {
     class MyComposite : public Composite<int> {};
     class MyOtherComposite : public Composite<const char*> {};
     Model<> model;
-    model.component<MyComposite>("Array");
+    model.composite<MyComposite>("Array");
     model.component<MyCompo>(Address("Array", 0), 12, 13);
     model.component<MyCompo>(Address("Array", 1), 15, 19);
-    model.component<MyOtherComposite>(Address("Array", 2));
+    model.composite<MyOtherComposite>(Address("Array", 2));
     model.component<MyCompo>(Address("Array", 2, "youpi"), 7, 9);
     Assembly<> assembly(model);
 
@@ -299,21 +299,20 @@ TEST_CASE("Tree tests.") {
                               "-- Error: trying to add root to non-empty Tree.\n");
 }
 
-// /*
-// ====================================================================================================
-//   ~*~ ToChildren ~*~
-// ==================================================================================================*/
+/*
+====================================================================================================
+  ~*~ ToChildren ~*~
+==================================================================================================*/
 // TEST_CASE("ToChildren tests.") {
 //     Model<> model;
 //     model.component<Tree>("tree");
-//     Assembly<> assembly(model);
-//     auto& treeRef = assembly.at<Tree>("tree");
+//     auto& treeRef = model.composite<Tree>("tree");
 //     auto root = treeRef.addRoot<IntReducer>();
 //     auto leaf = treeRef.addChild<MyInt>(root, 11);
 //     auto child = treeRef.addChild<MyIntProxy>(root);
 //     treeRef.addChild<MyInt>(child, 3);
 //     CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
-//     treeRef.instantiate();
+//     Assembly<> assembly(model);
 //     ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");
-//     CHECK(treeRef.at<IntReducer>(root).get() == 17);  // 11 + 2*3
+//     CHECK(assembly.at<IntReducer>(Address("tree", root)).get() == 17);  // 11 + 2*3
 // }

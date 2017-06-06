@@ -257,29 +257,6 @@ class _AbstractComposite {  // inheritance-only class
 
 template <class Key = const char*>
 class Model {
-    template <class T, bool t = std::is_base_of<_AbstractComposite, T>::value>
-    class _ToggleComposite {
-      public:
-        template <class... Args>
-        static void _do(Model<Key>& model, Key address, Args&&... args) {
-            model.components.emplace(
-                std::piecewise_construct, std::forward_as_tuple(address),
-                std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
-        }
-    };
-
-    template <class T>
-    class _ToggleComposite<T, true> {
-      public:
-        template <class... Args>
-        static void _do(Model<Key>& model, Key address, Args&&... args) {
-            model.composites.emplace(
-                std::piecewise_construct, std::forward_as_tuple(address),
-                std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
-                    dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
-        }
-    };
-
   public:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
@@ -292,7 +269,8 @@ class Model {
 
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
-        _ToggleComposite<T>::_do(*this, address, std::forward<Args>(args)...);
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
+                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
     template <class T, class Key1, class... Args>
@@ -318,8 +296,39 @@ class Model {
         }
     }
 
+    template <class T, class... Args>
+    void composite(Key address, Args&&... args) {
+        composites.emplace(
+            std::piecewise_construct, std::forward_as_tuple(address),
+            std::forward_as_tuple(std::unique_ptr<_AbstractComposite>(
+                dynamic_cast<_AbstractComposite*>(new T(std::forward<Args>(args)...)))));
+    }
+
+    template <class T, class Key1, class... Args>
+    void composite(_Address<Key1> address, Args&&... args) {
+        composite<T>(address.key, std::forward<Args>(args)...);
+    }
+
+    template <class T, class Key1, class Key2, class... Keys, class... Args>
+    void composite(_Address<Key1, Key2, Keys...> address, Args&&... args) {
+        if (composites.find(address.key) != composites.end()) {
+            auto ptr = dynamic_cast<Model<Key2>*>(composites[address.key].get());
+            if (ptr == nullptr) {
+                TinycompoDebug e("key type does not match composite key type");
+                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
+                  << address.key << " seems to have another key type.";
+                e.fail();
+            }
+            ptr->template composite<T>(address.rest, std::forward<Args>(args)...);
+        } else {
+            TinycompoDebug e("composite does not exist");
+            e << "Assembly contains no composite at address " << address.key << '.';
+            e.fail();
+        }
+    }
+
     template <class CompositeType>
-    CompositeType& composite(const Key& address) {
+    CompositeType& compositeRef(const Key& address) {
         return dynamic_cast<CompositeType&>(*composites[address].get());
     }
 
@@ -347,10 +356,11 @@ template <class Key = const char*>
 class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
+    // Model<Key> internal_model;
 
   public:
     Assembly() = delete;
-    explicit Assembly(const Model<Key>& model) {
+    explicit Assembly(const Model<Key>& model) /*: internal_model(model)*/ {
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
@@ -386,6 +396,8 @@ class Assembly : public Component {
     T& at(const _Address<Key1, Key2, Keys...>& address) const {
         return at<Assembly<Key2>>(address.key).template at<T>(address.rest);
     }
+
+    // const Model<Key>& model() { return model; }
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
@@ -541,14 +553,15 @@ class Tree : public Composite<TreeRef> {
 //   ~*~ ToChildren ~*~
 //   A tree connector that connects every node to its children.
 // ==================================================================================================*/
-// template <class Interface, class Key = std::string>
+// template <class Interface, class Key = const char*>
 // class ToChildren {
 //   public:
 //     static void _connect(Assembly<>& a, Key tree, std::string prop) {
-//         auto& treeRef = a.at<Tree>(tree);
+//         auto& treeRef = a.at<Assembly<TreeRef>>(tree);
+//         auto& treeModelRef = a.model().composite<Tree>(tree);
 //         for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
 //             auto& nodeRef = treeRef.at(i);
-//             auto& children = treeRef.getChildren(i);
+//             auto& children = treeModelRef.getChildren(i);
 //             for (auto j : children) {  // for every one of its children...
 //                 nodeRef.set(prop, &treeRef.template at<Interface>(j));
 //             }

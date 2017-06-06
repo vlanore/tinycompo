@@ -47,8 +47,8 @@ TEST_CASE("Array tests.") {
 ==================================================================================================*/
 TEST_CASE("Array connector tests.") {
     Model<> model;
-    model.component<Array<MyInt>>("intArray", 5, 12);
-    model.component<Array<MyIntProxy>>("proxyArray", 5);
+    model.composite<Array<MyInt>>("intArray", 5, 12);
+    model.composite<Array<MyIntProxy>>("proxyArray", 5);
     Assembly<> assembly(model);
     ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
     CHECK(assembly.at<Assembly<int>>("intArray").size() == 5);
@@ -63,8 +63,8 @@ TEST_CASE("Array connector tests.") {
 
 TEST_CASE("Array connector error test.") {
     Model<> model;
-    model.component<Array<MyInt>>("intArray", 5, 12);
-    model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
+    model.composite<Array<MyInt>>("intArray", 5, 12);
+    model.composite<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     Assembly<> assembly(model);
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
@@ -80,7 +80,7 @@ TEST_CASE("Array connector error test.") {
 ==================================================================================================*/
 TEST_CASE("MultiUse tests.") {
     Model<> model;
-    model.component<Array<MyInt>>("intArray", 3, 12);
+    model.composite<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("Reducer");
     Assembly<> assembly(model);
     std::stringstream ss;
@@ -104,7 +104,7 @@ TEST_CASE("MultiUse tests.") {
 TEST_CASE("MultiProvide connector tests.") {
     Model<> model;
     model.component<MyInt>("superInt", 17);  // random number
-    model.component<Array<MyIntProxy>>("proxyArray", 5);
+    model.composite<Array<MyIntProxy>>("proxyArray", 5);
     Assembly<> assembly(model);
     MultiProvide<IntInterface>::_connect(assembly, "proxyArray", "ptr", "superInt");
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
