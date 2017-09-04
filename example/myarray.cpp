@@ -4,14 +4,13 @@
 
 class IntHolder : public Component {
   public:
-    explicit IntHolder(int in = 1) : myint(in) { port("print", &IntHolder::print); }
+    explicit IntHolder(int in = 1) : myint(in) {}
     std::string _debug() const override {
         std::stringstream ss;
         ss << "IntHolder(" << myint << ")";
         return ss.str();
     }
     int myint = 0;
-    void print() { printf("%d", myint); }
 };
 
 // Class that specializes Array with a custom contructor
