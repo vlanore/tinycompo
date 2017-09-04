@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <tinycompo.hpp>
+#include <vector>
 
 class TextProcessor {
   public:
@@ -44,7 +45,7 @@ class ConstantText : public Component, public TextSource {
 };
 
 class ProcessAndPrint : public Component {
-    TextProcessor* effect = nullptr;
+    std::vector<TextProcessor*> effects;
     TextSource* source = nullptr;
 
   public:
@@ -54,21 +55,30 @@ class ProcessAndPrint : public Component {
         port("go", &ProcessAndPrint::go);
     }
 
-    void setEffect(TextProcessor* effectin) { effect = effectin; }
+    void setEffect(TextProcessor* effectin) { effects.push_back(effectin); }
     void setSource(TextSource* sourcein) { source = sourcein; }
 
     std::string _debug() const { return "ProcessAndPrint"; }
 
-    void go() { std::cout << effect->process(source->get()); }
+    void go() {
+        std::string text = source->get();
+        for (auto ptr : effects) {
+            text = ptr->process(text);
+        }
+        std::cout << text;
+    }
 };
 
 int main() {
     Model<> mymodel;
     mymodel.component<ConstantText>("MyText", "Hello, I'm a rabbit.\nI like carrots.\n");
     mymodel.component<ReplaceChar>("ReplaceAbyB", 'a', 'b');
+    mymodel.component<ReplaceChar>("ReplaceBbyD", 'b', 'd');
     mymodel.component<ProcessAndPrint>("Controller");
     mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect",
                                                Address("ReplaceAbyB"));
+    mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect",
+                                               Address("ReplaceBbyD"));
     mymodel.connect<UseProvide<TextSource>>(Address("Controller"), "source", Address("MyText"));
 
     Assembly<> myassembly(mymodel);
