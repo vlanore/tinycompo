@@ -1,5 +1,5 @@
 TEST_FILES = $(shell ls -d -1 $$PWD/test/*.*)
-EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.cpp)
+EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 
 .PHONY: test clean format ready
 
