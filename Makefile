@@ -1,9 +1,9 @@
-TEST_FILES = $(shell ls -d -1 $$PWD/test/*.*)
+TEST_FILES = $(shell ls -d -1 $$PWD/test/*.*pp)
 EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 
 .PHONY: test clean format ready
 
-all: test_bin example/hello_bin example/text_process_bin example/myarray_bin
+all: test_bin example/hello_bin example/text_process_bin example/myarray_bin example/poissonGamma_bin
 
 test_bin: test.cpp tinycompo.hpp $(TEST_FILES)
 	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) -Wall -Wextra

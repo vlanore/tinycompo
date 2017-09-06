@@ -66,9 +66,7 @@ TEST_CASE("Array connector error test.") {
     model.composite<Array<MyInt>>("intArray", 5, 12);
     model.composite<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     Assembly<> assembly(model);
-    TINYCOMPO_TEST_ERRORS {
-        ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray");
-    }
+    TINYCOMPO_TEST_ERRORS { ArrayOneToOne<IntInterface>::_connect(assembly, "proxyArray", "ptr", "intArray"); }
     TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes",
                               "-- Error: Array connection: mismatched sizes. proxyArray has size 4 "
                               "while intArray has size 5.\n");
@@ -85,8 +83,7 @@ TEST_CASE("MultiUse tests.") {
     Assembly<> assembly(model);
     std::stringstream ss;
     assembly.print_all(ss);
-    CHECK(ss.str() ==
-          "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
+    CHECK(ss.str() == "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
     MultiUse<IntInterface>::_connect(assembly, "reducer", "ptr", "intArray");
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);

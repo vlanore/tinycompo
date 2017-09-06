@@ -90,8 +90,7 @@
 #define DOCTEST_VERSION_PATCH 4
 #define DOCTEST_VERSION_STR "1.1.4"
 
-#define DOCTEST_VERSION \
-    (DOCTEST_VERSION_MAJOR * 10000 + DOCTEST_VERSION_MINOR * 100 + DOCTEST_VERSION_PATCH)
+#define DOCTEST_VERSION (DOCTEST_VERSION_MAJOR * 10000 + DOCTEST_VERSION_MINOR * 100 + DOCTEST_VERSION_PATCH)
 
 // =================================================================================================
 // == MODERN C++ FEATURE DETECTION =================================================================
@@ -254,9 +253,8 @@ extern "C" __declspec(dllimport) void __stdcall DebugBreak();
 #define DOCTEST_BREAK_INTO_DEBUGGER() ((void)0)
 #endif  // linux
 
-#define DOCTEST_BREAK_INTO_DEBUGGER_CHECKED()                            \
-    if (doctest::detail::isDebuggerActive() && !DOCTEST_GCS().no_breaks) \
-        DOCTEST_BREAK_INTO_DEBUGGER();
+#define DOCTEST_BREAK_INTO_DEBUGGER_CHECKED() \
+    if (doctest::detail::isDebuggerActive() && !DOCTEST_GCS().no_breaks) DOCTEST_BREAK_INTO_DEBUGGER();
 
 #ifdef __clang__
 // to detect if libc++ is being used with clang (the _LIBCPP_VERSION identifier)
@@ -289,14 +287,13 @@ namespace std {
 #ifdef DOCTEST_CONFIG_WITH_STATIC_ASSERT
 #define DOCTEST_STATIC_ASSERT(expression, message) static_assert(expression, #message)
 #else  // DOCTEST_CONFIG_WITH_STATIC_ASSERT
-#define DOCTEST_STATIC_ASSERT(expression, message)                                               \
-    struct DOCTEST_CAT(__static_assertion_at_line_, __LINE__) {                                  \
-        doctest::detail::static_assert_impl::StaticAssertion<static_cast<bool>((expression))>    \
-            DOCTEST_CAT(DOCTEST_CAT(DOCTEST_CAT(STATIC_ASSERTION_FAILED_AT_LINE_, __LINE__), _), \
-                        message);                                                                \
-    };                                                                                           \
-    typedef doctest::detail::static_assert_impl::StaticAssertionTest<sizeof(                     \
-        DOCTEST_CAT(__static_assertion_at_line_, __LINE__))>                                     \
+#define DOCTEST_STATIC_ASSERT(expression, message)                                                         \
+    struct DOCTEST_CAT(__static_assertion_at_line_, __LINE__) {                                            \
+        doctest::detail::static_assert_impl::StaticAssertion<static_cast<bool>((expression))> DOCTEST_CAT( \
+            DOCTEST_CAT(DOCTEST_CAT(STATIC_ASSERTION_FAILED_AT_LINE_, __LINE__), _), message);             \
+    };                                                                                                     \
+    typedef doctest::detail::static_assert_impl::StaticAssertionTest<sizeof(                               \
+        DOCTEST_CAT(__static_assertion_at_line_, __LINE__))>                                               \
         DOCTEST_CAT(__static_assertion_test_at_line_, __LINE__)
 #endif  // DOCTEST_CONFIG_WITH_STATIC_ASSERT
 
@@ -486,8 +483,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
       public:
         explicit Approx(double value);
 
-        Approx(Approx const& other)
-            : m_epsilon(other.m_epsilon), m_scale(other.m_scale), m_value(other.m_value) {}
+        Approx(Approx const& other) : m_epsilon(other.m_epsilon), m_scale(other.m_scale), m_value(other.m_value) {}
 
         Approx operator()(double value) {
             Approx approx(value);
@@ -678,8 +674,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
             const char* m_file;  // the file in which the test was registered
             unsigned m_line;     // the line where the test was registered
 
-            TestData(const char* suite, const char* name, funcType f, const char* file,
-                     unsigned line)
+            TestData(const char* suite, const char* name, funcType f, const char* file, unsigned line)
                 : m_suite(suite), m_name(name), m_f(f), m_file(file), m_line(line) {}
 
             bool operator<(const TestData& other) const;
@@ -690,8 +685,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
             const char* m_file;
             int m_line;
 
-            SubcaseSignature(const char* name, const char* file, int line)
-                : m_name(name), m_file(file), m_line(line) {}
+            SubcaseSignature(const char* name, const char* file, int line) : m_name(name), m_file(file), m_line(line) {}
 
             bool operator<(const SubcaseSignature& other) const;
         };
@@ -708,8 +702,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
         };
 
         template <typename L, typename R>
-        String stringifyBinaryExpr(const DOCTEST_REF_WRAP(L) lhs, const char* op,
-                                   const DOCTEST_REF_WRAP(R) rhs) {
+        String stringifyBinaryExpr(const DOCTEST_REF_WRAP(L) lhs, const char* op, const DOCTEST_REF_WRAP(R) rhs) {
             return toString(lhs) + op + toString(rhs);
         }
 
@@ -727,8 +720,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
             Result(bool passed = false, const String& decomposition = String())
                 : m_passed(passed), m_decomposition(decomposition) {}
 
-            Result(const Result& other)
-                : m_passed(other.m_passed), m_decomposition(other.m_decomposition) {}
+            Result(const Result& other) : m_passed(other.m_passed), m_decomposition(other.m_decomposition) {}
 
 // to fix gcc 4.7 "-Winline" warnings
 #if defined(__GNUC__) && !defined(__clang__)
@@ -902,8 +894,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 
         struct ExpressionDecomposer {
             template <typename L>
-            Expression_lhs<const DOCTEST_REF_WRAP(L)> operator<<(const DOCTEST_REF_WRAP(L)
-                                                                     operand) {
+            Expression_lhs<const DOCTEST_REF_WRAP(L)> operator<<(const DOCTEST_REF_WRAP(L) operand) {
                 return Expression_lhs<const DOCTEST_REF_WRAP(L)>(operand);
             }
         };
@@ -920,17 +911,15 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
         void logTestCrashed();
         void logTestException(const char* what);
 
-        void logAssert(bool passed, const char* decomposition, bool threw, const char* expr,
-                       assertType::Enum assert_type, const char* file, int line);
+        void logAssert(bool passed, const char* decomposition, bool threw, const char* expr, assertType::Enum assert_type,
+                       const char* file, int line);
 
-        void logAssertThrows(bool threw, const char* expr, assertType::Enum assert_type,
-                             const char* file, int line);
+        void logAssertThrows(bool threw, const char* expr, assertType::Enum assert_type, const char* file, int line);
 
-        void logAssertThrowsAs(bool threw, bool threw_as, const char* as, const char* expr,
-                               assertType::Enum assert_type, const char* file, int line);
+        void logAssertThrowsAs(bool threw, bool threw_as, const char* as, const char* expr, assertType::Enum assert_type,
+                               const char* file, int line);
 
-        void logAssertNothrow(bool threw, const char* expr, assertType::Enum assert_type,
-                              const char* file, int line);
+        void logAssertNothrow(bool threw, const char* expr, assertType::Enum assert_type, const char* file, int line);
 
         bool isDebuggerActive();
         void writeToDebugConsole(const String&);
@@ -974,8 +963,8 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
             bool m_threw_as;
             bool m_failed;
 
-            ResultBuilder(assertType::Enum assert_type, const char* file, int line,
-                          const char* expr, const char* exception_type = "");
+            ResultBuilder(assertType::Enum assert_type, const char* file, int line, const char* expr,
+                          const char* exception_type = "");
 
 // to fix gcc 4.7 "-Winline" warnings
 #if defined(__GNUC__) && !defined(__clang__)
@@ -1007,9 +996,8 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
         }  // namespace assertAction
 
         template <int comparison, typename L, typename R>
-        int fast_binary_assert(assertType::Enum assert_type, const char* file, int line,
-                               const char* lhs_str, const char* rhs_str,
-                               const DOCTEST_REF_WRAP(L) lhs, const DOCTEST_REF_WRAP(R) rhs) {
+        int fast_binary_assert(assertType::Enum assert_type, const char* file, int line, const char* lhs_str,
+                               const char* rhs_str, const DOCTEST_REF_WRAP(L) lhs, const DOCTEST_REF_WRAP(R) rhs) {
             String expr = String(lhs_str) + ", " + rhs_str;
             const char* expr_str = expr.c_str();
             ResultBuilder rb(assert_type, file, line, expr_str);
@@ -1037,8 +1025,8 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
         }
 
         template <typename L>
-        int fast_unary_assert(assertType::Enum assert_type, const char* file, int line,
-                              const char* val_str, const DOCTEST_REF_WRAP(L) val) {
+        int fast_unary_assert(assertType::Enum assert_type, const char* file, int line, const char* val_str,
+                              const DOCTEST_REF_WRAP(L) val) {
             ResultBuilder rb(assert_type, file, line, val_str);
 
             rb.m_result.m_passed = !!val;
@@ -1106,16 +1094,14 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
     static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) __attribute__((unused)) = \
         doctest::detail::regTest(f, __LINE__, __FILE__, name);
 #elif defined(__clang__)
-#define DOCTEST_REGISTER_FUNCTION(f, name)                                       \
-    _Pragma("clang diagnostic push")                                             \
-        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int \
-            DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) =                              \
-                doctest::detail::regTest(f, __LINE__, __FILE__, name);           \
+#define DOCTEST_REGISTER_FUNCTION(f, name)                                                                               \
+    _Pragma("clang diagnostic push")                                                                                     \
+        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = \
+            doctest::detail::regTest(f, __LINE__, __FILE__, name);                                                       \
     _Pragma("clang diagnostic pop")
 #else  // MSVC
-#define DOCTEST_REGISTER_FUNCTION(f, name)             \
-    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = \
-        doctest::detail::regTest(f, __LINE__, __FILE__, name);
+#define DOCTEST_REGISTER_FUNCTION(f, name) \
+    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = doctest::detail::regTest(f, __LINE__, __FILE__, name);
 #endif  // MSVC
 
 #define DOCTEST_IMPLEMENT_FIXTURE(der, base, func, name) \
@@ -1137,20 +1123,17 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
     static void f()
 
 // for registering tests
-#define DOCTEST_TEST_CASE(name) \
-    DOCTEST_CREATE_AND_REGISTER_FUNCTION(DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
+#define DOCTEST_TEST_CASE(name) DOCTEST_CREATE_AND_REGISTER_FUNCTION(DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
 
 // for registering tests with a fixture
-#define DOCTEST_TEST_CASE_FIXTURE(c, name)                                \
-    DOCTEST_IMPLEMENT_FIXTURE(DOCTEST_ANONYMOUS(_DOCTEST_ANON_CLASS_), c, \
-                              DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
+#define DOCTEST_TEST_CASE_FIXTURE(c, name) \
+    DOCTEST_IMPLEMENT_FIXTURE(DOCTEST_ANONYMOUS(_DOCTEST_ANON_CLASS_), c, DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
 
 // for subcases
 #if defined(__GNUC__)
-#define DOCTEST_SUBCASE(name)                         \
-    if (const doctest::detail::Subcase &              \
-            DOCTEST_ANONYMOUS(_DOCTEST_ANON_SUBCASE_) \
-                __attribute__((unused)) = doctest::detail::Subcase(name, __FILE__, __LINE__))
+#define DOCTEST_SUBCASE(name)                                                                                \
+    if (const doctest::detail::Subcase & DOCTEST_ANONYMOUS(_DOCTEST_ANON_SUBCASE_) __attribute__((unused)) = \
+            doctest::detail::Subcase(name, __FILE__, __LINE__))
 #else  // __GNUC__
 #define DOCTEST_SUBCASE(name)                                                        \
     if (const doctest::detail::Subcase & DOCTEST_ANONYMOUS(_DOCTEST_ANON_SUBCASE_) = \
@@ -1159,15 +1142,14 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 
 // for starting a testsuite block
 #if defined(__GNUC__) && !defined(__clang__)
-#define DOCTEST_TEST_SUITE(name)                                               \
-    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) __attribute__((unused)) = \
-        doctest::detail::setTestSuiteName(name);                               \
+#define DOCTEST_TEST_SUITE(name)                                                                                        \
+    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) __attribute__((unused)) = doctest::detail::setTestSuiteName(name); \
     typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 #elif defined(__clang__)
-#define DOCTEST_TEST_SUITE(name)                                                             \
-    _Pragma("clang diagnostic push")                                                         \
-        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int             \
-            DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = doctest::detail::setTestSuiteName(name); \
+#define DOCTEST_TEST_SUITE(name)                                                                                         \
+    _Pragma("clang diagnostic push")                                                                                     \
+        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = \
+            doctest::detail::setTestSuiteName(name);                                                                     \
     _Pragma("clang diagnostic pop") typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 #else  // MSVC
 #define DOCTEST_TEST_SUITE(name)                                                                \
@@ -1177,15 +1159,14 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 
 // for ending a testsuite block
 #if defined(__GNUC__) && !defined(__clang__)
-#define DOCTEST_TEST_SUITE_END                                                 \
-    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) __attribute__((unused)) = \
-        doctest::detail::setTestSuiteName("");                                 \
+#define DOCTEST_TEST_SUITE_END                                                                                        \
+    static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) __attribute__((unused)) = doctest::detail::setTestSuiteName(""); \
     typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 #elif defined(__clang__)
-#define DOCTEST_TEST_SUITE_END                                                             \
-    _Pragma("clang diagnostic push")                                                       \
-        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int           \
-            DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = doctest::detail::setTestSuiteName(""); \
+#define DOCTEST_TEST_SUITE_END                                                                                           \
+    _Pragma("clang diagnostic push")                                                                                     \
+        _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"") static int DOCTEST_ANONYMOUS(_DOCTEST_ANON_VAR_) = \
+            doctest::detail::setTestSuiteName("");                                                                       \
     _Pragma("clang diagnostic pop") typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 #else  // MSVC
 #define DOCTEST_TEST_SUITE_END                                                                \
@@ -1208,18 +1189,16 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
     }
 #endif  // DOCTEST_CONFIG_NO_TRY_CATCH_IN_ASSERTS
 
-#define DOCTEST_ASSERT_IMPLEMENT(expr, assert_type)                                                \
-    doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, \
-                                               __LINE__, #expr);                                   \
-    DOCTEST_WRAP_IN_TRY(_DOCTEST_RB.setResult(doctest::detail::ExpressionDecomposer() << expr))    \
+#define DOCTEST_ASSERT_IMPLEMENT(expr, assert_type)                                                                  \
+    doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, #expr); \
+    DOCTEST_WRAP_IN_TRY(_DOCTEST_RB.setResult(doctest::detail::ExpressionDecomposer() << expr))                      \
     DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);
 
 #if defined(__clang__)
-#define DOCTEST_ASSERT_PROXY(expr, assert_type)                                             \
-    do {                                                                                    \
-        _Pragma("clang diagnostic push")                                                    \
-            _Pragma("clang diagnostic ignored \"-Woverloaded-shift-op-parentheses\"")       \
-                DOCTEST_ASSERT_IMPLEMENT(expr, assert_type) _Pragma("clang diagnostic pop") \
+#define DOCTEST_ASSERT_PROXY(expr, assert_type)                                                                    \
+    do {                                                                                                           \
+        _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-shift-op-parentheses\"") \
+            DOCTEST_ASSERT_IMPLEMENT(expr, assert_type) _Pragma("clang diagnostic pop")                            \
     } while (doctest::detail::always_false())
 #else  // __clang__
 #define DOCTEST_ASSERT_PROXY(expr, assert_type)     \
@@ -1236,49 +1215,49 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 #define DOCTEST_CHECK_FALSE(expr) DOCTEST_ASSERT_PROXY(expr, DT_CHECK_FALSE)
 #define DOCTEST_REQUIRE_FALSE(expr) DOCTEST_ASSERT_PROXY(expr, DT_REQUIRE_FALSE)
 
-#define DOCTEST_ASSERT_THROWS(expr, assert_type)                                                 \
-    do {                                                                                         \
-        if (!DOCTEST_GCS().no_throw) {                                                           \
-            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, \
-                                                       __FILE__, __LINE__, #expr);               \
-            try {                                                                                \
-                expr;                                                                            \
-            } catch (...) {                                                                      \
-                _DOCTEST_RB.m_threw = true;                                                      \
-            }                                                                                    \
-            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                           \
-        }                                                                                        \
+#define DOCTEST_ASSERT_THROWS(expr, assert_type)                                                                     \
+    do {                                                                                                             \
+        if (!DOCTEST_GCS().no_throw) {                                                                               \
+            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, \
+                                                       #expr);                                                       \
+            try {                                                                                                    \
+                expr;                                                                                                \
+            } catch (...) {                                                                                          \
+                _DOCTEST_RB.m_threw = true;                                                                          \
+            }                                                                                                        \
+            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                                               \
+        }                                                                                                            \
     } while (doctest::detail::always_false())
 
-#define DOCTEST_ASSERT_THROWS_AS(expr, as, assert_type)                                          \
-    do {                                                                                         \
-        if (!DOCTEST_GCS().no_throw) {                                                           \
-            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, \
-                                                       __FILE__, __LINE__, #expr, #as);          \
-            try {                                                                                \
-                expr;                                                                            \
-            } catch (as) {                                                                       \
-                _DOCTEST_RB.m_threw = true;                                                      \
-                _DOCTEST_RB.m_threw_as = true;                                                   \
-            } catch (...) {                                                                      \
-                _DOCTEST_RB.m_threw = true;                                                      \
-            }                                                                                    \
-            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                           \
-        }                                                                                        \
+#define DOCTEST_ASSERT_THROWS_AS(expr, as, assert_type)                                                                     \
+    do {                                                                                                                    \
+        if (!DOCTEST_GCS().no_throw) {                                                                                      \
+            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, #expr, \
+                                                       #as);                                                                \
+            try {                                                                                                           \
+                expr;                                                                                                       \
+            } catch (as) {                                                                                                  \
+                _DOCTEST_RB.m_threw = true;                                                                                 \
+                _DOCTEST_RB.m_threw_as = true;                                                                              \
+            } catch (...) {                                                                                                 \
+                _DOCTEST_RB.m_threw = true;                                                                                 \
+            }                                                                                                               \
+            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                                                      \
+        }                                                                                                                   \
     } while (doctest::detail::always_false())
 
-#define DOCTEST_ASSERT_NOTHROW(expr, assert_type)                                                \
-    do {                                                                                         \
-        if (!DOCTEST_GCS().no_throw) {                                                           \
-            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, \
-                                                       __FILE__, __LINE__, #expr);               \
-            try {                                                                                \
-                expr;                                                                            \
-            } catch (...) {                                                                      \
-                _DOCTEST_RB.m_threw = true;                                                      \
-            }                                                                                    \
-            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                           \
-        }                                                                                        \
+#define DOCTEST_ASSERT_NOTHROW(expr, assert_type)                                                                    \
+    do {                                                                                                             \
+        if (!DOCTEST_GCS().no_throw) {                                                                               \
+            doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, \
+                                                       #expr);                                                       \
+            try {                                                                                                    \
+                expr;                                                                                                \
+            } catch (...) {                                                                                          \
+                _DOCTEST_RB.m_threw = true;                                                                          \
+            }                                                                                                        \
+            DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                                               \
+        }                                                                                                            \
     } while (doctest::detail::always_false())
 
 #define DOCTEST_WARN_THROWS(expr) DOCTEST_ASSERT_THROWS(expr, DT_WARN_THROWS)
@@ -1293,21 +1272,19 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 #define DOCTEST_CHECK_NOTHROW(expr) DOCTEST_ASSERT_NOTHROW(expr, DT_CHECK_NOTHROW)
 #define DOCTEST_REQUIRE_NOTHROW(expr) DOCTEST_ASSERT_NOTHROW(expr, DT_REQUIRE_NOTHROW)
 
-#define DOCTEST_BINARY_ASSERT(assert_type, lhs, rhs, comp)                                      \
-    do {                                                                                        \
-        doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type,    \
-                                                   __FILE__, __LINE__, #lhs ", " #rhs);         \
-        DOCTEST_WRAP_IN_TRY(                                                                    \
-            _DOCTEST_RB.binary_assert<doctest::detail::binaryAssertComparison::comp>(lhs, rhs)) \
-        DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                              \
+#define DOCTEST_BINARY_ASSERT(assert_type, lhs, rhs, comp)                                                       \
+    do {                                                                                                         \
+        doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, \
+                                                   #lhs ", " #rhs);                                              \
+        DOCTEST_WRAP_IN_TRY(_DOCTEST_RB.binary_assert<doctest::detail::binaryAssertComparison::comp>(lhs, rhs))  \
+        DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                                               \
     } while (doctest::detail::always_false())
 
-#define DOCTEST_UNARY_ASSERT(assert_type, val)                                               \
-    do {                                                                                     \
-        doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, \
-                                                   __FILE__, __LINE__, #val);                \
-        DOCTEST_WRAP_IN_TRY(_DOCTEST_RB.unary_assert(val))                                   \
-        DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                           \
+#define DOCTEST_UNARY_ASSERT(assert_type, val)                                                                          \
+    do {                                                                                                                \
+        doctest::detail::ResultBuilder _DOCTEST_RB(doctest::detail::assertType::assert_type, __FILE__, __LINE__, #val); \
+        DOCTEST_WRAP_IN_TRY(_DOCTEST_RB.unary_assert(val))                                                              \
+        DOCTEST_ASSERT_LOG_AND_REACT(_DOCTEST_RB);                                                                      \
     } while (doctest::detail::always_false())
 
 #define DOCTEST_WARN_EQ(lhs, rhs) DOCTEST_BINARY_ASSERT(DT_WARN_EQ, lhs, rhs, eq)
@@ -1338,23 +1315,20 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 
 #ifndef DOCTEST_CONFIG_SUPER_FAST_ASSERTS
 
-#define DOCTEST_FAST_BINARY_ASSERT(assert_type, lhs, rhs, comparison)                            \
-    do {                                                                                         \
-        int _DOCTEST_FAST_RES = doctest::detail::fast_binary_assert<                             \
-            doctest::detail::binaryAssertComparison::comparison>(                                \
-            doctest::detail::assertType::assert_type, __FILE__, __LINE__, #lhs, #rhs, lhs, rhs); \
-        if (_DOCTEST_FAST_RES & doctest::detail::assertAction::dbgbreak)                         \
-            DOCTEST_BREAK_INTO_DEBUGGER();                                                       \
-        doctest::detail::fastAssertThrowIfFlagSet(_DOCTEST_FAST_RES);                            \
+#define DOCTEST_FAST_BINARY_ASSERT(assert_type, lhs, rhs, comparison)                                                     \
+    do {                                                                                                                  \
+        int _DOCTEST_FAST_RES = doctest::detail::fast_binary_assert<doctest::detail::binaryAssertComparison::comparison>( \
+            doctest::detail::assertType::assert_type, __FILE__, __LINE__, #lhs, #rhs, lhs, rhs);                          \
+        if (_DOCTEST_FAST_RES & doctest::detail::assertAction::dbgbreak) DOCTEST_BREAK_INTO_DEBUGGER();                   \
+        doctest::detail::fastAssertThrowIfFlagSet(_DOCTEST_FAST_RES);                                                     \
     } while (doctest::detail::always_false())
 
-#define DOCTEST_FAST_UNARY_ASSERT(assert_type, val)                                   \
-    do {                                                                              \
-        int _DOCTEST_FAST_RES = doctest::detail::fast_unary_assert(                   \
-            doctest::detail::assertType::assert_type, __FILE__, __LINE__, #val, val); \
-        if (_DOCTEST_FAST_RES & doctest::detail::assertAction::dbgbreak)              \
-            DOCTEST_BREAK_INTO_DEBUGGER();                                            \
-        doctest::detail::fastAssertThrowIfFlagSet(_DOCTEST_FAST_RES);                 \
+#define DOCTEST_FAST_UNARY_ASSERT(assert_type, val)                                                                      \
+    do {                                                                                                                 \
+        int _DOCTEST_FAST_RES =                                                                                          \
+            doctest::detail::fast_unary_assert(doctest::detail::assertType::assert_type, __FILE__, __LINE__, #val, val); \
+        if (_DOCTEST_FAST_RES & doctest::detail::assertAction::dbgbreak) DOCTEST_BREAK_INTO_DEBUGGER();                  \
+        doctest::detail::fastAssertThrowIfFlagSet(_DOCTEST_FAST_RES);                                                    \
     } while (doctest::detail::always_false())
 
 #else  // DOCTEST_CONFIG_SUPER_FAST_ASSERTS
@@ -1363,9 +1337,8 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
     doctest::detail::fast_binary_assert<doctest::detail::binaryAssertComparison::comparison>( \
         doctest::detail::assertType::assert_type, __FILE__, __LINE__, #lhs, #rhs, lhs, rhs)
 
-#define DOCTEST_FAST_UNARY_ASSERT(assert_type, val)                                        \
-    doctest::detail::fast_unary_assert(doctest::detail::assertType::assert_type, __FILE__, \
-                                       __LINE__, #val, val)
+#define DOCTEST_FAST_UNARY_ASSERT(assert_type, val) \
+    doctest::detail::fast_unary_assert(doctest::detail::assertType::assert_type, __FILE__, __LINE__, #val, val)
 
 #endif  // DOCTEST_CONFIG_SUPER_FAST_ASSERTS
 
@@ -1393,8 +1366,7 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
 #define DOCTEST_FAST_REQUIRE_UNARY(v) DOCTEST_FAST_UNARY_ASSERT(DT_FAST_REQUIRE_UNARY, v)
 #define DOCTEST_FAST_WARN_UNARY_FALSE(v) DOCTEST_FAST_UNARY_ASSERT(DT_FAST_WARN_UNARY_FALSE, v)
 #define DOCTEST_FAST_CHECK_UNARY_FALSE(v) DOCTEST_FAST_UNARY_ASSERT(DT_FAST_CHECK_UNARY_FALSE, v)
-#define DOCTEST_FAST_REQUIRE_UNARY_FALSE(v) \
-    DOCTEST_FAST_UNARY_ASSERT(DT_FAST_REQUIRE_UNARY_FALSE, v)
+#define DOCTEST_FAST_REQUIRE_UNARY_FALSE(v) DOCTEST_FAST_UNARY_ASSERT(DT_FAST_REQUIRE_UNARY_FALSE, v)
 
 #ifdef DOCTEST_CONFIG_NO_EXCEPTIONS
 
@@ -1466,13 +1438,11 @@ inline bool operator>=(const String& lhs, const String& rhs) { return (lhs != rh
     static inline void f()
 
 // for registering tests
-#define DOCTEST_TEST_CASE(name) \
-    DOCTEST_CREATE_AND_REGISTER_FUNCTION(DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
+#define DOCTEST_TEST_CASE(name) DOCTEST_CREATE_AND_REGISTER_FUNCTION(DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
 
 // for registering tests with a fixture
-#define DOCTEST_TEST_CASE_FIXTURE(x, name)                                \
-    DOCTEST_IMPLEMENT_FIXTURE(DOCTEST_ANONYMOUS(_DOCTEST_ANON_CLASS_), x, \
-                              DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
+#define DOCTEST_TEST_CASE_FIXTURE(x, name) \
+    DOCTEST_IMPLEMENT_FIXTURE(DOCTEST_ANONYMOUS(_DOCTEST_ANON_CLASS_), x, DOCTEST_ANONYMOUS(_DOCTEST_ANON_FUNC_), name)
 
 // for subcases
 #define DOCTEST_SUBCASE(name)
@@ -1715,8 +1685,7 @@ DOCTEST_TEST_SUITE_END();
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4996)  // The compiler encountered a deprecated declaration
-#pragma warning( \
-    disable : 4267)  // 'var' : conversion from 'size_t' to 'type', possible loss of data
+#pragma warning(disable : 4267)  // 'var' : conversion from 'size_t' to 'type', possible loss of data
 #pragma warning(disable : 4706)  // assignment within conditional expression
 #pragma warning(disable : 4512)  // 'class' : assignment operator could not be generated
 #pragma warning(disable : 4127)  // conditional expression is constant
@@ -1724,8 +1693,7 @@ DOCTEST_TEST_SUITE_END();
 #pragma warning(disable : 4577)  // 'noexcept' used with no exception handling mode specified
 #endif                           // _MSC_VER
 
-#if defined(DOCTEST_CONFIG_IMPLEMENT) || defined(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN) || \
-    !defined(DOCTEST_SINGLE_HEADER)
+#if defined(DOCTEST_CONFIG_IMPLEMENT) || defined(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN) || !defined(DOCTEST_SINGLE_HEADER)
 #ifndef DOCTEST_LIBRARY_IMPLEMENTATION
 #define DOCTEST_LIBRARY_IMPLEMENTATION
 
@@ -1745,14 +1713,13 @@ DOCTEST_TEST_SUITE_END();
 #define DOCTEST_SNPRINTF snprintf
 #endif
 
-#define DOCTEST_LOG_START()                                                   \
-    do {                                                                      \
-        if (!DOCTEST_GCS().hasLoggedCurrentTestStart) {                       \
-            doctest::detail::logTestStart(DOCTEST_GCS().currentTest->m_name,  \
-                                          DOCTEST_GCS().currentTest->m_file,  \
-                                          DOCTEST_GCS().currentTest->m_line); \
-            DOCTEST_GCS().hasLoggedCurrentTestStart = true;                   \
-        }                                                                     \
+#define DOCTEST_LOG_START()                                                                                     \
+    do {                                                                                                        \
+        if (!DOCTEST_GCS().hasLoggedCurrentTestStart) {                                                         \
+            doctest::detail::logTestStart(DOCTEST_GCS().currentTest->m_name, DOCTEST_GCS().currentTest->m_file, \
+                                          DOCTEST_GCS().currentTest->m_line);                                   \
+            DOCTEST_GCS().hasLoggedCurrentTestStart = true;                                                     \
+        }                                                                                                       \
     } while (doctest::detail::always_false())
 
 // required includes - will go only in one translation unit!
@@ -1842,9 +1809,7 @@ namespace doctest {
         }
 
         std::ostream* createStream() { return new std::ostringstream(); }
-        String getStreamResult(std::ostream* in) {
-            return static_cast<std::ostringstream*>(in)->str().c_str();
-        }
+        String getStreamResult(std::ostream* in) { return static_cast<std::ostringstream*>(in)->str().c_str(); }
         void freeStream(std::ostream* in) { delete in; }
 
 #ifndef DOCTEST_CONFIG_DISABLE
@@ -1861,14 +1826,14 @@ namespace doctest {
             unsigned first;  // the first (matching) test to be executed
             unsigned last;   // the last (matching) test to be executed
 
-            int abort_after;      // stop tests after this many failed assertions
-            bool case_sensitive;  // if filtering should be case sensitive
-            bool exit;          // if the program should be exited after the tests are ran/whatever
-            bool no_exitcode;   // if the framework should return 0 as the exitcode
-            bool no_run;        // to not run the tests at all (can be done with an "*" exclude)
-            bool no_version;    // to not print the version of the framework
-            bool no_colors;     // if output to the console should be colorized
-            bool force_colors;  // forces the use of colors even when a tty cannot be detected
+            int abort_after;            // stop tests after this many failed assertions
+            bool case_sensitive;        // if filtering should be case sensitive
+            bool exit;                  // if the program should be exited after the tests are ran/whatever
+            bool no_exitcode;           // if the framework should return 0 as the exitcode
+            bool no_run;                // to not run the tests at all (can be done with an "*" exclude)
+            bool no_version;            // to not print the version of the framework
+            bool no_colors;             // if output to the console should be colorized
+            bool force_colors;          // forces the use of colors even when a tty cannot be detected
             bool no_path_in_filenames;  // if the path to files should be removed from the output
 
             bool help;              // to print the help
@@ -1933,8 +1898,7 @@ namespace doctest {
     String& String::operator+=(const String& other) {
         using namespace detail;
         if (other.m_str != 0) {
-            char* newStr =
-                static_cast<char*>(malloc(my_strlen(m_str) + my_strlen(other.m_str) + 1));
+            char* newStr = static_cast<char*>(malloc(my_strlen(m_str) + my_strlen(other.m_str) + 1));
             strcpy(newStr, m_str);
             strcpy(newStr + my_strlen(m_str), other.m_str);
             free(m_str);
@@ -1962,19 +1926,14 @@ namespace doctest {
     }
 
     Approx::Approx(double value)
-        : m_epsilon(static_cast<double>(std::numeric_limits<float>::epsilon()) * 100),
-          m_scale(1.0),
-          m_value(value) {}
+        : m_epsilon(static_cast<double>(std::numeric_limits<float>::epsilon()) * 100), m_scale(1.0), m_value(value) {}
 
     bool operator==(double lhs, Approx const& rhs) {
         // Thanks to Richard Harris for his help refining this formula
-        return fabs(lhs - rhs.m_value) <
-               rhs.m_epsilon * (rhs.m_scale + detail::my_max(fabs(lhs), fabs(rhs.m_value)));
+        return fabs(lhs - rhs.m_value) < rhs.m_epsilon * (rhs.m_scale + detail::my_max(fabs(lhs), fabs(rhs.m_value)));
     }
 
-    String Approx::toString() const {
-        return String("Approx( ") + doctest::toString(m_value) + " )";
-    }
+    String Approx::toString() const { return String("Approx( ") + doctest::toString(m_value) + " )"; }
 
 #ifdef DOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING
     String toString(char* in) { return toString(static_cast<const char*>(in)); }
@@ -2095,8 +2054,7 @@ namespace doctest {
 #else  // _MSC_VER
 #define DOCTEST_WINDOWS_SAL_IN_OPT
 #endif  // _MSC_VER
-extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(
-    DOCTEST_WINDOWS_SAL_IN_OPT const char*);
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(DOCTEST_WINDOWS_SAL_IN_OPT const char*);
 extern "C" __declspec(dllimport) int __stdcall IsDebuggerPresent();
 #endif  // _MSC_VER || __MINGW32__
 
@@ -2217,8 +2175,7 @@ namespace doctest {
             if (assert_type & assertType::is_require) return true;
 
             if ((assert_type & assertType::is_check) && getContextState()->abort_after > 0) {
-                if (getContextState()->numFailedAssertions >= getContextState()->abort_after)
-                    return true;
+                if (getContextState()->numFailedAssertions >= getContextState()->abort_after) return true;
             }
 
             return false;
@@ -2234,9 +2191,7 @@ namespace doctest {
         bool always_false() { return false; }
 
         // lowers ascii letters
-        char tolower(const char c) {
-            return ((c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c);
-        }
+        char tolower(const char c) { return ((c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c); }
 
         // matching of a string against a wildcard mask (case sensitivity configurable) taken from
         // http://www.emoticode.net/c/simple-wildcard-string-compare-globbing-function.html
@@ -2246,8 +2201,7 @@ namespace doctest {
 
             // rolled my own tolower() to not include more headers
             while ((*str) && (*wild != '*')) {
-                if ((caseSensitive ? (*wild != *str) : (tolower(*wild) != tolower(*str))) &&
-                    (*wild != '?')) {
+                if ((caseSensitive ? (*wild != *str) : (tolower(*wild) != tolower(*str))) && (*wild != '?')) {
                     return 0;
                 }
                 wild++;
@@ -2261,8 +2215,7 @@ namespace doctest {
                     }
                     mp = wild;
                     cp = str + 1;
-                } else if ((caseSensitive ? (*wild == *str) : (tolower(*wild) == tolower(*str))) ||
-                           (*wild == '?')) {
+                } else if ((caseSensitive ? (*wild == *str) : (tolower(*wild) == tolower(*str))) || (*wild == '?')) {
                     wild++;
                     str++;
                 } else {
@@ -2288,8 +2241,7 @@ namespace doctest {
 
         // checks if the name matches any of the filters (and can be configured what to do when
         // empty)
-        int matchesAny(const char* name, std::vector<String> filters, int matchEmpty,
-                       bool caseSensitive) {
+        int matchesAny(const char* name, std::vector<String> filters, int matchEmpty, bool caseSensitive) {
             if (filters.size() == 0 && matchEmpty) return 1;
             for (unsigned i = 0; i < filters.size(); ++i)
                 if (wildcmp(name, filters[i].c_str(), caseSensitive)) return 1;
@@ -2310,8 +2262,7 @@ namespace doctest {
             return strcmp(m_name, other.m_name) < 0;
         }
 
-        Subcase::Subcase(const char* name, const char* file, int line)
-            : m_signature(name, file, line), m_entered(false) {
+        Subcase::Subcase(const char* name, const char* file, int line) : m_signature(name, file, line), m_entered(false) {
             ContextState* s = getContextState();
 
             // if we have already completed it
@@ -2332,8 +2283,7 @@ namespace doctest {
         }
 
         Subcase::Subcase(const Subcase& other)
-            : m_signature(other.m_signature.m_name, other.m_signature.m_file,
-                          other.m_signature.m_line),
+            : m_signature(other.m_signature.m_name, other.m_signature.m_file, other.m_signature.m_line),
               m_entered(other.m_entered) {}
 
         Subcase::~Subcase() {
@@ -2480,11 +2430,9 @@ namespace doctest {
                 CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
                 GetConsoleScreenBufferInfo(stdoutHandle, &csbiInfo);
                 originalForegroundAttributes =
-                    csbiInfo.wAttributes &
-                    ~(BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_INTENSITY);
+                    csbiInfo.wAttributes & ~(BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_INTENSITY);
                 originalBackgroundAttributes =
-                    csbiInfo.wAttributes &
-                    ~(FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+                    csbiInfo.wAttributes & ~(FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
             }
 
 #define DOCTEST_SET_ATTR(x) SetConsoleTextAttribute(stdoutHandle, x | originalBackgroundAttributes)
@@ -2627,16 +2575,14 @@ namespace doctest {
             std::vector<Subcase>& subcasesStack = getContextState()->subcasesStack;
             for (unsigned i = 0; i < subcasesStack.size(); ++i) {
                 char subcase[DOCTEST_SNPRINTF_BUFFER_LENGTH];
-                DOCTEST_SNPRINTF(subcase, DOCTEST_COUNTOF(loc), "  %s\n",
-                                 subcasesStack[i].m_signature.m_name);
+                DOCTEST_SNPRINTF(subcase, DOCTEST_COUNTOF(loc), "  %s\n", subcasesStack[i].m_signature.m_name);
                 DOCTEST_PRINTF_COLORED(subcase, Color::None);
                 subcaseStuff += subcase;
             }
 
             DOCTEST_PRINTF_COLORED(newLine, Color::None);
 
-            printToDebugConsole(String(getSeparator()) + loc + msg + subcaseStuff.c_str() +
-                                newLine);
+            printToDebugConsole(String(getSeparator()) + loc + msg + subcaseStuff.c_str() + newLine);
         }
 
         void logTestEnd() {}
@@ -2654,16 +2600,15 @@ namespace doctest {
         void logTestException(const char* what) {
             char msg[DOCTEST_SNPRINTF_BUFFER_LENGTH];
 
-            DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg),
-                             "TEST CASE FAILED! (threw exception: %s)\n\n", what);
+            DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), "TEST CASE FAILED! (threw exception: %s)\n\n", what);
 
             DOCTEST_PRINTF_COLORED(msg, Color::Red);
 
             printToDebugConsole(String(msg));
         }
 
-        void logAssert(bool passed, const char* decomposition, bool threw, const char* expr,
-                       assertType::Enum assert_type, const char* file, int line) {
+        void logAssert(bool passed, const char* decomposition, bool threw, const char* expr, assertType::Enum assert_type,
+                       const char* file, int line) {
             char loc[DOCTEST_SNPRINTF_BUFFER_LENGTH];
             DOCTEST_SNPRINTF(loc, DOCTEST_COUNTOF(loc), "%s(%d)", fileForOutput(file), line);
 
@@ -2671,12 +2616,10 @@ namespace doctest {
             if (passed)
                 DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), " PASSED!\n");
             else
-                DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), " FAILED! %s\n",
-                                 (threw ? "(threw exception)" : ""));
+                DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), " FAILED! %s\n", (threw ? "(threw exception)" : ""));
 
             char info1[DOCTEST_SNPRINTF_BUFFER_LENGTH];
-            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n",
-                             getAssertString(assert_type), expr);
+            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n", getAssertString(assert_type), expr);
 
             char info2[DOCTEST_SNPRINTF_BUFFER_LENGTH];
             char info3[DOCTEST_SNPRINTF_BUFFER_LENGTH];
@@ -2684,8 +2627,7 @@ namespace doctest {
             info3[0] = 0;
             if (!threw) {
                 DOCTEST_SNPRINTF(info2, DOCTEST_COUNTOF(info2), "with expansion:\n");
-                DOCTEST_SNPRINTF(info3, DOCTEST_COUNTOF(info3), "  %s( %s )\n",
-                                 getAssertString(assert_type), decomposition);
+                DOCTEST_SNPRINTF(info3, DOCTEST_COUNTOF(info3), "  %s( %s )\n", getAssertString(assert_type), decomposition);
             }
 
             DOCTEST_PRINTF_COLORED(loc, Color::LightGrey);
@@ -2698,8 +2640,7 @@ namespace doctest {
             printToDebugConsole(String(loc) + msg + info1 + info2 + info3 + "\n");
         }
 
-        void logAssertThrows(bool threw, const char* expr, assertType::Enum assert_type,
-                             const char* file, int line) {
+        void logAssertThrows(bool threw, const char* expr, assertType::Enum assert_type, const char* file, int line) {
             char loc[DOCTEST_SNPRINTF_BUFFER_LENGTH];
             DOCTEST_SNPRINTF(loc, DOCTEST_COUNTOF(loc), "%s(%d)", fileForOutput(file), line);
 
@@ -2710,8 +2651,7 @@ namespace doctest {
                 DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), " FAILED!\n");
 
             char info1[DOCTEST_SNPRINTF_BUFFER_LENGTH];
-            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n\n",
-                             getAssertString(assert_type), expr);
+            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n\n", getAssertString(assert_type), expr);
 
             DOCTEST_PRINTF_COLORED(loc, Color::LightGrey);
             DOCTEST_PRINTF_COLORED(msg, threw ? Color::BrightGreen : Color::Red);
@@ -2720,8 +2660,8 @@ namespace doctest {
             printToDebugConsole(String(loc) + msg + info1);
         }
 
-        void logAssertThrowsAs(bool threw, bool threw_as, const char* as, const char* expr,
-                               assertType::Enum assert_type, const char* file, int line) {
+        void logAssertThrowsAs(bool threw, bool threw_as, const char* as, const char* expr, assertType::Enum assert_type,
+                               const char* file, int line) {
             char loc[DOCTEST_SNPRINTF_BUFFER_LENGTH];
             DOCTEST_SNPRINTF(loc, DOCTEST_COUNTOF(loc), "%s(%d)", fileForOutput(file), line);
 
@@ -2733,8 +2673,7 @@ namespace doctest {
                                  (threw ? "(threw something else)" : "(didn't throw at all)"));
 
             char info1[DOCTEST_SNPRINTF_BUFFER_LENGTH];
-            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s, %s )\n\n",
-                             getAssertString(assert_type), expr, as);
+            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s, %s )\n\n", getAssertString(assert_type), expr, as);
 
             DOCTEST_PRINTF_COLORED(loc, Color::LightGrey);
             DOCTEST_PRINTF_COLORED(msg, threw_as ? Color::BrightGreen : Color::Red);
@@ -2743,8 +2682,7 @@ namespace doctest {
             printToDebugConsole(String(loc) + msg + info1);
         }
 
-        void logAssertNothrow(bool threw, const char* expr, assertType::Enum assert_type,
-                              const char* file, int line) {
+        void logAssertNothrow(bool threw, const char* expr, assertType::Enum assert_type, const char* file, int line) {
             char loc[DOCTEST_SNPRINTF_BUFFER_LENGTH];
             DOCTEST_SNPRINTF(loc, DOCTEST_COUNTOF(loc), "%s(%d)", fileForOutput(file), line);
 
@@ -2755,8 +2693,7 @@ namespace doctest {
                 DOCTEST_SNPRINTF(msg, DOCTEST_COUNTOF(msg), " FAILED!\n");
 
             char info1[DOCTEST_SNPRINTF_BUFFER_LENGTH];
-            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n\n",
-                             getAssertString(assert_type), expr);
+            DOCTEST_SNPRINTF(info1, DOCTEST_COUNTOF(info1), "  %s( %s )\n\n", getAssertString(assert_type), expr);
 
             DOCTEST_PRINTF_COLORED(loc, Color::LightGrey);
             DOCTEST_PRINTF_COLORED(msg, !threw ? Color::BrightGreen : Color::Red);
@@ -2765,8 +2702,8 @@ namespace doctest {
             printToDebugConsole(String(loc) + msg + info1);
         }
 
-        ResultBuilder::ResultBuilder(assertType::Enum assert_type, const char* file, int line,
-                                     const char* expr, const char* exception_type)
+        ResultBuilder::ResultBuilder(assertType::Enum assert_type, const char* file, int line, const char* expr,
+                                     const char* exception_type)
             : m_assert_type(assert_type),
               m_file(file),
               m_line(line),
@@ -2777,8 +2714,7 @@ namespace doctest {
               m_failed(false) {}
 
         bool ResultBuilder::log() {
-            if ((m_assert_type & assertType::is_warn) == 0)
-                DOCTEST_GCS().numAssertionsForCurrentTestcase++;
+            if ((m_assert_type & assertType::is_warn) == 0) DOCTEST_GCS().numAssertionsForCurrentTestcase++;
 
             if (m_assert_type & assertType::is_false) {
                 m_result.invert();
@@ -2799,20 +2735,18 @@ namespace doctest {
                 if (m_assert_type & assertType::is_throws) {
                     logAssertThrows(m_threw, m_expr, m_assert_type, m_file, m_line);
                 } else if (m_assert_type & assertType::is_throws_as) {
-                    logAssertThrowsAs(m_threw, m_threw_as, m_exception_type, m_expr, m_assert_type,
-                                      m_file, m_line);
+                    logAssertThrowsAs(m_threw, m_threw_as, m_exception_type, m_expr, m_assert_type, m_file, m_line);
                 } else if (m_assert_type & assertType::is_nothrow) {
                     logAssertNothrow(m_threw, m_expr, m_assert_type, m_file, m_line);
                 } else {
-                    logAssert(m_result.m_passed, m_result.m_decomposition.c_str(), m_threw, m_expr,
-                              m_assert_type, m_file, m_line);
+                    logAssert(m_result.m_passed, m_result.m_decomposition.c_str(), m_threw, m_expr, m_assert_type, m_file,
+                              m_line);
                 }
             }
 
             if (m_failed) {
                 addFailedAssert(m_assert_type);
-                if (isDebuggerActive() && !DOCTEST_GCS().no_breaks)
-                    return true;  // should break into the debugger
+                if (isDebuggerActive() && !DOCTEST_GCS().no_breaks) return true;  // should break into the debugger
             }
             return false;
         }
@@ -2843,10 +2777,9 @@ namespace doctest {
         // locates a flag on the command line
         bool parseFlag(int argc, const char* const* argv, const char* pattern) {
 #ifndef DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
-            if (!parseFlagImpl(argc, argv, pattern))
-                return parseFlagImpl(argc, argv, pattern + 3);  // 3 for "dt-"
+            if (!parseFlagImpl(argc, argv, pattern)) return parseFlagImpl(argc, argv, pattern + 3);  // 3 for "dt-"
             return true;
-#else  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
+#else   // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
             return parseFlagImpl(argc, argv, pattern);
 #endif  // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
         }
@@ -2892,16 +2825,14 @@ namespace doctest {
         }
 
         // parses a comma separated list of words after a pattern in one of the arguments in argv
-        bool parseCommaSepArgs(int argc, const char* const* argv, const char* pattern,
-                               std::vector<String>& res) {
+        bool parseCommaSepArgs(int argc, const char* const* argv, const char* pattern, std::vector<String>& res) {
             String filtersString;
             if (parseOption(argc, argv, pattern, filtersString)) {
                 // tokenize with "," as a separator
                 char* pch = strtok(filtersString.c_str(), ",");  // modifies the string
                 while (pch != 0) {
                     if (my_strlen(pch)) res.push_back(pch);
-                    pch =
-                        strtok(0, ",");  // uses the strtok() internal state to go to the next token
+                    pch = strtok(0, ",");  // uses the strtok() internal state to go to the next token
                 }
                 return true;
             }
@@ -2911,16 +2842,13 @@ namespace doctest {
         enum optionType { option_bool, option_int };
 
         // parses an int/bool option from the command line
-        bool parseIntOption(int argc, const char* const* argv, const char* pattern, optionType type,
-                            int& res) {
+        bool parseIntOption(int argc, const char* const* argv, const char* pattern, optionType type, int& res) {
             String parsedValue;
             if (parseOption(argc, argv, pattern, parsedValue)) {
                 if (type == 0) {
                     // boolean
-                    const char positive[][5] = {"1", "true", "on",
-                                                "yes"};  // 5 - strlen("true") + 1
-                    const char negative[][6] = {"0", "false", "off",
-                                                "no"};  // 6 - strlen("false") + 1
+                    const char positive[][5] = {"1", "true", "on", "yes"};   // 5 - strlen("true") + 1
+                    const char negative[][6] = {"0", "false", "off", "no"};  // 6 - strlen("false") + 1
 
                     // if the value matches any of the positive/negative possibilities
                     for (unsigned i = 0; i < 4; i++) {
@@ -2983,30 +2911,23 @@ namespace doctest {
             printf(" -tce, --test-case-exclude=<filters>   filters OUT tests by their name\n");
             printf(" -sf,  --source-file=<filters>         filters     tests by their file\n");
             printf(" -sfe, --source-file-exclude=<filters> filters OUT tests by their file\n");
-            printf(
-                " -ts,  --test-suite=<filters>          filters     tests by their test suite\n");
-            printf(
-                " -tse, --test-suite-exclude=<filters>  filters OUT tests by their test suite\n");
+            printf(" -ts,  --test-suite=<filters>          filters     tests by their test suite\n");
+            printf(" -tse, --test-suite-exclude=<filters>  filters OUT tests by their test suite\n");
             printf(" -ob,  --order-by=<string>             how the tests should be ordered\n");
             printf("                                       <string> - by [file/suite/name/rand]\n");
             printf(" -rs,  --rand-seed=<int>               seed for random ordering\n");
-            printf(
-                " -f,   --first=<int>                   the first test passing the filters to\n");
+            printf(" -f,   --first=<int>                   the first test passing the filters to\n");
             printf("                                       execute - for range-based execution\n");
             printf(" -l,   --last=<int>                    the last test passing the filters to\n");
             printf("                                       execute - for range-based execution\n");
             printf(" -aa,  --abort-after=<int>             stop after <int> failed assertions\n\n");
             DOCTEST_PRINTF_COLORED("[doctest] ", Color::Cyan);
             printf("Bool options - can be used like flags and true is assumed. Available:\n\n");
-            printf(
-                " -s,   --success=<bool>                include successful assertions in output\n");
-            printf(
-                " -cs,  --case-sensitive=<bool>         filters being treated as case sensitive\n");
+            printf(" -s,   --success=<bool>                include successful assertions in output\n");
+            printf(" -cs,  --case-sensitive=<bool>         filters being treated as case sensitive\n");
             printf(" -e,   --exit=<bool>                   exits after the tests finish\n");
-            printf(
-                " -nt,  --no-throw=<bool>               skips exceptions-related assert checks\n");
-            printf(
-                " -ne,  --no-exitcode=<bool>            returns (or exits) always with success\n");
+            printf(" -nt,  --no-throw=<bool>               skips exceptions-related assert checks\n");
+            printf(" -ne,  --no-exitcode=<bool>            returns (or exits) always with success\n");
             printf(" -nr,  --no-run=<bool>                 skips all runtime doctest operations\n");
             printf(
                 " -nv,  --no-version=<bool>             omit the framework version in the "
@@ -3014,8 +2935,7 @@ namespace doctest {
             printf(" -nc,  --no-colors=<bool>              disables colors in output\n");
             printf(" -fc,  --force-colors=<bool>           use colors even when not in a tty\n");
             printf(" -nb,  --no-breaks=<bool>              disables breakpoints in debuggers\n");
-            printf(
-                " -npf, --no-path-filenames=<bool>      only filenames and no paths in output\n\n");
+            printf(" -npf, --no-path-filenames=<bool>      only filenames and no paths in output\n\n");
             // ====================================================================================
             // << 79
 
@@ -3024,9 +2944,7 @@ namespace doctest {
         }
     }  // namespace detail
 
-    Context::Context(int argc, const char* const* argv) : p(new detail::ContextState) {
-        parseArgs(argc, argv, true);
-    }
+    Context::Context(int argc, const char* const* argv) : p(new detail::ContextState) { parseArgs(argc, argv, true); }
 
     Context::~Context() { delete p; }
 
@@ -3070,10 +2988,9 @@ namespace doctest {
     else if (withDefaults)                                                                   \
     p->var = default
 
-#define DOCTEST_PARSE_STR_OPTION(name, sname, var, default)                             \
-    if (parseOption(argc, argv, DOCTEST_STR_CONCAT_TOSTR(name, =), strRes, default) ||  \
-        parseOption(argc, argv, DOCTEST_STR_CONCAT_TOSTR(sname, =), strRes, default) || \
-        withDefaults)                                                                   \
+#define DOCTEST_PARSE_STR_OPTION(name, sname, var, default)                                           \
+    if (parseOption(argc, argv, DOCTEST_STR_CONCAT_TOSTR(name, =), strRes, default) ||                \
+        parseOption(argc, argv, DOCTEST_STR_CONCAT_TOSTR(sname, =), strRes, default) || withDefaults) \
     p->var = strRes
 
         // clang-format off
@@ -3109,8 +3026,7 @@ namespace doctest {
             p->list_test_cases = false;
             p->list_test_suites = false;
         }
-        if (parseFlag(argc, argv, "dt-help") || parseFlag(argc, argv, "dt-h") ||
-            parseFlag(argc, argv, "dt-?")) {
+        if (parseFlag(argc, argv, "dt-help") || parseFlag(argc, argv, "dt-h") || parseFlag(argc, argv, "dt-?")) {
             p->help = true;
             p->exit = true;
         }
@@ -3141,9 +3057,7 @@ namespace doctest {
     }
 
     // allows the user to override procedurally the int/bool options from the command line
-    void Context::setOption(const char* option, int value) {
-        setOption(option, toString(value).c_str());
-    }
+    void Context::setOption(const char* option, int value) { setOption(option, toString(value).c_str()); }
 
     // allows the user to override procedurally the string options from the command line
     void Context::setOption(const char* option, const char* value) {
@@ -3181,8 +3095,7 @@ namespace doctest {
         std::set<TestData>& registeredTests = getRegisteredTests();
 
         std::vector<const TestData*> testArray;
-        for (std::set<TestData>::iterator it = registeredTests.begin(); it != registeredTests.end();
-             ++it)
+        for (std::set<TestData>::iterator it = registeredTests.begin(); it != registeredTests.end(); ++it)
             testArray.push_back(&(*it));
 
         // sort the collected records
@@ -3253,9 +3166,7 @@ namespace doctest {
             }
 
             // skip the test if it is not in the execution range
-            if ((p->last < numTestsPassingFilters && p->first <= p->last) ||
-                (p->first > numTestsPassingFilters))
-                continue;
+            if ((p->last < numTestsPassingFilters && p->first <= p->last) || (p->first > numTestsPassingFilters)) continue;
 
             // execute the test if it passes all the filtering
             {
@@ -3287,8 +3198,7 @@ namespace doctest {
                     p->numAssertions += p->numAssertionsForCurrentTestcase;
 
                     // exit this loop if enough assertions have failed
-                    if (p->abort_after > 0 && p->numFailedAssertions >= p->abort_after)
-                        p->subcasesHasSkipped = false;
+                    if (p->abort_after > 0 && p->numFailedAssertions >= p->abort_after) p->subcasesHasSkipped = false;
 
                     // if the start has been logged
                     if (p->hasLoggedCurrentTestStart) logTestEnd();
@@ -3319,13 +3229,11 @@ namespace doctest {
 
             DOCTEST_PRINTF_COLORED("[doctest] ", Color::Cyan);
 
-            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "test cases: %4d",
-                             numTestsPassingFilters);
+            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "test cases: %4d", numTestsPassingFilters);
             DOCTEST_PRINTF_COLORED(buff, Color::None);
             DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), " | ");
             DOCTEST_PRINTF_COLORED(buff, Color::None);
-            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "%4d passed",
-                             numTestsPassingFilters - numFailed);
+            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "%4d passed", numTestsPassingFilters - numFailed);
             DOCTEST_PRINTF_COLORED(buff, numFailed > 0 ? Color::None : Color::Green);
             DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), " | ");
             DOCTEST_PRINTF_COLORED(buff, Color::None);
@@ -3344,8 +3252,7 @@ namespace doctest {
             DOCTEST_PRINTF_COLORED(buff, Color::None);
             DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), " | ");
             DOCTEST_PRINTF_COLORED(buff, Color::None);
-            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "%4d passed",
-                             p->numAssertions - p->numFailedAssertions);
+            DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), "%4d passed", p->numAssertions - p->numFailedAssertions);
             DOCTEST_PRINTF_COLORED(buff, numFailed > 0 ? Color::None : Color::Green);
             DOCTEST_SNPRINTF(buff, DOCTEST_COUNTOF(buff), " | ");
             DOCTEST_PRINTF_COLORED(buff, Color::None);

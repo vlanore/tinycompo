@@ -85,9 +85,8 @@ TEST_CASE("Component tests.") {
                               "-- Error: setting property failed. Type _Port<bool const> does not "
                               "seem to match port myPort.\n");
     TINYCOMPO_TEST_MORE_ERRORS { compo.set("badPort", 1, 2); }
-    TINYCOMPO_TEST_ERRORS_END(
-        "port name not found",
-        "-- Error: port name not found. Could not find port badPort in component MyCompo.\n");
+    TINYCOMPO_TEST_ERRORS_END("port name not found",
+                              "-- Error: port name not found. Could not find port badPort in component MyCompo.\n");
 }
 
 TEST_CASE("Component without _debug") {
@@ -198,9 +197,8 @@ TEST_CASE("model test: composite/component inheritance mismatch") {
     class MyClass : public Composite<int> {};
     Model<> model;
     TINYCOMPO_TEST_ERRORS { model.component<MyClass>("hello"); }
-    TINYCOMPO_TEST_ERRORS_END(
-        "trying to declare a component that does not inherit from Component",
-        "-- Error: trying to declare a component that does not inherit from Component\n");
+    TINYCOMPO_TEST_ERRORS_END("trying to declare a component that does not inherit from Component",
+                              "-- Error: trying to declare a component that does not inherit from Component\n");
 }
 
 TEST_CASE("model test: composite referencees") {
@@ -321,8 +319,7 @@ TEST_CASE("Tree tests.") {
     Tree myFaultyTree;
     myFaultyTree.addRoot<MyCompo>(1, 1);
     TINYCOMPO_TEST_ERRORS { myFaultyTree.addRoot<MyCompo>(0, 0); }
-    TINYCOMPO_TEST_ERRORS_END("trying to add root to non-empty Tree.",
-                              "-- Error: trying to add root to non-empty Tree.\n");
+    TINYCOMPO_TEST_ERRORS_END("trying to add root to non-empty Tree.", "-- Error: trying to add root to non-empty Tree.\n");
 }
 
 /*

@@ -29,40 +29,40 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 
 int main() {
-    Assembly<> model;
+    Model<> model;
 
     // graphical model part
     model.component<Exponential>("Sigma");
-    model.property("Sigma", "paramConst", 1.0);
+    // model.property("Sigma", "paramConst", 1.0);
 
     model.component<Exponential>("Theta");
-    model.property("Theta", "paramConst", 1.0);
+    // model.property("Theta", "paramConst", 1.0);
 
-    model.component<Array<Gamma>>("Omega", 5);
+    model.composite<Array<Gamma>>("Omega", 5);
     model.connect<MultiProvide<Real>>("Omega", "paramPtr", "Theta");
 
-    model.component<Array<Product>>("rate", 5);
-    model.connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
-    model.connect<MultiProvide<Real>>("rate", "bPtr", "Sigma");
+    // model.composite<Array<Product>>("rate", 5);
+    // model.connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
+    // model.connect<MultiProvide<Real>>("rate", "bPtr", "Sigma");
 
-    model.component<Array<Poisson>>("X", 5);
-    model.connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
+    // model.composite<Array<Poisson>>("X", 5);
+    // model.connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
 
-    // moves part
-    model.component<MultiSample>("Sampler");
-    model.connect<UseProvide<RandomNode>>("Sampler", "register", "Sigma");
-    model.connect<UseProvide<RandomNode>>("Sampler", "register", "Theta");
-    model.connect<MultiUse<RandomNode>>("Sampler", "register", "Omega");
-    model.connect<MultiUse<RandomNode>>("Sampler", "register", "X");
+    // // moves part
+    // model.component<MultiSample>("Sampler");
+    // model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Sigma"));
+    // model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Theta"));
+    // model.connect<MultiUse<RandomNode>>("Sampler", "register", "Omega");
+    // model.connect<MultiUse<RandomNode>>("Sampler", "register", "X");
 
-    model.component<RejectionSampling>("RS", 10000);
-    model.connect<UseProvide<Sampler>>("RS", "sampler", "Sampler");
-    model.connect<MultiUse<RandomNode>>("RS", "data", "X");
+    // model.component<RejectionSampling>("RS", 10000);
+    // model.connect<UseProvide<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
+    // model.connect<MultiUse<RandomNode>>("RS", "data", "X");
 
-    // model.component<ConsoleOutput>("Console");
-    model.component<FileOutput>("TraceFile", "tmp.trace");
-    // model.connect<UseProvide<DataStream>>("RS", "output", "Console");
-    model.connect<UseProvide<DataStream>>("RS", "output", "TraceFile");
+    // // model.component<ConsoleOutput>("Console");
+    // model.component<FileOutput>("TraceFile", "tmp.trace");
+    // // model.connect<UseProvide<DataStream>>("RS", "output", "Console");
+    // model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
     // model.component<SimpleMove>("Move1");
     // model.connect<UseProvide<RandomNode>>("Move1", "target", "Theta");
@@ -70,7 +70,7 @@ int main() {
     // model.component<SimpleMove>("Move2");
     // model.connect<UseProvide<RandomNode>>("Move2", "target", "Sigma");
 
-    // model.component<Array<SimpleMove, 5>>("MoveArray");
+    // model.composite<Array<SimpleMove, 5>>("MoveArray");
     // model.connect<ArrayOneToOne<RandomNode>>("MoveArray", "target", "Omega");
 
     // model.component<Scheduler>("Scheduler");
@@ -79,17 +79,17 @@ int main() {
     // model.connect<MultiUse<SimpleMove>>("Scheduler", "register", "MoveArray");
 
     // instantiate everything!
-    model.instantiate();
+    Assembly<> assembly(model);
 
-    // hacking the model to clamp observed data
-    model.at<RandomNode>("X", 0).clamp(1);
-    model.at<RandomNode>("X", 1).clamp(0);
-    model.at<RandomNode>("X", 2).clamp(1);
-    model.at<RandomNode>("X", 3).clamp(0);
-    model.at<RandomNode>("X", 4).clamp(0);
+    // // hacking the model to clamp observed data
+    // assembly.at<RandomNode>(Address("X", 0)).clamp(1);
+    // assembly.at<RandomNode>(Address("X", 1)).clamp(0);
+    // assembly.at<RandomNode>(Address("X", 2)).clamp(1);
+    // assembly.at<RandomNode>(Address("X", 3)).clamp(0);
+    // assembly.at<RandomNode>(Address("X", 4)).clamp(0);
 
     // do some things
-    model.call("RS", "go");
+    // assembly.call("RS", "go");
 
-    model.print_all();
+    assembly.print_all();
 }

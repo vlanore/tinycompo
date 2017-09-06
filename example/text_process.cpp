@@ -75,10 +75,8 @@ int main() {
     mymodel.component<ReplaceChar>("ReplaceAbyB", 'a', 'b');
     mymodel.component<ReplaceChar>("ReplaceBbyD", 'b', 'd');
     mymodel.component<ProcessAndPrint>("Controller");
-    mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect",
-                                               Address("ReplaceAbyB"));
-    mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect",
-                                               Address("ReplaceBbyD"));
+    mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect", Address("ReplaceAbyB"));
+    mymodel.connect<UseProvide<TextProcessor>>(Address("Controller"), "effect", Address("ReplaceBbyD"));
     mymodel.connect<UseProvide<TextSource>>(Address("Controller"), "source", Address("MyText"));
 
     Assembly<> myassembly(mymodel);

@@ -31,6 +31,8 @@ license and that you accept its terms.*/
 #define TINYCOMPO_HPP
 
 #include <cxxabi.h>
+#include <stdio.h>
+#include <string.h>
 #include <exception>
 #include <functional>
 #include <iostream>
@@ -51,8 +53,7 @@ license and that you accept its terms.*/
 std::string demangle(const char* name) {
     int status{0};
 
-    std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status),
-                                               std::free};
+    std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status), std::free};
 
     return (status == 0) ? res.get() : name;
 }
@@ -155,8 +156,8 @@ class Component {
                 ptr->_set(std::forward<Args>(args)...);
             } else {  // casting failed, trying to provide useful error message
                 TinycompoDebug e{"setting property failed"};
-                e << "Type " << demangle(typeid(_Port<const Args...>).name())
-                  << " does not seem to match port " << name << '.';
+                e << "Type " << demangle(typeid(_Port<const Args...>).name()) << " does not seem to match port " << name
+                  << '.';
                 e.fail();
             }
         }
@@ -179,8 +180,7 @@ class _Component {
     template <class T, class... Args>
     _Component(_Type<T>, Args&&... args) {
         _constructor = [=]() {
-            return std::unique_ptr<Component>(
-                dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
+            return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
         };
     }
 
@@ -196,15 +196,11 @@ class _Operation {
   public:
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args&&... args)
-        : _connect([=](A& assembly) {
-              Connector::_connect(assembly, std::forward<const Args>(args)...);
-          }) {}
+        : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }) {}
 
     template <class... Args>
     _Operation(Key component, const std::string& prop, Args&&... args)
-        : _connect([=](A& assembly) {
-              assembly.at(component).set(prop, std::forward<const Args>(args)...);
-          }) {}
+        : _connect([=](A& assembly) { assembly.at(component).set(prop, std::forward<const Args>(args)...); }) {}
 
     std::function<void(A&)> _connect;
 };
@@ -251,6 +247,24 @@ class Assembly;  // forward-decl
 template <class Key>
 class Model;  // forward-decl
 
+template <class Key>
+struct _Comparator {
+    bool operator()(const Key& lhs, const Key& rhs) const {
+        // printf("Called generic version\n");
+        return std::less<Key>()(lhs, rhs);
+    }
+};
+
+template <>
+struct _Comparator<const char*> {
+    bool operator()(const char* lhs, const char* rhs) const {
+        // printf("Called char version\n");
+        bool result = std::lexicographical_compare(lhs, lhs + strlen(lhs), rhs, rhs + strlen(rhs));
+        // std::cout << "Chains are " << lhs << " and " << rhs <<".\nResult is " << result << ".\n";
+        return result;
+    }
+};
+
 class _AbstractComposite {  // inheritance-only class
   public:
     virtual ~_AbstractComposite() = default;
@@ -271,16 +285,11 @@ class _Composite {
     template <class T, class... Args>
     explicit _Composite(_Type<T>, Args&&... args)
         : ptr(std::unique_ptr<_AbstractComposite>(new T(std::forward<Args>(args)...))),
-          _clone([=]() {
-              return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get())));
-          }),
-          _constructor([=]() {
-              return static_cast<Component*>(
-                  new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get())));
-          }) {}
+          _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
+          _constructor(
+              [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }) {}
 
-    _Composite(const _Composite& other)
-        : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
+    _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
     _AbstractComposite* get() { return ptr.get(); }
 };
@@ -308,9 +317,9 @@ class Model {
   public:
     using KeyType = Key;
 
-    std::map<Key, _Component> components;
+    std::map<Key, _Component, _Comparator<Key>> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, _Composite> composites;
+    std::map<Key, _Composite, _Comparator<Key>> composites;
 
     Model() = default;
 
@@ -332,8 +341,8 @@ class Model {
             auto ptr = dynamic_cast<Model<Key2>*>(compositeIt->second.get());
             if (ptr == nullptr) {
                 TinycompoDebug e("key type does not match composite key type");
-                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite "
-                  << address.key << " seems to have another key type.";
+                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite " << address.key
+                  << " seems to have another key type.";
                 e.fail();
             }
             ptr->template _route<isComposite, T>(address.rest, std::forward<Args>(args)...);
@@ -347,8 +356,7 @@ class Model {
     template <class T, class... Args>
     void component(Key address, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
-            TinycompoDebug("trying to declare a component that does not inherit from Component")
-                .fail();
+            TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
         }
         components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
@@ -391,7 +399,7 @@ class Model {
 template <class Key = const char*>
 class Assembly : public Component {
   protected:
-    std::map<Key, std::unique_ptr<Component>> instances;
+    std::map<Key, std::unique_ptr<Component>, _Comparator<Key>> instances;
     Model<Key>& internal_model;
 
   public:
@@ -420,7 +428,25 @@ class Assembly : public Component {
 
     template <class T = Component>
     T& at(Key address) const {
-        return dynamic_cast<T&>(*(instances.at(address).get()));
+        try {
+            // std::cerr << "Trying to access instance " << address << "... Existing addresses are :\n";
+            // for (auto& key: instances) {
+            //     std::cerr << "  * " << key.first << "\n";
+            // }
+            return dynamic_cast<T&>(*(instances.at(address).get()));
+        } catch (std::out_of_range) {
+            // printf("%p\n====\n", address);
+            // for (auto& key: instances) {
+            //     printf("* %p\n", key.first);
+            // }
+
+            TinycompoDebug e{"<Assembly::at> Trying to access incorrect address"};
+            e << "Address " << address << " does not exist. Existing addresses are:\n";
+            for (auto& key : instances) {
+                e << "  * " << key.first << "\n";
+            }
+            e.fail();
+        }
     }
 
     template <class T = Component, class Key1 = bool>
@@ -503,8 +529,7 @@ class ArrayOneToOne {
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
-            e << array1 << " has size " << ref1.size() << " while " << array2 << " has size "
-              << ref2.size() << ".";
+            e << array1 << " has size " << ref1.size() << " while " << array2 << " has size " << ref2.size() << ".";
             e.fail();
         }
     }
@@ -539,8 +564,12 @@ template <class Interface>
 class MultiProvide {
   public:
     static void _connect(Assembly<>& a, const char* array, std::string prop, const char* mapper) {
-        for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
-            a.at(Address(array, i)).set(prop, &a.at<Interface>(mapper));
+        try {
+            for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
+                a.at(Address(array, i)).set(prop, &a.at<Interface>(mapper));
+            }
+        } catch (...) {
+            TinycompoDebug("<MultiProvide::_connect> There was an error while trying to connect components.").fail();
         }
     }
 };
