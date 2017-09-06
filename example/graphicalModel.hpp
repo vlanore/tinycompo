@@ -143,6 +143,7 @@ class UnaryReal : public Component, public RandomNode {
         port("paramConst", &UnaryReal::setParam<double>);
         port("paramPtr", &UnaryReal::setParam<Real *>);
         port("sample", &UnaryReal::sample);
+        port("clamp", &UnaryReal::clamp);
     };
 
     // methods required from parent classes

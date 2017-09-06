@@ -520,6 +520,20 @@ class Array : public Composite<int> {
 };
 
 /*
+  ====================================================================================================
+  ~*~ Set class ~*~
+  ==================================================================================================*/
+struct ArraySet {
+    template <class Key, class... Keys, class Data>
+    static void _connect(Assembly<Key>& assembly, _Address<Keys...> array, const std::string& prop,
+                         const std::vector<Data>& data) {
+        auto& arrayRef = assembly.template at<Assembly<int>>(array);
+        for (int i = 0; i < static_cast<int>(arrayRef.size()); i++) {
+            arrayRef.at(i).set(prop, data.at(i));
+        }
+    }
+};
+/*
 ====================================================================================================
   ~*~ ArrayOneToOne class ~*~
   This is a connector that takes two arrays with identical sizes and connects (as if using the

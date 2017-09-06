@@ -47,8 +47,9 @@ int main() {
 
     model.composite<Array<Poisson>>("X", 5);
     model.connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
+    model.connect<ArraySet>(Address("X"), "clamp", std::vector<double>{0, 1, 0, 0, 1});
 
-    // moves part
+    // sampler
     model.component<MultiSample>("Sampler");
     model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Sigma"));
     model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Theta"));
@@ -60,35 +61,14 @@ int main() {
     model.connect<MultiUse<RandomNode>>("RS", "data", "X");
 
     model.component<ConsoleOutput>("Console");
-    // model.component<FileOutput>("TraceFile", "tmp.trace");
     model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("Console"));
+    // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("TraceFile"));
-
-    // model.component<SimpleMove>("Move1");
-    // model.connect<UseProvide<RandomNode>>("Move1", "target", "Theta");
-
-    // model.component<SimpleMove>("Move2");
-    // model.connect<UseProvide<RandomNode>>("Move2", "target", "Sigma");
-
-    // model.composite<Array<SimpleMove, 5>>("MoveArray");
-    // model.connect<ArrayOneToOne<RandomNode>>("MoveArray", "target", "Omega");
-
-    // model.component<Scheduler>("Scheduler");
-    // model.connect<UseProvide<SimpleMove>>("Scheduler", "register", "Move1");
-    // model.connect<UseProvide<SimpleMove>>("Scheduler", "register", "Move2");
-    // model.connect<MultiUse<SimpleMove>>("Scheduler", "register", "MoveArray");
 
     // instantiate everything!
     Assembly<> assembly(model);
 
-    // // hacking the model to clamp observed data
-    assembly.at<RandomNode>(Address("X", 0)).clamp(1);
-    assembly.at<RandomNode>(Address("X", 1)).clamp(0);
-    assembly.at<RandomNode>(Address("X", 2)).clamp(1);
-    assembly.at<RandomNode>(Address("X", 3)).clamp(0);
-    assembly.at<RandomNode>(Address("X", 4)).clamp(0);
-
-    // do some things
+    // call sampling
     assembly.call("RS", "go");
 
     assembly.print_all();
