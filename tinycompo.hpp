@@ -267,7 +267,7 @@ class _AbstractComposite {  // inheritance-only class
     virtual ~_AbstractComposite() = default;
 };
 
-template <class Key>
+template <class Key = const char*>
 class Composite : public Model<Key>, public _AbstractComposite {};
 
 class _Composite {
@@ -571,7 +571,8 @@ parameter for Assembly::connect.
 template <class Interface>
 class MultiUse {
   public:
-    static void _connect(Assembly<>& a, const char* reducer, std::string prop, const char* array) {
+    template <class... Keys, class... Keys2>
+    static void _connect(Assembly<>& a, _Address<Keys...> reducer, std::string prop, _Address<Keys2...> array) {
         auto& ref1 = a.at<Component>(reducer);
         auto& ref2 = a.at<Assembly<int>>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {

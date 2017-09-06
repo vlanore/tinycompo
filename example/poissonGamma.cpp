@@ -28,37 +28,43 @@ license and that you accept its terms.*/
 
 #include "graphicalModel.hpp"
 
+struct PoissonGamma : public Composite<> {
+    PoissonGamma() {
+        component<Exponential>("Sigma");
+        connect<Set>(Address("Sigma"), "paramConst", 1.0);
+
+        component<Exponential>("Theta");
+        connect<Set>(Address("Theta"), "paramConst", 1.0);
+
+        composite<Array<Gamma>>("Omega", 5);
+        connect<MultiProvide<Real>>("Omega", "paramPtr", "Theta");
+
+        composite<Array<Product>>("rate", 5);
+        connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
+        connect<MultiProvide<Real>>("rate", "bPtr", "Sigma");
+
+        composite<Array<Poisson>>("X", 5);
+        connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
+        connect<ArraySet>(Address("X"), "clamp", std::vector<double>{0, 1, 0, 0, 1});
+    }
+};
+
 int main() {
     Model<> model;
 
     // graphical model part
-    model.component<Exponential>("Sigma");
-    model.connect<Set>(Address("Sigma"), "paramConst", 1.0);
-
-    model.component<Exponential>("Theta");
-    model.connect<Set>(Address("Theta"), "paramConst", 1.0);
-
-    model.composite<Array<Gamma>>("Omega", 5);
-    model.connect<MultiProvide<Real>>("Omega", "paramPtr", "Theta");
-
-    model.composite<Array<Product>>("rate", 5);
-    model.connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
-    model.connect<MultiProvide<Real>>("rate", "bPtr", "Sigma");
-
-    model.composite<Array<Poisson>>("X", 5);
-    model.connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
-    model.connect<ArraySet>(Address("X"), "clamp", std::vector<double>{0, 1, 0, 0, 1});
+    model.composite<PoissonGamma>("PG");
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Sigma"));
-    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("Theta"));
-    model.connect<MultiUse<RandomNode>>("Sampler", "register", "Omega");
-    model.connect<MultiUse<RandomNode>>("Sampler", "register", "X");
+    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("PG", "Sigma"));
+    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("PG", "Theta"));
+    model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "Omega"));
+    model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "X"));
 
-    model.component<RejectionSampling>("RS", 10000);
+    model.component<RejectionSampling>("RS", 100000);
     model.connect<UseProvide<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
-    model.connect<MultiUse<RandomNode>>("RS", "data", "X");
+    model.connect<MultiUse<RandomNode>>(Address("RS"), "data", Address("PG", "X"));
 
     model.component<ConsoleOutput>("Console");
     model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("Console"));
