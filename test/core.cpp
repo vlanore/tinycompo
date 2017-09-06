@@ -90,6 +90,11 @@ TEST_CASE("Component tests.") {
         "-- Error: port name not found. Could not find port badPort in component MyCompo.\n");
 }
 
+TEST_CASE("Component without _debug") {
+    struct MyBasicCompo : public Component {};
+    MyBasicCompo compo{};
+}
+
 /*
 ====================================================================================================
   ~*~ _Component ~*~

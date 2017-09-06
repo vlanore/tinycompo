@@ -134,7 +134,7 @@ class Component {
     Component() = default;
     virtual ~Component() = default;
 
-    virtual std::string _debug() const = 0;
+    virtual std::string _debug() const { return "Component"; };
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
