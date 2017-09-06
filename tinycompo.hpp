@@ -240,7 +240,7 @@ _Address<Keys...> Address(Keys... keys) {
 
 /*
 ====================================================================================================
-  ~*~ Model ~*~
+  ~*~ Random utility classes and declarations ~*~
 ==================================================================================================*/
 template <class Key>
 class Assembly;  // forward-decl
@@ -258,10 +258,7 @@ struct _Comparator {
 template <>
 struct _Comparator<const char*> {
     bool operator()(const char* lhs, const char* rhs) const {
-        // printf("Called char version\n");
-        bool result = std::lexicographical_compare(lhs, lhs + strlen(lhs), rhs, rhs + strlen(rhs));
-        // std::cout << "Chains are " << lhs << " and " << rhs <<".\nResult is " << result << ".\n";
-        return result;
+        return std::lexicographical_compare(lhs, lhs + strlen(lhs), rhs, rhs + strlen(rhs));
     }
 };
 
@@ -294,6 +291,10 @@ class _Composite {
     _AbstractComposite* get() { return ptr.get(); }
 };
 
+/*
+====================================================================================================
+  ~*~ Model ~*~
+==================================================================================================*/
 template <class Key = const char*>
 class Model {
     using _InstanceType = int;
@@ -475,6 +476,17 @@ class Assembly : public Component {
 
 /*
 ====================================================================================================
+  ~*~ Set class ~*~
+==================================================================================================*/
+struct Set {
+    template <class Key, class... Keys, class... Args>
+    static void _connect(Assembly<Key>& assembly, _Address<Keys...> component, const std::string& prop, Args... args) {
+        assembly.at(component).set(prop, std::forward<Args>(args)...);
+    }
+};
+
+/*
+====================================================================================================
   ~*~ UseProvide class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
   Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
@@ -482,8 +494,7 @@ class Assembly : public Component {
   class should be used as-is to declare assembly connections.
 ==================================================================================================*/
 template <class Interface>
-class UseProvide {
-  public:
+struct UseProvide {
     template <class Key, class... Keys, class... Keys2>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> user, std::string userPort,
                          _Address<Keys2...> provider) {

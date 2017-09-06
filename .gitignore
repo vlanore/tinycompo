@@ -1,12 +1,8 @@
-# C++ extensions
 *.o
 *.a
-
-# Binaries
 *_bin
-
-# gcov things
 *.gcov
 *.gcno
 *.gcda
 *.profraw
+tmp*
