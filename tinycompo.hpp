@@ -212,6 +212,12 @@ class _Operation {
 ==================================================================================================*/
 template <class Key, class... Keys>
 struct _Address {
+    std::string collapse() const {
+        std::stringstream ss;
+        ss << key << "__" << rest.collapse();
+        return ss.str();
+    }
+
     const Key key;
     const bool final{false};
     const _Address<Keys...> rest;
@@ -221,6 +227,12 @@ struct _Address {
 
 template <class Key>
 struct _Address<Key> {
+    std::string collapse() const {
+        std::stringstream ss;
+        ss << key;
+        return ss.str();
+    }
+
     const Key key;
     const bool final{true};
 
@@ -250,25 +262,25 @@ struct _PortAddress {
 // TODO: test
 template <class... Keys>
 _PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
-    return _PortAddress<Keys...>(prop, keys...);
+    return _PortAddress<Keys...>(prop, std::forward<Keys>(keys)...);
 }
 
 // ============= RANDOM TESTS ===============
 template <class... Keys>
-void printArgs(_Address<Keys...>) {
-    std::cout << "ADDRESS\n";
+void getArgs(_Address<Keys...> a) {
+    std::cout << a.collapse() << '\n';
 }
 
 template <class Arg>
-void printArgs(Arg arg) {
+void getArgs(Arg arg) {
     // if (std::is_base_of<_Address>)
     std::cout << arg << '\n';
 }
 
 template <class Arg, class... Args>
-void printArgs(Arg arg, Args... args) {
-    printArgs(arg);
-    printArgs(std::forward<Args>(args)...);
+void getArgs(Arg arg, Args... args) {
+    getArgs(arg);
+    getArgs(std::forward<Args>(args)...);
 }
 
 /*
@@ -292,6 +304,10 @@ struct _Comparator<const char*> {
     }
 };
 
+/*
+====================================================================================================
+  ~*~ Composite ~*~
+==================================================================================================*/
 struct _AbstractComposite {  // inheritance-only class
     virtual ~_AbstractComposite() = default;
 };
@@ -498,6 +514,7 @@ class Assembly : public Component {
 ====================================================================================================
   ~*~ Set class ~*~
 ==================================================================================================*/
+// TODO: test
 struct Set {
     template <class Key, class... Keys, class... Args>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> component, const std::string& prop, Args... args) {
@@ -543,6 +560,7 @@ class Array : public Composite<int> {
 ====================================================================================================
   ~*~ ArraySet class ~*~
 ==================================================================================================*/
+// TODO: test
 struct ArraySet {
     template <class Key, class... Keys, class Data>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> array, const std::string& prop,
