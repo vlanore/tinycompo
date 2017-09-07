@@ -197,7 +197,7 @@ struct _Address;  // forward decl
 
 // ============= RANDOM TESTS ===============
 template <class... Keys>
-std::string getArgs(const std::string &s, _Address<Keys...> a) {
+std::string getArgs(const std::string& s, _Address<Keys...> a) {
     std::stringstream ss;
     ss << s << " -- " << a.toString() << ";\n";
     return ss.str();
@@ -209,7 +209,7 @@ std::string getArgs(const std::string&, Arg) {
 }
 
 template <class Arg, class... Args>
-std::string getArgs(const std::string &s, Arg arg, Args... args) {
+std::string getArgs(const std::string& s, Arg arg, Args... args) {
     std::stringstream ss;
     ss << getArgs(s, arg) << getArgs(s, std::forward<Args>(args)...);
     return ss.str();
@@ -221,7 +221,9 @@ struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
-        _debug([=](std::string s) { return s + "[label=\"" + TinycompoDebug::type<Connector>() + "\"];\n" + getArgs(s, args...); }) {}
+          _debug([=](std::string s) {
+              return s + "[label=\"" + TinycompoDebug::type<Connector>() + "\"];\n" + getArgs(s, args...);
+          }) {}
 
     // TODO: remove, as it is not accessible through the Model interface
     template <class... Args>
@@ -454,7 +456,7 @@ class Model {
         for (auto& c : components) {
             std::cout << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug << ")\"];\n";
         }
-        auto i{0};
+        auto i = 0;
         for (auto& o : operations) {
             std::stringstream ss;
             ss << prefix << i;
