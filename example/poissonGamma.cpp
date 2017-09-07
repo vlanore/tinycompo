@@ -40,11 +40,11 @@ struct PoissonGamma : public Composite<> {
         connect<MultiProvide<Real>>(Address("Omega"), "paramPtr", Address("Theta"));
 
         composite<Array<Product>>("rate", 5);
-        connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
+        connect<ArrayOneToOne<Real>>(Address("rate"), "aPtr", Address("Omega"));
         connect<MultiProvide<Real>>(Address("rate"), "bPtr", Address("Sigma"));
 
         composite<Array<Poisson>>("X", 5);
-        connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");
+        connect<ArrayOneToOne<Real>>(Address("X"), "paramPtr", Address("rate"));
         connect<ArraySet>(Address("X"), "clamp", std::vector<double>{0, 1, 0, 0, 1});
     }
 };
