@@ -34,6 +34,7 @@ license and that you accept its terms.*/
 #include <stdio.h>
 #include <string.h>
 #include <exception>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <list>
@@ -331,7 +332,7 @@ class _Composite {
 
   public:
     std::function<Component*()> _constructor;
-    std::function<void(std::string)> _debug;
+    std::function<std::string(std::string)> _debug;
 
     _Composite() = delete;
 
@@ -341,7 +342,7 @@ class _Composite {
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
           _constructor(
               [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }),
-          _debug([=](std::string s) { dynamic_cast<T&>(*ptr.get()).debug(s); }) {}
+          _debug([=](std::string s) { return dynamic_cast<T&>(*ptr.get()).debug(s); }) {}
 
     _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
@@ -371,6 +372,15 @@ class Model {
             model.composite<T>(std::forward<Args>(args)...);
         }
     };
+
+    std::string ReplaceString(std::string subject, const std::string& search, const std::string& replace) {
+        size_t pos = 0;
+        while ((pos = subject.find(search, pos)) != std::string::npos) {
+            subject.replace(pos, search.length(), replace);
+            pos += replace.length();
+        }
+        return subject;
+    }
 
   public:
     using KeyType = Key;
@@ -449,26 +459,41 @@ class Model {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    void debug(const std::string& myname = "") {
+    std::string debug(const std::string& myname = "") {
         std::string prefix = myname == "" ? "" : myname + "__";
-        std::cout << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
+        std::stringstream ss;
+        ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
 
         for (auto& c : components) {
-            std::cout << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug << ")\"];\n";
+            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug << ")\"];\n";
         }
         auto i = 0;
         for (auto& o : operations) {
             std::stringstream portName;
             portName << prefix << i;
-            std::cout << o._debug(portName.str(), prefix);
+            ss << o._debug(portName.str(), prefix);
             i++;
         }
+        std::vector<std::string> compositeNames;
         for (auto& c : composites) {
-            std::stringstream ss;
-            ss << prefix << c.first;
-            c.second._debug(ss.str());
+            std::stringstream compositeName;
+            compositeName << prefix << c.first;
+            ss << c.second._debug(compositeName.str());
+            compositeNames.push_back(compositeName.str());
         }
-        std::cout << "}\n";
+        ss << "}\n";
+        std::string result = ss.str();
+        for (auto name : compositeNames) {
+            result = ReplaceString(result, "-- " + name, "-- cluster_" + name);
+        }
+
+        if (myname == "") {
+            std::ofstream file;
+            file.open("tmp.dot");
+            file << result;
+            file.close();
+        }
+        return result;
     }
 };
 
