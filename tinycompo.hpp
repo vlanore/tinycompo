@@ -198,6 +198,7 @@ class _Operation {
     _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }) {}
 
+    // TODO: remove, as it is not accessible through the Model interface
     template <class... Args>
     _Operation(Key component, const std::string& prop, Args&&... args)
         : _connect([=](A& assembly) { assembly.at(component).set(prop, std::forward<const Args>(args)...); }) {}
@@ -210,8 +211,7 @@ class _Operation {
   ~*~ Address ~*~
 ==================================================================================================*/
 template <class Key, class... Keys>
-class _Address {
-  public:
+struct _Address {
     const Key key;
     const bool final{false};
     const _Address<Keys...> rest;
@@ -220,8 +220,7 @@ class _Address {
 };
 
 template <class Key>
-class _Address<Key> {
-  public:
+struct _Address<Key> {
     const Key key;
     const bool final{true};
 
@@ -238,6 +237,40 @@ _Address<Keys...> Address(Keys... keys) {
     return _Address<Keys...>(keys...);
 }
 
+// TODO: test
+template <class... Keys>
+struct _PortAddress {
+    std::string prop;
+    _Address<Keys...> componentAddress;
+
+    _PortAddress(const std::string& prop, Keys... keys)
+        : prop(prop), componentAddress(Address(std::forward<Keys>(keys)...)) {}
+};
+
+// TODO: test
+template <class... Keys>
+_PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
+    return _PortAddress<Keys...>(prop, keys...);
+}
+
+// ============= RANDOM TESTS ===============
+template <class... Keys>
+void printArgs(_Address<Keys...>) {
+    std::cout << "ADDRESS\n";
+}
+
+template <class Arg>
+void printArgs(Arg arg) {
+    // if (std::is_base_of<_Address>)
+    std::cout << arg << '\n';
+}
+
+template <class Arg, class... Args>
+void printArgs(Arg arg, Args... args) {
+    printArgs(arg);
+    printArgs(std::forward<Args>(args)...);
+}
+
 /*
 ====================================================================================================
   ~*~ Random utility classes and declarations ~*~
@@ -249,10 +282,7 @@ class Model;  // forward-decl
 
 template <class Key>
 struct _Comparator {
-    bool operator()(const Key& lhs, const Key& rhs) const {
-        // printf("Called generic version\n");
-        return std::less<Key>()(lhs, rhs);
-    }
+    bool operator()(const Key& lhs, const Key& rhs) const { return std::less<Key>()(lhs, rhs); }
 };
 
 template <>
@@ -262,8 +292,7 @@ struct _Comparator<const char*> {
     }
 };
 
-class _AbstractComposite {  // inheritance-only class
-  public:
+struct _AbstractComposite {  // inheritance-only class
     virtual ~_AbstractComposite() = default;
 };
 
@@ -430,17 +459,8 @@ class Assembly : public Component {
     template <class T = Component>
     T& at(Key address) const {
         try {
-            // std::cerr << "Trying to access instance " << address << "... Existing addresses are :\n";
-            // for (auto& key: instances) {
-            //     std::cerr << "  * " << key.first << "\n";
-            // }
             return dynamic_cast<T&>(*(instances.at(address).get()));
         } catch (std::out_of_range) {
-            // printf("%p\n====\n", address);
-            // for (auto& key: instances) {
-            //     printf("* %p\n", key.first);
-            // }
-
             TinycompoDebug e{"<Assembly::at> Trying to access incorrect address"};
             e << "Address " << address << " does not exist. Existing addresses are:\n";
             for (auto& key : instances) {
@@ -520,9 +540,9 @@ class Array : public Composite<int> {
 };
 
 /*
-  ====================================================================================================
-  ~*~ Set class ~*~
-  ==================================================================================================*/
+====================================================================================================
+  ~*~ ArraySet class ~*~
+==================================================================================================*/
 struct ArraySet {
     template <class Key, class... Keys, class Data>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> array, const std::string& prop,
