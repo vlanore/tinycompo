@@ -37,11 +37,11 @@ struct PoissonGamma : public Composite<> {
         connect<Set>(Address("Theta"), "paramConst", 1.0);
 
         composite<Array<Gamma>>("Omega", 5);
-        connect<MultiProvide<Real>>("Omega", "paramPtr", "Theta");
+        connect<MultiProvide<Real>>(Address("Omega"), "paramPtr", Address("Theta"));
 
         composite<Array<Product>>("rate", 5);
         connect<ArrayOneToOne<Real>>("rate", "aPtr", "Omega");
-        connect<MultiProvide<Real>>("rate", "bPtr", "Sigma");
+        connect<MultiProvide<Real>>(Address("rate"), "bPtr", Address("Sigma"));
 
         composite<Array<Poisson>>("X", 5);
         connect<ArrayOneToOne<Real>>("X", "paramPtr", "rate");

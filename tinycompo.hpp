@@ -614,9 +614,9 @@ struct ArraySet {
   Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
-class ArrayOneToOne {
-  public:
-    static void _connect(Assembly<>& a, const char* array1, std::string prop, const char* array2) {
+struct ArrayOneToOne {
+    template <class... Keys, class... Keys2>
+    static void _connect(Assembly<>& a, _Address<Keys...> array1, std::string prop, _Address<Keys2...> array2) {
         auto& ref1 = a.at<Assembly<int>>(array1);
         auto& ref2 = a.at<Assembly<int>>(array2);
         if (ref1.size() == ref2.size()) {
@@ -626,7 +626,8 @@ class ArrayOneToOne {
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
-            e << array1 << " has size " << ref1.size() << " while " << array2 << " has size " << ref2.size() << ".";
+            e << array1.toString() << " has size " << ref1.size() << " while " << array2.toString() << " has size "
+              << ref2.size() << ".";
             e.fail();
         }
     }
@@ -641,8 +642,7 @@ reducer is the user in multiple use/provide connections). This class should be u
 parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
-class MultiUse {
-  public:
+struct MultiUse {
     template <class... Keys, class... Keys2>
     static void _connect(Assembly<>& a, _Address<Keys...> reducer, std::string prop, _Address<Keys2...> array) {
         auto& ref1 = a.at<Component>(reducer);
@@ -659,9 +659,9 @@ class MultiUse {
   ~*~ MultiProvide class ~*~
 ==================================================================================================*/
 template <class Interface>
-class MultiProvide {
-  public:
-    static void _connect(Assembly<>& a, const char* array, std::string prop, const char* mapper) {
+struct MultiProvide {
+    template <class... Keys, class... Keys2>
+    static void _connect(Assembly<>& a, _Address<Keys...> array, std::string prop, _Address<Keys2...> mapper) {
         try {
             for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
                 a.at(Address(array, i)).set(prop, &a.at<Interface>(mapper));
