@@ -175,28 +175,53 @@ class Component {
 template <class T>  // this is an empty helper class that is used to pass T to the _Component
 class _Type {};     // constructor below
 
-class _Component {
-  public:
+struct _Component {
     template <class T, class... Args>
-    _Component(_Type<T>, Args&&... args) {
-        _constructor = [=]() {
-            return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
-        };
-    }
+    _Component(_Type<T>, Args&&... args)
+        : _constructor([=]() {
+              return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
+          }),
+          _debug(TinycompoDebug::type<T>()) {}
 
     std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
+    std::string _debug{""};
 };
 
 /*
 ====================================================================================================
   ~*~ _Operation class ~*~
 ==================================================================================================*/
+
+template <class Key, class... Keys>
+struct _Address;  // forward decl
+
+// ============= RANDOM TESTS ===============
+template <class... Keys>
+std::string getArgs(_Address<Keys...> a) {
+    std::stringstream ss;
+    ss << a.toString() << '\n';
+    return ss.str();
+}
+
+template <class Arg>
+std::string getArgs(Arg) {
+    return "";
+}
+
+template <class Arg, class... Args>
+std::string getArgs(Arg arg, Args... args) {
+    std::stringstream ss;
+    ss << getArgs(arg) << getArgs(std::forward<Args>(args)...);
+    return ss.str();
+}
+// ==========================================
+
 template <class A, class Key>
-class _Operation {
-  public:
+struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args&&... args)
-        : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }) {}
+        : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
+          _debug(getArgs(std::forward<Args>(args)...)) {}
 
     // TODO: remove, as it is not accessible through the Model interface
     template <class... Args>
@@ -204,6 +229,7 @@ class _Operation {
         : _connect([=](A& assembly) { assembly.at(component).set(prop, std::forward<const Args>(args)...); }) {}
 
     std::function<void(A&)> _connect;
+    std::string _debug{""};
 };
 
 /*
@@ -212,9 +238,9 @@ class _Operation {
 ==================================================================================================*/
 template <class Key, class... Keys>
 struct _Address {
-    std::string collapse() const {
+    std::string toString() const {
         std::stringstream ss;
-        ss << key << "__" << rest.collapse();
+        ss << key << "__" << rest.toString();
         return ss.str();
     }
 
@@ -227,7 +253,7 @@ struct _Address {
 
 template <class Key>
 struct _Address<Key> {
-    std::string collapse() const {
+    std::string toString() const {
         std::stringstream ss;
         ss << key;
         return ss.str();
@@ -263,24 +289,6 @@ struct _PortAddress {
 template <class... Keys>
 _PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
     return _PortAddress<Keys...>(prop, std::forward<Keys>(keys)...);
-}
-
-// ============= RANDOM TESTS ===============
-template <class... Keys>
-void getArgs(_Address<Keys...> a) {
-    std::cout << a.collapse() << '\n';
-}
-
-template <class Arg>
-void getArgs(Arg arg) {
-    // if (std::is_base_of<_Address>)
-    std::cout << arg << '\n';
-}
-
-template <class Arg, class... Args>
-void getArgs(Arg arg, Args... args) {
-    getArgs(arg);
-    getArgs(std::forward<Args>(args)...);
 }
 
 /*
@@ -321,6 +329,7 @@ class _Composite {
 
   public:
     std::function<Component*()> _constructor;
+    std::function<void(std::string)> _debug;
 
     _Composite() = delete;
 
@@ -329,7 +338,8 @@ class _Composite {
         : ptr(std::unique_ptr<_AbstractComposite>(new T(std::forward<Args>(args)...))),
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
           _constructor(
-              [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }) {}
+              [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }),
+          _debug([=](std::string s) { dynamic_cast<T&>(*ptr.get()).debug(s); }) {}
 
     _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
@@ -436,6 +446,24 @@ class Model {
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
+
+    void debug(const std::string& myname = "") {
+        std::string prefix = myname == "" ? "" : myname + "__";
+        std::cout << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
+
+        for (auto& c : components) {
+            std::cout << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug << ")\"];\n";
+        }
+        for (auto& o : operations) {
+            std::cout << o._debug;
+        }
+        for (auto& c : composites) {
+            std::stringstream ss;
+            ss << prefix << c.first;
+            c.second._debug(ss.str());
+        }
+        std::cout << "}\n";
+    }
 };
 
 /*
