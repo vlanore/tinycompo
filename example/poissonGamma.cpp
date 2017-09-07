@@ -62,7 +62,7 @@ int main() {
     model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "X"));
 
-    model.component<RejectionSampling>("RS", 100000);
+    model.component<RejectionSampling>("RS", 10000);
     model.connect<UseProvide<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
     model.connect<MultiUse<RandomNode>>(Address("RS"), "data", Address("PG", "X"));
 
@@ -70,6 +70,8 @@ int main() {
     model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("Console"));
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("TraceFile"));
+
+    model.debug();
 
     // instantiate everything!
     Assembly<> assembly(model);

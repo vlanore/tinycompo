@@ -197,21 +197,21 @@ struct _Address;  // forward decl
 
 // ============= RANDOM TESTS ===============
 template <class... Keys>
-std::string getArgs(const std::string& s, _Address<Keys...> a) {
+std::string getArgs(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
     std::stringstream ss;
-    ss << s << " -- " << a.toString() << ";\n";
+    ss << s << " -- " << prefix << a.toString() << ";\n";
     return ss.str();
 }
 
 template <class Arg>
-std::string getArgs(const std::string&, Arg) {
+std::string getArgs(const std::string&, const std::string&, Arg) {
     return "";
 }
 
 template <class Arg, class... Args>
-std::string getArgs(const std::string& s, Arg arg, Args... args) {
+std::string getArgs(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
     std::stringstream ss;
-    ss << getArgs(s, arg) << getArgs(s, std::forward<Args>(args)...);
+    ss << getArgs(s, prefix, arg) << getArgs(s, prefix, std::forward<Args>(args)...);
     return ss.str();
 }
 // ==========================================
@@ -221,8 +221,8 @@ struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
-          _debug([=](std::string s) {
-              return s + "[label=\"" + TinycompoDebug::type<Connector>() + "\"];\n" + getArgs(s, args...);
+          _debug([=](std::string s, std::string prefix) {
+              return s + "[label=\"" + TinycompoDebug::type<Connector>() + "\"];\n" + getArgs(s, prefix, args...);
           }) {}
 
     // TODO: remove, as it is not accessible through the Model interface
@@ -231,7 +231,7 @@ struct _Operation {
         : _connect([=](A& assembly) { assembly.at(component).set(prop, std::forward<const Args>(args)...); }) {}
 
     std::function<void(A&)> _connect;
-    std::function<std::string(std::string)> _debug{[](std::string) { return ""; }};
+    std::function<std::string(std::string, std::string)> _debug{[](std::string, std::string) { return ""; }};
 };
 
 /*
@@ -458,9 +458,9 @@ class Model {
         }
         auto i = 0;
         for (auto& o : operations) {
-            std::stringstream ss;
-            ss << prefix << i;
-            std::cout << o._debug(ss.str());
+            std::stringstream portName;
+            portName << prefix << i;
+            std::cout << o._debug(portName.str(), prefix);
             i++;
         }
         for (auto& c : composites) {
