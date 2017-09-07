@@ -223,7 +223,8 @@ struct _Operation {
     _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
           _debug([=](std::string s, std::string prefix) {
-              return s + "[label=\"" + TinycompoDebug::type<Connector>() + "\"];\n" + getArgs(s, prefix, args...);
+              return s + "[xlabel=\"" + TinycompoDebug::type<Connector>() + "\" shape=point];\n" +
+                     getArgs(s, prefix, args...);
           }) {}
 
     // TODO: remove, as it is not accessible through the Model interface
@@ -470,7 +471,8 @@ class Model {
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
 
         for (auto& c : components) {
-            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug << ")\"];\n";
+            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug
+               << ")\" shape=component margin=0.35];\n";
         }
         auto i = 0;
         for (auto& o : operations) {
