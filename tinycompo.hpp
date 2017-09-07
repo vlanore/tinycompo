@@ -326,13 +326,18 @@ struct _AbstractComposite {  // inheritance-only class
 template <class Key = const char*>
 class Composite : public Model<Key>, public _AbstractComposite {};
 
+struct _DotData {
+    std::string output;
+    std::vector<std::string> compositeNames;
+};
+
 class _Composite {
     std::unique_ptr<_AbstractComposite> ptr;
     std::function<_AbstractComposite*()> _clone;
 
   public:
     std::function<Component*()> _constructor;
-    std::function<std::string(std::string)> _debug;
+    std::function<_DotData(std::string)> _debug;
 
     _Composite() = delete;
 
@@ -459,7 +464,7 @@ class Model {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    std::string debug(const std::string& myname = "") {
+    _DotData debug(const std::string& myname = "") {
         std::string prefix = myname == "" ? "" : myname + "__";
         std::stringstream ss;
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
@@ -474,26 +479,29 @@ class Model {
             ss << o._debug(portName.str(), prefix);
             i++;
         }
-        std::vector<std::string> compositeNames;
+        _DotData data;
         for (auto& c : composites) {
             std::stringstream compositeName;
             compositeName << prefix << c.first;
-            ss << c.second._debug(compositeName.str());
-            compositeNames.push_back(compositeName.str());
+            _DotData dataBis = c.second._debug(compositeName.str());
+            ss << dataBis.output;
+            data.compositeNames.insert(data.compositeNames.end(), dataBis.compositeNames.begin(),
+                                       dataBis.compositeNames.end());
+            data.compositeNames.push_back(compositeName.str());
         }
         ss << "}\n";
-        std::string result = ss.str();
-        for (auto name : compositeNames) {
-            result = ReplaceString(result, "-- " + name, "-- cluster_" + name);
+        data.output = ss.str();
+        for (auto& name : data.compositeNames) {
+            data.output = ReplaceString(data.output, "-- " + name + ";", "-- cluster_" + name + ";");
         }
 
         if (myname == "") {
             std::ofstream file;
             file.open("tmp.dot");
-            file << result;
+            file << data.output;
             file.close();
         }
-        return result;
+        return data;
     }
 };
 
