@@ -92,6 +92,7 @@ TEST_CASE("Component tests.") {
 TEST_CASE("Component without _debug") {
     struct MyBasicCompo : public Component {};
     MyBasicCompo compo{};
+    CHECK(compo._debug() == "Component");
 }
 
 /*
@@ -135,10 +136,6 @@ TEST_CASE("_Operation tests.") {
     CHECK(myAssembly.compo1.j == 15);
     CHECK(myAssembly.compo2.i == 23);
     CHECK(myAssembly.compo2.j == 19);
-    _Operation<MyAssembly, int> myProperty{0, "myPort", 3, 4};
-    myProperty._connect(myAssembly);
-    CHECK(myAssembly.compo1.i == 3);
-    CHECK(myAssembly.compo1.j == 4);
 }
 
 /*

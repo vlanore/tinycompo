@@ -62,8 +62,7 @@ std::string demangle(const char* name) {
 std::string demangle(const char* name) { return name; }
 #endif
 
-class TinycompoException : public std::exception {
-  public:
+struct TinycompoException : public std::exception {
     std::string message{""};
     explicit TinycompoException(const std::string& init = "") : message{init} {}
     const char* what() const noexcept override { return message.c_str(); }
@@ -196,29 +195,28 @@ struct _Component {
 template <class Key, class... Keys>
 struct _Address;  // forward decl
 
-// ============= RANDOM TESTS ===============
-template <class... Keys>
-std::string getArgs(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
-    std::stringstream ss;
-    ss << s << " -- " << prefix << a.toString() << ";\n";
-    return ss.str();
-}
-
-template <class Arg>
-std::string getArgs(const std::string&, const std::string&, Arg) {
-    return "";
-}
-
-template <class Arg, class... Args>
-std::string getArgs(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
-    std::stringstream ss;
-    ss << getArgs(s, prefix, arg) << getArgs(s, prefix, std::forward<Args>(args)...);
-    return ss.str();
-}
-// ==========================================
-
 template <class A, class Key>
-struct _Operation {
+class _Operation {
+    template <class... Keys>
+    std::string getArgs(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
+        std::stringstream ss;
+        ss << s << " -- " << prefix << a.toString() << ";\n";
+        return ss.str();
+    }
+
+    template <class Arg>
+    std::string getArgs(const std::string&, const std::string&, Arg) {
+        return "";
+    }
+
+    template <class Arg, class... Args>
+    std::string getArgs(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
+        std::stringstream ss;
+        ss << getArgs(s, prefix, arg) << getArgs(s, prefix, std::forward<Args>(args)...);
+        return ss.str();
+    }
+
+  public:
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args&&... args)
         : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
@@ -226,11 +224,6 @@ struct _Operation {
               return s + "[xlabel=\"" + TinycompoDebug::type<Connector>() + "\" shape=point];\n" +
                      getArgs(s, prefix, args...);
           }) {}
-
-    // TODO: remove, as it is not accessible through the Model interface
-    template <class... Args>
-    _Operation(Key component, const std::string& prop, Args&&... args)
-        : _connect([=](A& assembly) { assembly.at(component).set(prop, std::forward<const Args>(args)...); }) {}
 
     std::function<void(A&)> _connect;
     std::function<std::string(std::string, std::string)> _debug{[](std::string, std::string) { return ""; }};
