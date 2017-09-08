@@ -293,7 +293,7 @@ TEST_CASE("Assembly test: sub-addressing tests.") {
 
 /*
 ====================================================================================================
-  ~*~ Use/Provide ~*~
+  ~*~ Ports ~*~
 ==================================================================================================*/
 TEST_CASE("Use/provide test.") {
     Model<> model;
@@ -314,6 +314,15 @@ TEST_CASE("Use/provide + Assembly: connection test") {
     model.connect<UseProvide<IntInterface>>(Address("Compo2"), "ptr", Address("Compo1"));
     Assembly<> assembly(model);
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
+}
+
+TEST_CASE("Set test") {
+    Model<> model;
+    model.component<MyCompo>("compo", 2, 3);
+    model.connect<Set>(Address("compo"), "myPort", 5, 7);
+    Assembly<> assembly(model);
+    CHECK(assembly.at<MyCompo>("compo").i == 5);
+    CHECK(assembly.at<MyCompo>("compo").j == 7);
 }
 
 /*

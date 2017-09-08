@@ -78,9 +78,10 @@ class IntInterface {
 class MyInt : public Component, public IntInterface {
   public:
     int i{1};
-    explicit MyInt(int i = 0) : i(i) {}
+    explicit MyInt(int i = 0) : i(i) { port("set", &MyInt::set); }
     std::string _debug() const override { return "MyInt"; }
     int get() const override { return i; }
+    void set(int i2) { i = i2; }
 };
 
 class MyIntProxy : public Component, public IntInterface {

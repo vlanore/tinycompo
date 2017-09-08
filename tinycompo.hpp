@@ -354,8 +354,6 @@ class _Composite {
 ==================================================================================================*/
 template <class Key = const char*>
 class Model {
-    using _InstanceType = int;
-
     template <class T, bool b>
     struct _Helper {
         template <class... Args>
@@ -493,6 +491,13 @@ class Model {
     }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
+
+    void dotToFile(const std::string& fileName) {
+        std::ofstream file;
+        file.open(fileName);
+        dot(file);
+        file.close();
+    }
 };
 
 /*
@@ -571,7 +576,6 @@ class Assembly : public Component {
 ====================================================================================================
   ~*~ Set class ~*~
 ==================================================================================================*/
-// TODO: test
 struct Set {
     template <class Key, class... Keys, class... Args>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> component, const std::string& prop, Args... args) {
@@ -617,7 +621,6 @@ class Array : public Composite<int> {
 ====================================================================================================
   ~*~ ArraySet class ~*~
 ==================================================================================================*/
-// TODO: test
 struct ArraySet {
     template <class Key, class... Keys, class Data>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> array, const std::string& prop,

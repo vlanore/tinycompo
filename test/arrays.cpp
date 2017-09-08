@@ -43,6 +43,22 @@ TEST_CASE("Array tests.") {
 
 /*
 ====================================================================================================
+  ~*~ ArraySet ~*~
+==================================================================================================*/
+TEST_CASE("ArraySet tests.") {
+    Model<> model;
+    model.composite<Array<MyInt>>("array", 5, 2);
+    model.connect<ArraySet>(Address("array"), "set", std::vector<int>{5, 4, 3, 2, 1});
+    Assembly<> assembly(model);
+    CHECK(assembly.at<MyInt>(Address("array", 0)).i == 5);
+    CHECK(assembly.at<MyInt>(Address("array", 1)).i == 4);
+    CHECK(assembly.at<MyInt>(Address("array", 2)).i == 3);
+    CHECK(assembly.at<MyInt>(Address("array", 3)).i == 2);
+    CHECK(assembly.at<MyInt>(Address("array", 4)).i == 1);
+}
+
+/*
+====================================================================================================
 ~*~ ArrayOneToOne ~*~
 ==================================================================================================*/
 TEST_CASE("Array connector tests.") {
