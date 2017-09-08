@@ -210,6 +210,29 @@ TEST_CASE("model test: composite referencees") {
     CHECK(model.compositeRef<MyComposite>("compo0").size() == 2);
 }
 
+struct MyComposite : public Composite<int> {};
+struct MyBasicCompo : public Component {
+    MyBasicCompo* buddy{nullptr};
+    MyBasicCompo() { port("buddy", &MyBasicCompo::setBuddy); }
+    void setBuddy(MyBasicCompo* buddyin) { buddy = buddyin; }
+};
+
+TEST_CASE("Model test: dot output") {
+    Model<> model;
+    model.component<MyBasicCompo>("mycompo");
+    model.composite<MyComposite>("composite");
+    model.component<MyBasicCompo>(Address("composite", 2));
+    model.connect<UseProvide<MyBasicCompo>>(Address("mycompo"), "buddy", Address("composite", 2));
+
+    std::stringstream ss;
+    model.dot(ss);
+    CHECK(ss.str() ==
+          "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
+          "margin=0.35];\n0[xlabel=\"UseProvide<MyBasicCompo>\" shape=point];\n0 -- mycompo;\n0 -- "
+          "composite__2;\nsubgraph cluster_composite {\ncomposite__2[label=\"2\\n(MyBasicCompo)\" "
+          "shape=component margin=0.35];\n}\n}\n");
+}
+
 /*
 ====================================================================================================
   ~*~ Assembly ~*~

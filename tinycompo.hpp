@@ -341,7 +341,7 @@ class _Composite {
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
           _constructor(
               [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }),
-          _debug([=](std::string s) { return dynamic_cast<T&>(*ptr.get()).debug(s); }) {}
+          _debug([=](std::string s) { return dynamic_cast<T&>(*ptr.get())._debug(s); }) {}
 
     _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
@@ -458,7 +458,7 @@ class Model {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    _DotData debug(const std::string& myname = "") {
+    _DotData _debug(const std::string& myname = "") {
         std::string prefix = myname == "" ? "" : myname + "__";
         std::stringstream ss;
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
@@ -489,15 +489,10 @@ class Model {
         for (auto& name : data.compositeNames) {
             data.output = ReplaceString(data.output, "-- " + name + ";", "-- cluster_" + name + ";");
         }
-
-        if (myname == "") {
-            std::ofstream file;
-            file.open("tmp.dot");
-            file << data.output;
-            file.close();
-        }
         return data;
     }
+
+    void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
 };
 
 /*

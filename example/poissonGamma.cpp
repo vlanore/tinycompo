@@ -71,7 +71,10 @@ int main() {
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
-    model.debug();
+    std::ofstream file;
+    file.open("tmp.dot");
+    model.dot(file);
+    file.close();
 
     // instantiate everything!
     Assembly<> assembly(model);

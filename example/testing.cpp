@@ -15,5 +15,8 @@ int main() {
     model.component<MyCompo>(Address("composite", 2));
     model.connect<UseProvide<MyCompo>>(Address("mycompo"), "buddy", Address("composite", 2));
 
-    model.debug();
+    std::ofstream file;
+    file.open("tmp.dot");
+    model.dot(file);
+    file.close();
 }
