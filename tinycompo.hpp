@@ -53,9 +53,7 @@ license and that you accept its terms.*/
 #ifdef __GNUG__
 std::string demangle(const char* name) {
     int status{0};
-
     std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status), std::free};
-
     return (status == 0) ? res.get() : name;
 }
 #else
@@ -181,10 +179,10 @@ struct _Component {
         : _constructor([=]() {
               return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
           }),
-          _debug(TinycompoDebug::type<T>()) {}
+          _className(TinycompoDebug::type<T>()) {}
 
     std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
-    std::string _debug{""};
+    std::string _className{""};
 };
 
 /*
@@ -462,7 +460,7 @@ class Model {
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
 
         for (auto& c : components) {
-            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._debug
+            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._className
                << ")\" shape=component margin=0.35];\n";
         }
         auto i = 0;

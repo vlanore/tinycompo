@@ -291,6 +291,17 @@ TEST_CASE("Assembly test: sub-addressing tests.") {
     CHECK(subSubRef.i == 7);
 }
 
+TEST_CASE("Assembly test: incorrect address.") {
+    Model<> model;
+    model.component<MyCompo>("compo0");
+    model.component<MyCompo>("compo1");
+    Assembly<> assembly(model);
+    TINYCOMPO_TEST_ERRORS { assembly.at<MyCompo>("compo"); }
+    TINYCOMPO_TEST_ERRORS_END("<Assembly::at> Trying to access incorrect address",
+                              "-- Error: <Assembly::at> Trying to access incorrect address. Address compo does not exist. "
+                              "Existing addresses are:\n  * compo0\n  * compo1\n\n");
+}
+
 /*
 ====================================================================================================
   ~*~ Ports ~*~

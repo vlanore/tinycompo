@@ -122,4 +122,10 @@ TEST_CASE("MultiProvide connector tests.") {
     Assembly<> assembly(model);
     MultiProvide<IntInterface>::_connect(assembly, Address("proxyArray"), "ptr", Address("superInt"));
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
+    TINYCOMPO_TEST_ERRORS {
+        MultiProvide<IntInterface>::_connect(assembly, Address("proxyArray"), "ptt", Address("superInt"));
+    }
+    TINYCOMPO_TEST_ERRORS_END("<MultiProvide::_connect> There was an error while trying to connect components.",
+                              "-- Error: port name not found. Could not find port ptt in component MyIntProxy.\n-- Error: "
+                              "<MultiProvide::_connect> There was an error while trying to connect components.\n");
 }
