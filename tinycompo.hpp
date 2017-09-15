@@ -625,7 +625,7 @@ struct Use {
   ~*~ UseProvide2 class ~*~
 ==================================================================================================*/
 template <class Interface>
-struct UseProvide2 {
+struct UseProvide {
     template <class Key, class... Keys, class... Keys2>
     static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> user, _PortAddress<Keys2...> provider) {
         auto& refUser = assembly.at(user.address);

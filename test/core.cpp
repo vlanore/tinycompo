@@ -347,7 +347,7 @@ TEST_CASE("UseProvide2 test.") {
     Model<> model;
     model.component<User>("user");
     model.component<Provider>("provider");
-    model.connect<UseProvide2<GetInt>>(PortAddress("ptr", "user"), PortAddress("int", "provider"));
+    model.connect<UseProvide<GetInt>>(PortAddress("ptr", "user"), PortAddress("int", "provider"));
 
     Assembly<> assembly(model);
     CHECK(assembly.at<User>("user").ptr->getInt() == 2);
