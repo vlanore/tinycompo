@@ -31,7 +31,6 @@ license and that you accept its terms.*/
 #define TINYCOMPO_HPP
 
 #include <cxxabi.h>
-#include <stdio.h>
 #include <string.h>
 #include <exception>
 #include <fstream>
@@ -611,7 +610,7 @@ struct Set {
   class should be used as-is to declare assembly connections.
 ==================================================================================================*/
 template <class Interface>
-struct UseProvide {
+struct Use {
     template <class Key, class... Keys, class... Keys2>
     static void _connect(Assembly<Key>& assembly, _Address<Keys...> user, std::string userPort,
                          _Address<Keys2...> provider) {

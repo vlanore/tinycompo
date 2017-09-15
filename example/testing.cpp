@@ -13,7 +13,7 @@ int main() {
     model.component<MyCompo>("mycompo");
     model.composite<MyComposite>("composite");
     model.component<MyCompo>(Address("composite", 2));
-    model.connect<UseProvide<MyCompo>>(Address("mycompo"), "buddy", Address("composite", 2));
+    model.connect<Use<MyCompo>>(Address("mycompo"), "buddy", Address("composite", 2));
 
     std::ofstream file;
     file.open("tmp.dot");

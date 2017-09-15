@@ -57,19 +57,19 @@ int main() {
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("PG", "Sigma"));
-    model.connect<UseProvide<RandomNode>>(Address("Sampler"), "register", Address("PG", "Theta"));
+    model.connect<Use<RandomNode>>(Address("Sampler"), "register", Address("PG", "Sigma"));
+    model.connect<Use<RandomNode>>(Address("Sampler"), "register", Address("PG", "Theta"));
     model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "X"));
 
     model.component<RejectionSampling>("RS", 100);
-    model.connect<UseProvide<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
+    model.connect<Use<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
     model.connect<MultiUse<RandomNode>>(Address("RS"), "data", Address("PG", "X"));
 
     model.component<ConsoleOutput>("Console");
-    model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("Console"));
+    model.connect<Use<DataStream>>(Address("RS"), "output", Address("Console"));
     // model.component<FileOutput>("TraceFile", "tmp.trace");
-    // model.connect<UseProvide<DataStream>>(Address("RS"), "output", Address("TraceFile"));
+    // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
     std::ofstream file;
     file.open("tmp.dot");
