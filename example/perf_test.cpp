@@ -2,18 +2,16 @@
 #include <cstdlib>
 #include "tinycompo.hpp"
 
+#define ITERATIONS 1000000000
+
 struct GetInt {
     virtual int getInt() = 0;
 };
 
-struct GetIntState : public GetInt {
-    int state{7};
-};
-
-struct RandInt : public GetIntState, public Component {
-    // int state{7};
+struct RandInt : public GetInt, public Component {
+    int state{5};
     int getInt() final {
-        state = (state * state) + 17;
+        state += 5;
         return state;
     }
 };
@@ -28,12 +26,18 @@ struct User : public Component {
     }
     void setPtr(PtrClass* ptrin) { ptr = ptrin; }
     void go() {
-        for (int i = 0; i < 100000000; i++) {
+        for (int i = 0; i < ITERATIONS; i++) {
             sum += ptr->getInt();
         }
-        std::cout << sum << '\n';
     }
 };
+
+double measure(std::function<void()> f) {
+    auto begin = std::chrono::high_resolution_clock::now();
+    f();
+    auto end = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / float(ITERATIONS);
+}
 
 int main() {
     srand(time(NULL));
@@ -48,25 +52,19 @@ int main() {
     model2.component<User<GetInt>>("user");
     model2.connect<UseProvide<GetInt>>(Address("user"), "ptr", Address("provider"));
 
-    // cache heating
-    Assembly<> assembly2(model2);
-    auto begin = std::chrono::high_resolution_clock::now();
-    assembly2.call("user", "go");
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 100000000.0 << "ns/it"
-              << std::endl;
-
     Assembly<> assembly(model);
-    begin = std::chrono::high_resolution_clock::now();
-    assembly.call("user", "go");
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 100000000.0 << "ns/it"
-              << std::endl;
+    Assembly<> assembly2(model2);
 
-    Assembly<> assembly3(model2);
-    begin = std::chrono::high_resolution_clock::now();
-    assembly3.call("user", "go");
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 100000000.0 << "ns/it"
-              << std::endl;
+    // cache heating
+    assembly.call("user", "go");
+    assembly2.call("user", "go");
+
+    double run1 = measure([&]() { assembly.call("user", "go"); });
+    double run2 = measure([&]() { assembly2.call("user", "go"); });
+
+    std::cout << run1 << " ns/it\n";
+    std::cout << run2 << " ns/it\n";
+
+    double diff = run2 - run1;
+    std::cout << "Difference: " << diff << " ns/it\n";
 }
