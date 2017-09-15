@@ -118,6 +118,17 @@ class _Port : public _VirtualPort {
         : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
 };
 
+template <class Interface>
+class _ProvidePort : public _VirtualPort {
+  public:
+    std::function<Interface*()> _get;
+
+    _ProvidePort() = delete;
+
+    template <class C>
+    explicit _ProvidePort(C* ref, Interface* (C::*prop)()) : _get([=]() { return (ref->*prop)(); }) {}
+};
+
 /*
 ====================================================================================================
   ~*~ Component class ~*~
@@ -141,6 +152,12 @@ class Component {
             static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
+    template <class C, class Interface>
+    void provide(std::string name, Interface* (C::*prop)()) {
+        _ports[name] = std::unique_ptr<_VirtualPort>(
+            static_cast<_VirtualPort*>(new _ProvidePort<Interface>(dynamic_cast<C*>(this), prop)));
+    }
+
     template <class... Args>
     void set(std::string name, Args... args) {    // no perfect forwarding to avoid references
         if (_ports.find(name) == _ports.end()) {  // there exists no port with this name
@@ -159,6 +176,11 @@ class Component {
                 e.fail();
             }
         }
+    }
+
+    template <class Interface>
+    Interface* get(std::string name) {
+        return dynamic_cast<_ProvidePort<Interface>*>(_ports[name].get())->_get();
     }
 };
 
@@ -274,10 +296,9 @@ _Address<Keys...> Address(Keys... keys) {
 template <class... Keys>
 struct _PortAddress {
     std::string prop;
-    _Address<Keys...> componentAddress;
+    _Address<Keys...> address;
 
-    _PortAddress(const std::string& prop, Keys... keys)
-        : prop(prop), componentAddress(Address(std::forward<Keys>(keys)...)) {}
+    _PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(Address(std::forward<Keys>(keys)...)) {}
 };
 
 // TODO: test
@@ -600,6 +621,19 @@ struct UseProvide {
     }
 };
 
+/*
+====================================================================================================
+  ~*~ UseProvide2 class ~*~
+==================================================================================================*/
+template <class Interface>
+struct UseProvide2 {
+    template <class Key, class... Keys, class... Keys2>
+    static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> user, _PortAddress<Keys2...> provider) {
+        auto& refUser = assembly.at(user.address);
+        auto& refProvider = assembly.at(provider.address);
+        refUser.set(user.prop, refProvider.template get<Interface>(provider.prop));
+    }
+};
 /*
 ====================================================================================================
   ~*~ Array class ~*~

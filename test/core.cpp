@@ -327,6 +327,32 @@ TEST_CASE("Use/provide + Assembly: connection test") {
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
+TEST_CASE("UseProvide2 test.") {
+    struct GetInt {
+        virtual int getInt() = 0;
+    };
+    struct User : public Component {
+        GetInt* ptr{nullptr};
+        void setPtr(GetInt* ptrin) { ptr = ptrin; }
+        User() { port("ptr", &User::setPtr); }
+    };
+    struct Two : public GetInt {
+        int getInt() override { return 2; }
+    };
+    struct Provider : public Component {
+        Two two;
+        GetInt* providePtr() { return &two; }
+        Provider() { provide("int", &Provider::providePtr); }
+    };
+    Model<> model;
+    model.component<User>("user");
+    model.component<Provider>("provider");
+    model.connect<UseProvide2<GetInt>>(PortAddress("ptr", "user"), PortAddress("int", "provider"));
+
+    Assembly<> assembly(model);
+    CHECK(assembly.at<User>("user").ptr->getInt() == 2);
+}
+
 TEST_CASE("Set test") {
     Model<> model;
     model.component<MyCompo>("compo", 2, 3);
