@@ -603,7 +603,7 @@ struct Set {
 
 /*
 ====================================================================================================
-  ~*~ UseProvide class ~*~
+  ~*~ Use class ~*~
   UseProvide is a "connector class", ie a functor that can be passed as template parameter to
   Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
   port of one component (the user) to a pointer to an interface of another (the provider). This
@@ -612,17 +612,16 @@ struct Set {
 template <class Interface>
 struct Use {
     template <class Key, class... Keys, class... Keys2>
-    static void _connect(Assembly<Key>& assembly, _Address<Keys...> user, std::string userPort,
-                         _Address<Keys2...> provider) {
-        auto& refUser = assembly.at(user);
+    static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> provider) {
+        auto& refUser = assembly.at(user.address);
         auto& refProvider = assembly.template at<Interface>(provider);
-        refUser.set(userPort, &refProvider);
+        refUser.set(user.prop, &refProvider);
     }
 };
 
 /*
 ====================================================================================================
-  ~*~ UseProvide2 class ~*~
+  ~*~ UseProvide class ~*~
 ==================================================================================================*/
 template <class Interface>
 struct UseProvide {
@@ -654,11 +653,10 @@ class Array : public Composite<int> {
 ==================================================================================================*/
 struct ArraySet {
     template <class Key, class... Keys, class Data>
-    static void _connect(Assembly<Key>& assembly, _Address<Keys...> array, const std::string& prop,
-                         const std::vector<Data>& data) {
-        auto& arrayRef = assembly.template at<Assembly<int>>(array);
+    static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> array, const std::vector<Data>& data) {
+        auto& arrayRef = assembly.template at<Assembly<int>>(array.address);
         for (int i = 0; i < static_cast<int>(arrayRef.size()); i++) {
-            arrayRef.at(i).set(prop, data.at(i));
+            arrayRef.at(i).set(array.prop, data.at(i));
         }
     }
 };
@@ -673,17 +671,17 @@ struct ArraySet {
 template <class Interface>
 struct ArrayOneToOne {
     template <class... Keys, class... Keys2>
-    static void _connect(Assembly<>& a, _Address<Keys...> array1, std::string prop, _Address<Keys2...> array2) {
-        auto& ref1 = a.at<Assembly<int>>(array1);
+    static void _connect(Assembly<>& a, _PortAddress<Keys...> array1, _Address<Keys2...> array2) {
+        auto& ref1 = a.at<Assembly<int>>(array1.address);
         auto& ref2 = a.at<Assembly<int>>(array2);
         if (ref1.size() == ref2.size()) {
             for (int i = 0; i < static_cast<int>(ref1.size()); i++) {
                 auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
-                ref1.at(i).set(prop, ptr);
+                ref1.at(i).set(array1.prop, ptr);
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
-            e << array1.toString() << " has size " << ref1.size() << " while " << array2.toString() << " has size "
+            e << array1.address.toString() << " has size " << ref1.size() << " while " << array2.toString() << " has size "
               << ref2.size() << ".";
             e.fail();
         }
@@ -701,12 +699,12 @@ parameter for Assembly::connect.
 template <class Interface>
 struct MultiUse {
     template <class... Keys, class... Keys2>
-    static void _connect(Assembly<>& a, _Address<Keys...> reducer, std::string prop, _Address<Keys2...> array) {
-        auto& ref1 = a.at<Component>(reducer);
+    static void _connect(Assembly<>& a, _PortAddress<Keys...> reducer, _Address<Keys2...> array) {
+        auto& ref1 = a.at<Component>(reducer.address);
         auto& ref2 = a.at<Assembly<int>>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
             auto ptr = dynamic_cast<Interface*>(&ref2.at(i));
-            ref1.set(prop, ptr);
+            ref1.set(reducer.prop, ptr);
         }
     }
 };
@@ -718,10 +716,10 @@ struct MultiUse {
 template <class Interface>
 struct MultiProvide {
     template <class... Keys, class... Keys2>
-    static void _connect(Assembly<>& a, _Address<Keys...> array, std::string prop, _Address<Keys2...> mapper) {
+    static void _connect(Assembly<>& a, _PortAddress<Keys...> array, _Address<Keys2...> mapper) {
         try {
-            for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array).size()); i++) {
-                a.at(Address(array, i)).set(prop, &a.at<Interface>(mapper));
+            for (int i = 0; i < static_cast<int>(a.at<Assembly<int>>(array.address).size()); i++) {
+                a.at(Address(array.address, i)).set(array.prop, &a.at<Interface>(mapper));
             }
         } catch (...) {
             TinycompoDebug("<MultiProvide::_connect> There was an error while trying to connect components.").fail();

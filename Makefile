@@ -3,7 +3,7 @@ EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 
 .PHONY: test clean format ready
 
-all: test_bin example/hello_bin example/text_process_bin example/myarray_bin example/poissonGamma_bin example/testing_bin example/perf_test_bin
+all: test_bin example/hello_bin example/text_process_bin example/myarray_bin example/poissonGamma_bin example/perf_test_bin
 
 mpi: example/mpi_test_mpibin
 

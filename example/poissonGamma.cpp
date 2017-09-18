@@ -37,15 +37,15 @@ struct PoissonGamma : public Composite<> {
         connect<Set>(Address("Theta"), "paramConst", 1.0);
 
         composite<Array<Gamma>>("Omega", 5);
-        connect<MultiProvide<Real>>(Address("Omega"), "paramPtr", Address("Theta"));
+        connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
 
         composite<Array<Product>>("rate", 5);
-        connect<ArrayOneToOne<Real>>(Address("rate"), "aPtr", Address("Omega"));
-        connect<MultiProvide<Real>>(Address("rate"), "bPtr", Address("Sigma"));
+        connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
+        connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
 
         composite<Array<Poisson>>("X", 5);
-        connect<ArrayOneToOne<Real>>(Address("X"), "paramPtr", Address("rate"));
-        connect<ArraySet>(Address("X"), "clamp", std::vector<double>{0, 1, 0, 0, 1});
+        connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
+        connect<ArraySet>(PortAddress("clamp", "X"), std::vector<double>{0, 1, 0, 0, 1});
     }
 };
 
@@ -57,17 +57,17 @@ int main() {
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<Use<RandomNode>>(Address("Sampler"), "register", Address("PG", "Sigma"));
-    model.connect<Use<RandomNode>>(Address("Sampler"), "register", Address("PG", "Theta"));
-    model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "Omega"));
-    model.connect<MultiUse<RandomNode>>(Address("Sampler"), "register", Address("PG", "X"));
+    model.connect<Use<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Sigma"));
+    model.connect<Use<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Theta"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
     model.component<RejectionSampling>("RS", 100);
-    model.connect<Use<Sampler>>(Address("RS"), "sampler", Address("Sampler"));
-    model.connect<MultiUse<RandomNode>>(Address("RS"), "data", Address("PG", "X"));
+    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<ConsoleOutput>("Console");
-    model.connect<Use<DataStream>>(Address("RS"), "output", Address("Console"));
+    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("Console"));
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 

@@ -48,7 +48,7 @@ TEST_CASE("Array tests.") {
 TEST_CASE("ArraySet tests.") {
     Model<> model;
     model.composite<Array<MyInt>>("array", 5, 2);
-    model.connect<ArraySet>(Address("array"), "set", std::vector<int>{5, 4, 3, 2, 1});
+    model.connect<ArraySet>(PortAddress("set", "array"), std::vector<int>{5, 4, 3, 2, 1});
     Assembly<> assembly(model);
     CHECK(assembly.at<MyInt>(Address("array", 0)).i == 5);
     CHECK(assembly.at<MyInt>(Address("array", 1)).i == 4);
@@ -66,7 +66,7 @@ TEST_CASE("Array connector tests.") {
     model.composite<Array<MyInt>>("intArray", 5, 12);
     model.composite<Array<MyIntProxy>>("proxyArray", 5);
     Assembly<> assembly(model);
-    ArrayOneToOne<IntInterface>::_connect(assembly, Address("proxyArray"), "ptr", Address("intArray"));
+    ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
     CHECK(assembly.at<Assembly<int>>("intArray").size() == 5);
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
@@ -83,7 +83,7 @@ TEST_CASE("Array connector error test.") {
     model.composite<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     Assembly<> assembly(model);
     TINYCOMPO_TEST_ERRORS {
-        ArrayOneToOne<IntInterface>::_connect(assembly, Address("proxyArray"), "ptr", Address("intArray"));
+        ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
     }
     TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes",
                               "-- Error: Array connection: mismatched sizes. proxyArray has size 4 "
@@ -102,7 +102,7 @@ TEST_CASE("MultiUse tests.") {
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
-    MultiUse<IntInterface>::_connect(assembly, Address("reducer"), "ptr", Address("intArray"));
+    MultiUse<IntInterface>::_connect(assembly, PortAddress("ptr", "reducer"), Address("intArray"));
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
@@ -120,10 +120,10 @@ TEST_CASE("MultiProvide connector tests.") {
     model.component<MyInt>("superInt", 17);  // random number
     model.composite<Array<MyIntProxy>>("proxyArray", 5);
     Assembly<> assembly(model);
-    MultiProvide<IntInterface>::_connect(assembly, Address("proxyArray"), "ptr", Address("superInt"));
+    MultiProvide<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("superInt"));
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
     TINYCOMPO_TEST_ERRORS {
-        MultiProvide<IntInterface>::_connect(assembly, Address("proxyArray"), "ptt", Address("superInt"));
+        MultiProvide<IntInterface>::_connect(assembly, PortAddress("ptt", "proxyArray"), Address("superInt"));
     }
     TINYCOMPO_TEST_ERRORS_END("<MultiProvide::_connect> There was an error while trying to connect components.",
                               "-- Error: port name not found. Could not find port ptt in component MyIntProxy.\n-- Error: "

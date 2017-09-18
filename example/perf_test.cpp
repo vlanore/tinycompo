@@ -45,12 +45,12 @@ int main() {
     Model<> model;
     model.component<RandInt>("provider");
     model.component<User<RandInt>>("user");
-    model.connect<Use<RandInt>>(Address("user"), "ptr", Address("provider"));
+    model.connect<Use<RandInt>>(PortAddress("ptr", "user"), Address("provider"));
 
     Model<> model2;
     model2.component<RandInt>("provider");
     model2.component<User<GetInt>>("user");
-    model2.connect<Use<GetInt>>(Address("user"), "ptr", Address("provider"));
+    model2.connect<Use<GetInt>>(PortAddress("ptr", "user"), Address("provider"));
 
     Assembly<> assembly(model);
     Assembly<> assembly2(model2);
