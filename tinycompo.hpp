@@ -596,8 +596,8 @@ class Assembly : public Component {
 ==================================================================================================*/
 struct Set {
     template <class Key, class... Keys, class... Args>
-    static void _connect(Assembly<Key>& assembly, _Address<Keys...> component, const std::string& prop, Args... args) {
-        assembly.at(component).set(prop, std::forward<Args>(args)...);
+    static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> component, Args... args) {
+        assembly.at(component.address).set(component.prop, std::forward<Args>(args)...);
     }
 };
 

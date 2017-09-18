@@ -31,10 +31,10 @@ license and that you accept its terms.*/
 struct PoissonGamma : public Composite<> {
     PoissonGamma() {
         component<Exponential>("Sigma");
-        connect<Set>(Address("Sigma"), "paramConst", 1.0);
+        connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
 
         component<Exponential>("Theta");
-        connect<Set>(Address("Theta"), "paramConst", 1.0);
+        connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
 
         composite<Array<Gamma>>("Omega", 5);
         connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));

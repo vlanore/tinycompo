@@ -357,7 +357,7 @@ TEST_CASE("UseProvide2 test.") {
 TEST_CASE("Set test") {
     Model<> model;
     model.component<MyCompo>("compo", 2, 3);
-    model.connect<Set>(Address("compo"), "myPort", 5, 7);
+    model.connect<Set>(PortAddress("myPort", "compo"), 5, 7);
     Assembly<> assembly(model);
     CHECK(assembly.at<MyCompo>("compo").i == 5);
     CHECK(assembly.at<MyCompo>("compo").j == 7);
