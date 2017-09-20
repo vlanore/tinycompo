@@ -490,7 +490,7 @@ class Model {
 
         for (auto& c : components) {
             ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._className
-               << ")\" shape=component margin=0.35];\n";
+               << ")\" shape=component margin=0.15];\n";
         }
         auto i = 0;
         for (auto& o : operations) {

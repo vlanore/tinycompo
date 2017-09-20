@@ -226,12 +226,11 @@ TEST_CASE("Model test: dot output") {
 
     std::stringstream ss;
     model.dot(ss);
-    // TODO uncomment when portaddresses are supported by dot output
-    // CHECK(ss.str() ==
-    //       "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
-    //       "margin=0.35];\n0[xlabel=\"Use<MyBasicCompo>\" shape=point];\n0 -- mycompo;\n0 -- "
-    //       "composite__2;\nsubgraph cluster_composite {\ncomposite__2[label=\"2\\n(MyBasicCompo)\" "
-    //       "shape=component margin=0.35];\n}\n}\n");
+    CHECK(ss.str() ==
+          "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
+          "margin=0.15];\n0[xlabel=\"Use<MyBasicCompo>\" shape=point];\n0 -- mycompo [label=\"buddy\"];\n0 -- "
+          "composite__2 ;\nsubgraph cluster_composite {\ncomposite__2[label=\"2\\n(MyBasicCompo)\" "
+          "shape=component margin=0.15];\n}\n}\n");
 }
 
 /*
