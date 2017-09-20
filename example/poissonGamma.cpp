@@ -62,7 +62,7 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
-    model.component<RejectionSampling>("RS", 100);
+    model.component<RejectionSampling>("RS", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
@@ -71,10 +71,7 @@ int main() {
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
-    std::ofstream file;
-    file.open("tmp.dot");
-    model.dot(file);
-    file.close();
+    PoissonGamma().dotToFile();
 
     // instantiate everything!
     Assembly<> assembly(model);

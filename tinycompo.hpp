@@ -213,13 +213,22 @@ struct _Component {
 
 template <class Key, class... Keys>
 struct _Address;  // forward decl
+template <class... Keys>
+struct _PortAddress;  // forward decl
 
 template <class A, class Key>
 class _Operation {
     template <class... Keys>
     std::string getArgs(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
         std::stringstream ss;
-        ss << s << " -- " << prefix << a.toString() << ";\n";
+        ss << s << " -- " << prefix << a.toString() << " ;\n";
+        return ss.str();
+    }
+
+    template <class... Keys>
+    std::string getArgs(const std::string& s, const std::string& prefix, _PortAddress<Keys...> a) {
+        std::stringstream ss;
+        ss << s << " -- " << prefix << a.address.toString() << " [label=\"" << a.prop << "\"];\n";
         return ss.str();
     }
 
@@ -503,14 +512,14 @@ class Model {
         ss << "}\n";
         data.output = ss.str();
         for (auto& name : data.compositeNames) {
-            data.output = ReplaceString(data.output, "-- " + name + ";", "-- cluster_" + name + ";");
+            data.output = ReplaceString(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
         }
         return data;
     }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
 
-    void dotToFile(const std::string& fileName) {
+    void dotToFile(const std::string& fileName = "tmp.dot") {
         std::ofstream file;
         file.open(fileName);
         dot(file);
