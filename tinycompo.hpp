@@ -208,14 +208,63 @@ struct _Component {
 
 /*
 ====================================================================================================
+  ~*~ Address ~*~
+==================================================================================================*/
+template <class Key, class... Keys>
+struct _Address {
+    std::string toString() const {
+        std::stringstream ss;
+        ss << key << "__" << rest.toString();
+        return ss.str();
+    }
+
+    const Key key;
+    const bool final{false};
+    const _Address<Keys...> rest;
+    _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
+};
+
+template <class Key>
+struct _Address<Key> {
+    std::string toString() const {
+        std::stringstream ss;
+        ss << key;
+        return ss.str();
+    }
+
+    const Key key;
+    const bool final{true};
+
+    template <class T>
+    operator _Address<T>() {
+        return _Address<T>(key);
+    }
+
+    explicit _Address(Key key) : key(key) {}
+};
+
+template <class... Keys>
+_Address<Keys...> Address(Keys... keys) {
+    return _Address<Keys...>(keys...);
+}
+
+template <class... Keys>
+struct _PortAddress {
+    std::string prop;
+    _Address<Keys...> address;
+
+    _PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(Address(std::forward<Keys>(keys)...)) {}
+};
+
+template <class... Keys>
+_PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
+    return _PortAddress<Keys...>(prop, std::forward<Keys>(keys)...);
+}
+
+/*
+====================================================================================================
   ~*~ _Operation class ~*~
 ==================================================================================================*/
-
-template <class Key, class... Keys>
-struct _Address;  // forward decl
-template <class... Keys>
-struct _PortAddress;  // forward decl
-
 template <class A, class Key>
 class _Operation {
     template <class... Keys>
@@ -256,64 +305,6 @@ class _Operation {
     std::function<void(A&)> _connect;
     std::function<std::string(std::string, std::string)> _debug{[](std::string, std::string) { return ""; }};
 };
-
-/*
-====================================================================================================
-  ~*~ Address ~*~
-==================================================================================================*/
-template <class Key, class... Keys>
-struct _Address {
-    std::string toString() const {
-        std::stringstream ss;
-        ss << key << "__" << rest.toString();
-        return ss.str();
-    }
-
-    const Key key;
-    const bool final{false};
-    const _Address<Keys...> rest;
-    // TODO need a conversion operator here?
-    _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
-};
-
-template <class Key>
-struct _Address<Key> {
-    std::string toString() const {
-        std::stringstream ss;
-        ss << key;
-        return ss.str();
-    }
-
-    const Key key;
-    const bool final{true};
-
-    template <class T>
-    operator _Address<T>() {
-        return _Address<T>(key);
-    }
-
-    explicit _Address(Key key) : key(key) {}
-};
-
-template <class... Keys>
-_Address<Keys...> Address(Keys... keys) {
-    return _Address<Keys...>(keys...);
-}
-
-// TODO: test
-template <class... Keys>
-struct _PortAddress {
-    std::string prop;
-    _Address<Keys...> address;
-
-    _PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(Address(std::forward<Keys>(keys)...)) {}
-};
-
-// TODO: test
-template <class... Keys>
-_PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
-    return _PortAddress<Keys...>(prop, std::forward<Keys>(keys)...);
-}
 
 /*
 ====================================================================================================
