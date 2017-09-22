@@ -221,6 +221,7 @@ struct _Address {
     const Key key;
     const bool final{false};
     const _Address<Keys...> rest;
+
     _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
 };
 
@@ -234,11 +235,6 @@ struct _Address<Key> {
 
     const Key key;
     const bool final{true};
-
-    template <class T>
-    operator _Address<T>() {
-        return _Address<T>(key);
-    }
 
     explicit _Address(Key key) : key(key) {}
 };

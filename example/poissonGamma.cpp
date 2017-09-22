@@ -28,6 +28,41 @@ license and that you accept its terms.*/
 
 #include "graphicalModel.hpp"
 
+struct MoveScheduler : public Go {};
+
+struct DummyScheduler : public MoveScheduler {
+    void go() { printf("DummyScheduler called!\n"); }
+};
+
+class BayesianEngine : public Go {
+    MoveScheduler* scheduler{nullptr};
+    void setScheduler(MoveScheduler* val) { scheduler = val; }
+
+    Sampler* sampler{nullptr};
+    void setSampler(Sampler* val) { sampler = val; }
+
+    std::vector<Real*> variables_of_interest{nullptr};
+    void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
+
+    int iterations{10};
+    void setIterations(int val) { iterations = val; }
+
+  public:
+    BayesianEngine() {
+        port("variables", &BayesianEngine::addVarOfInterest);
+        port("scheduler", &BayesianEngine::setScheduler);
+        port("sampler", &BayesianEngine::setSampler);
+        port("iterations", &BayesianEngine::setIterations);
+        port("go", &BayesianEngine::go);
+    }
+
+    void go() {
+        for (int i = 0; i < iterations; i++) {
+            scheduler->go();
+        }
+    }
+};
+
 struct PoissonGamma : public Composite<> {
     PoissonGamma() {
         component<Exponential>("Sigma");
@@ -61,12 +96,19 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
-    model.component<RejectionSampling>("RS", 10000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
+    // model.component<RejectionSampling>("RS", 10000);
+    // model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
+    // model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
-    model.component<ConsoleOutput>("Console");
-    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("Console"));
+    model.component<DummyScheduler>("Scheduler");
+
+    model.component<BayesianEngine>("BI");
+    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
+    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
+    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
+
+    // model.component<ConsoleOutput>("Console");
+    // model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("Console"));
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
@@ -77,7 +119,7 @@ int main() {
     Assembly<> assembly(model);
 
     // call sampling
-    assembly.call("RS", "go");
+    assembly.call("BI", "go");
 
     assembly.print_all();
 }
