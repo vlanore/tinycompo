@@ -36,23 +36,19 @@ struct DummyScheduler : public MoveScheduler {
 
 class BayesianEngine : public Go {
     MoveScheduler* scheduler{nullptr};
-    void setScheduler(MoveScheduler* val) { scheduler = val; }
-
     Sampler* sampler{nullptr};
-    void setSampler(Sampler* val) { sampler = val; }
+    int iterations;
 
     std::vector<Real*> variables_of_interest{nullptr};
     void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
 
-    int iterations;
-    void setIterations(int val) { iterations = val; }
 
   public:
     explicit BayesianEngine(int iterations = 10) : iterations(iterations) {
         port("variables", &BayesianEngine::addVarOfInterest);
-        port("scheduler", &BayesianEngine::setScheduler);
-        port("sampler", &BayesianEngine::setSampler);
-        port("iterations", &BayesianEngine::setIterations);
+        port("scheduler", &BayesianEngine::scheduler);
+        port("sampler", &BayesianEngine::sampler);
+        port("iterations", &BayesianEngine::iterations);
         port("go", &BayesianEngine::go);
     }
 

@@ -376,6 +376,18 @@ TEST_CASE("ListUse test") {
     Assembly<> assembly(model);
     CHECK(assembly.at<IntInterface>("user").get() == 12);
 }
+
+TEST_CASE("Attribute port declaration.") {
+    struct MyUltraBasicCompo : public Component {
+        int data{0};
+        MyUltraBasicCompo() { port("data", &MyUltraBasicCompo::data); }
+    };
+    Model<> model;
+    model.component<MyUltraBasicCompo>("compo");
+    model.connect<Set>(PortAddress("data", "compo"), 14);
+    Assembly<> assembly(model);
+    CHECK(assembly.at<MyUltraBasicCompo>("compo").data == 14);
+}
 /*
 ====================================================================================================
   ~*~ Tree ~*~

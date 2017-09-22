@@ -106,8 +106,7 @@ class _VirtualPort {
 };
 
 template <class... Args>
-class _Port : public _VirtualPort {
-  public:
+struct _Port : public _VirtualPort {
     std::function<void(Args...)> _set;
 
     _Port() = delete;
@@ -115,11 +114,13 @@ class _Port : public _VirtualPort {
     template <class C>
     explicit _Port(C* ref, void (C::*prop)(Args...))
         : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
+
+    template <class C, class Type>
+    explicit _Port(C* ref, Type(C::*prop)) : _set([=](const Type arg) { ref->*prop = arg; }) {}
 };
 
 template <class Interface>
-class _ProvidePort : public _VirtualPort {
-  public:
+struct _ProvidePort : public _VirtualPort {
     std::function<Interface*()> _get;
 
     _ProvidePort() = delete;
@@ -149,6 +150,12 @@ class Component {
     void port(std::string name, void (C::*prop)(Args...)) {
         _ports[name] = std::unique_ptr<_VirtualPort>(
             static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
+    }
+
+    template <class C, class Arg>
+    void port(std::string name, Arg(C::*prop)) {
+        _ports[name] =
+            std::unique_ptr<_VirtualPort>(static_cast<_VirtualPort*>(new _Port<const Arg>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class C, class Interface>
