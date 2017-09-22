@@ -44,11 +44,11 @@ class BayesianEngine : public Go {
     std::vector<Real*> variables_of_interest{nullptr};
     void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
 
-    int iterations{10};
+    int iterations;
     void setIterations(int val) { iterations = val; }
 
   public:
-    BayesianEngine() {
+    explicit BayesianEngine(int iterations = 10) : iterations(iterations) {
         port("variables", &BayesianEngine::addVarOfInterest);
         port("scheduler", &BayesianEngine::setScheduler);
         port("sampler", &BayesianEngine::setSampler);
@@ -57,6 +57,7 @@ class BayesianEngine : public Go {
     }
 
     void go() {
+        sampler->go();
         for (int i = 0; i < iterations; i++) {
             scheduler->go();
         }
