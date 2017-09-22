@@ -621,6 +621,25 @@ struct Use {
 
 /*
 ====================================================================================================
+  ~*~ ListUse class ~*~
+==================================================================================================*/
+template <class Interface>
+struct ListUse {
+    template <class Key, class UserAddress, class ProviderAddress>
+    static void _connect(Assembly<Key>& assembly, UserAddress user, ProviderAddress provider) {
+        Use<Interface>::_connect(assembly, user, provider);
+    }
+
+    template <class Key, class UserAddress, class ProviderAddress, class... OtherProviderAddresses>
+    static void _connect(Assembly<Key>& assembly, UserAddress user, ProviderAddress provider,
+                         OtherProviderAddresses... other_providers) {
+        _connect(assembly, user, provider);
+        _connect(assembly, user, std::forward<OtherProviderAddresses>(other_providers)...);
+    }
+};
+
+/*
+====================================================================================================
   ~*~ UseProvide class ~*~
 ==================================================================================================*/
 template <class Interface>

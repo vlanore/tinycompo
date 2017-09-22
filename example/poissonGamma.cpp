@@ -57,8 +57,7 @@ int main() {
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<Use<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Sigma"));
-    model.connect<Use<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Theta"));
+    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Sigma"), Address("PG", "Theta"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
@@ -71,7 +70,8 @@ int main() {
     // model.component<FileOutput>("TraceFile", "tmp.trace");
     // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
 
-    PoissonGamma().dotToFile();
+    // PoissonGamma().dotToFile();
+    model.dotToFile();
 
     // instantiate everything!
     Assembly<> assembly(model);

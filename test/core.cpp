@@ -362,6 +362,20 @@ TEST_CASE("Set test") {
     CHECK(assembly.at<MyCompo>("compo").j == 7);
 }
 
+TEST_CASE("ListUse test") {
+    struct MyComposite : public Composite<int> {};
+    Model<> model;
+    model.component<IntReducer>("user");
+    model.composite<MyComposite>("array");
+    model.component<MyInt>(Address("array", 0), 1);
+    model.component<MyInt>(Address("array", 1), 4);
+    model.component<MyInt>(Address("array", 2), 12);
+    model.component<MyInt>(Address("array", 3), 7);
+    model.connect<ListUse<IntInterface>>(PortAddress("ptr", "user"), Address("array", 0), Address("array", 1),
+                                         Address("array", 3));
+    Assembly<> assembly(model);
+    CHECK(assembly.at<IntInterface>("user").get() == 12);
+}
 /*
 ====================================================================================================
   ~*~ Tree ~*~
