@@ -27,6 +27,24 @@ The fact that you are presently reading this means that you have had knowledge o
 license and that you accept its terms.*/
 
 #include "graphicalModel.hpp"
+using namespace std;
+
+class MetropolisHastingsMove : public Component {
+    Real* node{nullptr};
+    vector<Real*> upward;
+    void addUpward(Real* ptr) { upward.push_back(ptr); }
+    vector<Real*> downward;
+    void addDownward(Real* ptr) { downward.push_back(ptr); }
+
+  public:
+    MetropolisHastingsMove() {
+        port("node", &MetropolisHastingsMove::node);
+        port("upward", &MetropolisHastingsMove::addUpward);
+        port("downward", &MetropolisHastingsMove::addDownward);
+    }
+
+    virtual void move() = 0;
+};
 
 struct MoveScheduler : public Go {};
 
@@ -39,9 +57,8 @@ class BayesianEngine : public Go {
     Sampler* sampler{nullptr};
     int iterations;
 
-    std::vector<Real*> variables_of_interest{nullptr};
+    vector<Real*> variables_of_interest{nullptr};
     void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
-
 
   public:
     explicit BayesianEngine(int iterations = 10) : iterations(iterations) {
@@ -49,7 +66,6 @@ class BayesianEngine : public Go {
         port("scheduler", &BayesianEngine::scheduler);
         port("sampler", &BayesianEngine::sampler);
         port("iterations", &BayesianEngine::iterations);
-        port("go", &BayesianEngine::go);
     }
 
     void go() {
@@ -77,7 +93,7 @@ struct PoissonGamma : public Composite<> {
 
         composite<Array<Poisson>>("X", 5);
         connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
-        connect<ArraySet>(PortAddress("clamp", "X"), std::vector<double>{0, 1, 0, 0, 1});
+        connect<ArraySet>(PortAddress("clamp", "X"), vector<double>{0, 1, 0, 0, 1});
     }
 };
 

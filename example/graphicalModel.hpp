@@ -309,13 +309,11 @@ class RejectionSampling : public Go {
   public:
     explicit RejectionSampling(int iter = 5) {
         nbIter = iter;
-        port("sampler", &RejectionSampling::setSampler);
+        port("sampler", &RejectionSampling::sampler);
         port("data", &RejectionSampling::addData);
-        port("output", &RejectionSampling::setOutput);
+        port("output", &RejectionSampling::output);
     }
 
-    void setSampler(Sampler *ptr) { sampler = ptr; }
-    void setOutput(DataStream *out) { output = out; }
     void addData(RandomNode *ptr) { observedData.push_back(ptr); }
 
     std::string _debug() const override { return "RejectionSampling"; }
