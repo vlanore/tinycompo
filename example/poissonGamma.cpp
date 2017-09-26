@@ -29,35 +29,38 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-template <class Move>
+// template <class Move>
 class MHMove : public Component {
-    Real* node{nullptr};
-    vector<Real*> upward;
-    void addUpward(Real* ptr) { upward.push_back(ptr); }
-    vector<Real*> downward;
-    void addDownward(Real* ptr) { downward.push_back(ptr); }
+    RandomNode* node{nullptr};
+    vector<RandomNode*> downward;
+    void addDownward(RandomNode* ptr) { downward.push_back(ptr); }
 
-    std::default_random_engine generator;
-    std::uniform_real_distribution<double> uniform{0.0, 1.0};
+    default_random_engine generator;
+    uniform_real_distribution<double> uniform{0.0, 1.0};
 
   public:
     MHMove() {
         port("node", &MHMove::node);
-        port("upward", &MHMove::addUpward);
         port("downward", &MHMove::addDownward);
     }
 
     bool move() {
         double backup = node->getValue();
 
-        double likelihood_before = 1.;
+        auto gather = [](const vector<RandomNode*>& v) {
+            return accumulate(v.begin(), v.end(), 1., [](double acc, RandomNode* b) { return acc * b->density(); });
+        };
+        double likelihood_before = gather(downward) * node->density();
+        std::cout << "Likelihood before: " << likelihood_before << '\n';
 
-        node->setValue(1.);
+        node->setValue(uniform(generator));
         double hastings_ratio = 1.;
 
-        double likelihood_after = 1.;
+        double likelihood_after = gather(downward) * node->density();
+        std::cout << "Likelihood after: " << likelihood_after << '\n';
 
         bool accepted = (likelihood_after / likelihood_before * hastings_ratio) > uniform(generator);
+        std::cout << "Accepted :" << accepted << '\n';
         if (!accepted) {
             node->setValue(backup);
         }
@@ -67,8 +70,16 @@ class MHMove : public Component {
 
 struct MoveScheduler : public Go {};
 
-struct DummyScheduler : public MoveScheduler {
-    void go() { printf("DummyScheduler called!\n"); }
+class DummyScheduler : public MoveScheduler {
+    MHMove* move{nullptr};
+
+  public:
+    DummyScheduler() { port("move", &DummyScheduler::move); }
+
+    void go() {
+        printf("DummyScheduler called!\n");
+        move->move();
+    }
 };
 
 class BayesianEngine : public Go {
@@ -132,7 +143,11 @@ int main() {
     // model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
     // model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
+    model.component<MHMove>("MyMove");
+    model.connect<Use<RandomNode>>(PortAddress("node", "MyMove"), Address("PG", "Omega", 1));
+
     model.component<DummyScheduler>("Scheduler");
+    model.connect<Use<MHMove>>(PortAddress("move", "Scheduler"), Address("MyMove"));
 
     model.component<BayesianEngine>("BI");
     model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
@@ -152,7 +167,7 @@ int main() {
 
     // call sampling
     assembly.call("BI", "go");
-    std::cout << "Partial density: " << assembly.at<Poisson>(Address("PG", "X", 1)).density() << "\n";
+    cout << "Partial density: " << assembly.at<Poisson>(Address("PG", "X", 1)).density() << "\n";
 
     assembly.print_all();
 }
