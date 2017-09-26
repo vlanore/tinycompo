@@ -61,6 +61,7 @@ class RandomNode : public Real {
     void clamp(double val) { clampedVal = val; }
     double clampedValue() const { return clampedVal; }
     virtual bool isConsistent() const { return clampedVal == getValue(); }
+    virtual double density() = 0;
 };
 
 class DataStream {
@@ -172,6 +173,11 @@ class Exponential : public UnaryReal {
         std::exponential_distribution<> d(param.getValue());
         setValue(d(gen));
     }
+
+    double density() final {
+        double lambda = param.getValue();
+        return lambda * exp(-param.getValue() * lambda);
+    }
 };
 
 class Gamma : public UnaryReal {
@@ -184,6 +190,11 @@ class Gamma : public UnaryReal {
         std::gamma_distribution<> d(param.getValue(), param.getValue());
         setValue(d(gen));
     }
+
+    double density() final {
+        double k = param.getValue(), x = getValue();
+        return pow(x, k - 1.) * exp(-x / k) / (pow(k, k) * tgamma(k));
+    }
 };
 
 class Poisson : public UnaryReal {
@@ -195,6 +206,17 @@ class Poisson : public UnaryReal {
         std::mt19937 gen(rd());
         std::poisson_distribution<> d(param.getValue());
         setValue(d(gen));
+    }
+
+    double density() final {
+        double k = getValue(), lambda = param.getValue();
+        std::function<int(int)> factorial = [&factorial](int n) {
+            if (n < 2)
+                return 1;
+            else
+                return n * factorial(n - 1);
+        };
+        return exp(-lambda) * pow(lambda, k) / factorial(k);
     }
 };
 

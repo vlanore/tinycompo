@@ -29,21 +29,40 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-class MetropolisHastingsMove : public Component {
+template <class Move>
+class MHMove : public Component {
     Real* node{nullptr};
     vector<Real*> upward;
     void addUpward(Real* ptr) { upward.push_back(ptr); }
     vector<Real*> downward;
     void addDownward(Real* ptr) { downward.push_back(ptr); }
 
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> uniform{0.0, 1.0};
+
   public:
-    MetropolisHastingsMove() {
-        port("node", &MetropolisHastingsMove::node);
-        port("upward", &MetropolisHastingsMove::addUpward);
-        port("downward", &MetropolisHastingsMove::addDownward);
+    MHMove() {
+        port("node", &MHMove::node);
+        port("upward", &MHMove::addUpward);
+        port("downward", &MHMove::addDownward);
     }
 
-    virtual void move() = 0;
+    bool move() {
+        double backup = node->getValue();
+
+        double likelihood_before = 1.;
+
+        node->setValue(1.);
+        double hastings_ratio = 1.;
+
+        double likelihood_after = 1.;
+
+        bool accepted = (likelihood_after / likelihood_before * hastings_ratio) > uniform(generator);
+        if (!accepted) {
+            node->setValue(backup);
+        }
+        return accepted;
+    }
 };
 
 struct MoveScheduler : public Go {};
@@ -133,6 +152,7 @@ int main() {
 
     // call sampling
     assembly.call("BI", "go");
+    std::cout << "Partial density: " << assembly.at<Poisson>(Address("PG", "X", 1)).density() << "\n";
 
     assembly.print_all();
 }
