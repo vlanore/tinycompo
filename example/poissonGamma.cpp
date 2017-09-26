@@ -29,14 +29,21 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-// template <class Move>
-class MHMove : public Component {
+default_random_engine generator;
+uniform_real_distribution<double> uniform{0.0, 1.0};
+
+struct Uniform {
+    static double move(RandomNode* v) {
+        v->setValue(uniform(generator));
+        return 1.;
+    }
+};
+
+template <class Move>
+class MHMove : public Go {
     RandomNode* node{nullptr};
     vector<RandomNode*> downward;
     void addDownward(RandomNode* ptr) { downward.push_back(ptr); }
-
-    default_random_engine generator;
-    uniform_real_distribution<double> uniform{0.0, 1.0};
 
   public:
     MHMove() {
@@ -44,7 +51,7 @@ class MHMove : public Component {
         port("downward", &MHMove::addDownward);
     }
 
-    bool move() {
+    void go() {
         double backup = node->getValue();
 
         auto gather = [](const vector<RandomNode*>& v) {
@@ -53,8 +60,7 @@ class MHMove : public Component {
         double likelihood_before = gather(downward) * node->density();
         std::cout << "Likelihood before: " << likelihood_before << '\n';
 
-        node->setValue(uniform(generator));
-        double hastings_ratio = 1.;
+        double hastings_ratio = Move::move(node);
 
         double likelihood_after = gather(downward) * node->density();
         std::cout << "Likelihood after: " << likelihood_after << '\n';
@@ -64,21 +70,21 @@ class MHMove : public Component {
         if (!accepted) {
             node->setValue(backup);
         }
-        return accepted;
+        // return accepted;
     }
 };
 
 struct MoveScheduler : public Go {};
 
 class DummyScheduler : public MoveScheduler {
-    MHMove* move{nullptr};
+    Go* move{nullptr};
 
   public:
     DummyScheduler() { port("move", &DummyScheduler::move); }
 
     void go() {
         printf("DummyScheduler called!\n");
-        move->move();
+        move->go();
     }
 };
 
@@ -143,11 +149,12 @@ int main() {
     // model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
     // model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
-    model.component<MHMove>("MyMove");
+    model.component<MHMove<Uniform>>("MyMove");
     model.connect<Use<RandomNode>>(PortAddress("node", "MyMove"), Address("PG", "Omega", 1));
+    model.connect<Use<RandomNode>>(PortAddress("downward", "MyMove"), Address("PG", "X", 1));
 
     model.component<DummyScheduler>("Scheduler");
-    model.connect<Use<MHMove>>(PortAddress("move", "Scheduler"), Address("MyMove"));
+    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("MyMove"));
 
     model.component<BayesianEngine>("BI");
     model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
