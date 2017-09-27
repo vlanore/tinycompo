@@ -172,11 +172,11 @@ TEST_CASE("model test: components in composites") {
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
                               "-- Error: composite does not exist. Assembly contains no composite "
                               "at address badAddress.\n");
-    // TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
-    // TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
-    //                           "-- Error: key type does not match composite key type. Key has type "
-    //                           "char const* while composite compo0 seems to have another key "
-    //                           "type.\n");
+    TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
+    TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
+                              "-- Error: key type does not match composite key type. Key has type "
+                              "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > while "
+                              "composite compo0 seems to have another key type.\n");
 }
 
 TEST_CASE("model test: model copy") {
@@ -231,6 +231,16 @@ TEST_CASE("Model test: dot output") {
           "margin=0.15];\n0[xlabel=\"Use<MyBasicCompo>\" shape=point];\n0 -- mycompo [label=\"buddy\"];\n0 -- "
           "composite__2 ;\nsubgraph cluster_composite {\ncomposite__2[label=\"2\\n(MyBasicCompo)\" "
           "shape=component margin=0.15];\n}\n}\n");
+}
+
+TEST_CASE("Model test: temporary keys") {
+    Model<> model;
+    for (int i = 0; i < 5; i++) {
+        std::stringstream ss;
+        ss << "compo" << i;
+        model.component<MyInt>(ss.str());
+    }
+    CHECK(model.size() == 5);
 }
 
 /*
