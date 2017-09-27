@@ -172,11 +172,10 @@ TEST_CASE("model test: components in composites") {
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
                               "-- Error: composite does not exist. Assembly contains no composite "
                               "at address badAddress.\n");
-    TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
+    TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", 1.0), 2); }
     TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
                               "-- Error: key type does not match composite key type. Key has type "
-                              "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > while "
-                              "composite compo0 seems to have another key type.\n");
+                              "double while composite compo0 seems to have another key type.\n");
 }
 
 TEST_CASE("model test: model copy") {
