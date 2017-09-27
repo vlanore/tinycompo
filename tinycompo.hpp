@@ -217,15 +217,39 @@ struct _Component {
 ====================================================================================================
   ~*~ Address ~*~
 ==================================================================================================*/
+template <class Type>
+class _Key {
+    Type value;
+
+  public:
+    using actualType = Type;
+    explicit _Key(Type value) : value(value) {}
+    Type get() const { return value; }
+    void set(Type newValue) { value = newValue; }
+};
+
+template <>
+class _Key<const char*> {
+    std::string value;
+
+  public:
+    using actualType = std::string;
+    explicit _Key(const char* value) : value(value) {}
+    std::string get() const { return value; }
+    void set(std::string newValue) { value = newValue; }
+};
+
+class _AbstractAddress {};
+
 template <class Key, class... Keys>
-struct _Address {
+struct _Address : public _AbstractAddress {
     std::string toString() const {
         std::stringstream ss;
-        ss << key << "__" << rest.toString();
+        ss << key.get() << "__" << rest.toString();
         return ss.str();
     }
 
-    const Key key;
+    const _Key<Key> key;
     const bool final{false};
     const _Address<Keys...> rest;
 
@@ -233,14 +257,14 @@ struct _Address {
 };
 
 template <class Key>
-struct _Address<Key> {
+struct _Address<Key> : public _AbstractAddress {
     std::string toString() const {
         std::stringstream ss;
-        ss << key;
+        ss << key.get();
         return ss.str();
     }
 
-    const Key key;
+    const _Key<Key> key;
     const bool final{true};
 
     explicit _Address(Key key) : key(key) {}
@@ -318,18 +342,6 @@ class Assembly;  // forward-decl
 template <class Key>
 class Model;  // forward-decl
 
-template <class Key>
-struct _Comparator {
-    bool operator()(const Key& lhs, const Key& rhs) const { return std::less<Key>()(lhs, rhs); }
-};
-
-template <>
-struct _Comparator<const char*> {
-    bool operator()(const char* lhs, const char* rhs) const {
-        return std::lexicographical_compare(lhs, lhs + strlen(lhs), rhs, rhs + strlen(rhs));
-    }
-};
-
 /*
 ====================================================================================================
   ~*~ Composite ~*~
@@ -338,7 +350,7 @@ struct _AbstractComposite {  // inheritance-only class
     virtual ~_AbstractComposite() = default;
 };
 
-template <class Key = const char*>
+template <class Key = std::string>
 class Composite : public Model<Key>, public _AbstractComposite {};
 
 struct _DotData {
@@ -373,7 +385,7 @@ class _Composite {
 ====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
-template <class Key = const char*>
+template <class Key = std::string>
 class Model {
     template <class T, bool b>
     struct _Helper {
@@ -403,9 +415,9 @@ class Model {
   public:
     using KeyType = Key;
 
-    std::map<Key, _Component, _Comparator<Key>> components;
+    std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, _Composite, _Comparator<Key>> composites;
+    std::map<Key, _Composite> composites;
 
     Model() = default;
 
@@ -417,34 +429,37 @@ class Model {
 
     template <bool isComposite, class T, class Key1, class... Args>
     void _route(_Address<Key1> address, Args&&... args) {
-        _Helper<T, isComposite>::declare(*this, address.key, std::forward<Args>(args)...);
+        _Helper<T, isComposite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
     }
 
     template <bool isComposite, class T, class Key1, class Key2, class... Keys, class... Args>
     void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        auto compositeIt = composites.find(address.key);
+        auto compositeIt = composites.find(address.key.get());
         if (compositeIt != composites.end()) {
-            auto ptr = dynamic_cast<Model<Key2>*>(compositeIt->second.get());
+            auto ptr = dynamic_cast<Model<typename _Key<Key2>::actualType>*>(compositeIt->second.get());
             if (ptr == nullptr) {
                 TinycompoDebug e("key type does not match composite key type");
-                e << "Key has type " << TinycompoDebug::type<Key2>() << " while composite " << address.key
-                  << " seems to have another key type.";
+                e << "Key has type " << TinycompoDebug::type<typename _Key<Key2>::actualType>() << " while composite "
+                  << address.key.get() << " seems to have another key type.";
                 e.fail();
             }
             ptr->template _route<isComposite, T>(address.rest, std::forward<Args>(args)...);
         } else {
             TinycompoDebug e("composite does not exist");
-            e << "Assembly contains no composite at address " << address.key << '.';
+            e << "Assembly contains no composite at address " << address.key.get() << '.';
             e.fail();
         }
     }
 
-    template <class T, class... Args>
-    void component(Key address, Args&&... args) {
+    // horrible enable_if to avoid ambiguous call with version below
+    template <class T, class CallKey, class... Args,
+              typename std::enable_if<!std::is_base_of<_AbstractAddress, CallKey>::value, int>::type = 0>
+    void component(CallKey address, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
         }
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(address),
+        _Key<CallKey> key(address);
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(key.get()),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
     }
 
@@ -525,10 +540,10 @@ class Model {
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
-template <class Key = const char*>
+template <class Key = std::string>
 class Assembly : public Component {
   protected:
-    std::map<Key, std::unique_ptr<Component>, _Comparator<Key>> instances;
+    std::map<Key, std::unique_ptr<Component>> instances;
     Model<Key>& internal_model;
 
   public:
@@ -569,14 +584,14 @@ class Assembly : public Component {
         }
     }
 
-    template <class T = Component, class Key1 = bool>
-    T& at(const _Address<Key>& address) const {
-        return at<T>(address.key);
+    template <class T = Component, class Key1>
+    T& at(const _Address<Key1>& address) const {
+        return at<T>(address.key.get());
     }
 
-    template <class T = Component, class Key1 = bool, class Key2 = bool, class... Keys>
+    template <class T = Component, class Key1, class Key2, class... Keys>
     T& at(const _Address<Key1, Key2, Keys...>& address) const {
-        return at<Assembly<Key2>>(address.key).template at<T>(address.rest);
+        return at<Assembly<typename _Key<Key2>::actualType>>(address.key.get()).template at<T>(address.rest);
     }
 
     Model<Key>& model() const { return internal_model; }
@@ -588,7 +603,7 @@ class Assembly : public Component {
     }
 
     template <class... Args>
-    void call(const char* compo, const std::string& prop, Args... args) const {
+    void call(const std::string& compo, const std::string& prop, Args... args) const {
         at(compo).set(prop, std::forward<Args>(args)...);
     }
 };
@@ -793,7 +808,7 @@ class Tree : public Composite<TreeRef> {
   ~*~ ToChildren ~*~
   A tree connector that connects every node to its children.
 ==================================================================================================*/
-template <class Interface, class Key = const char*>
+template <class Interface, class Key = std::string>
 class ToChildren {
   public:
     static void _connect(Assembly<>& a, Key tree, std::string prop) {

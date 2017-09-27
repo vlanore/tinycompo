@@ -144,10 +144,10 @@ TEST_CASE("_Operation tests.") {
 ==================================================================================================*/
 TEST_CASE("address tests.") {
     auto a = Address("a", 2, 3, "b");
-    CHECK(a.key == "a");
-    CHECK(a.rest.key == 2);
-    CHECK(a.rest.rest.key == 3);
-    CHECK(a.rest.rest.rest.key == "b");
+    CHECK(a.key.get() == "a");
+    CHECK(a.rest.key.get() == 2);
+    CHECK(a.rest.rest.key.get() == 3);
+    CHECK(a.rest.rest.rest.key.get() == "b");
     CHECK(a.final == false);
     CHECK(a.rest.rest.rest.final == true);
 }
@@ -172,11 +172,11 @@ TEST_CASE("model test: components in composites") {
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
                               "-- Error: composite does not exist. Assembly contains no composite "
                               "at address badAddress.\n");
-    TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
-    TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
-                              "-- Error: key type does not match composite key type. Key has type "
-                              "char const* while composite compo0 seems to have another key "
-                              "type.\n");
+    // TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", "bla"), 2); }
+    // TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
+    //                           "-- Error: key type does not match composite key type. Key has type "
+    //                           "char const* while composite compo0 seems to have another key "
+    //                           "type.\n");
 }
 
 TEST_CASE("model test: model copy") {
@@ -272,7 +272,7 @@ TEST_CASE("Assembly test: instantiating composites.") {
 
 TEST_CASE("Assembly test: sub-addressing tests.") {
     class MyComposite : public Composite<int> {};
-    class MyOtherComposite : public Composite<const char*> {};
+    class MyOtherComposite : public Composite<> {};
     Model<> model;
     model.composite<MyComposite>("Array");
     model.component<MyCompo>(Address("Array", 0), 12, 13);
@@ -283,7 +283,7 @@ TEST_CASE("Assembly test: sub-addressing tests.") {
 
     auto& arrayRef = assembly.at<Assembly<int>>("Array");
     CHECK(arrayRef.size() == 3);
-    auto& subArrayRef = assembly.at<Assembly<const char*>>(Address("Array", 2));
+    auto& subArrayRef = assembly.at<Assembly<>>(Address("Array", 2));
     CHECK(subArrayRef.size() == 1);
     auto& subRef = assembly.at<MyCompo>(Address("Array", 1));
     auto& subSubRef = assembly.at<MyCompo>(Address("Array", 2, "youpi"));
