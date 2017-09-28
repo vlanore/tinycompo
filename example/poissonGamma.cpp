@@ -63,11 +63,11 @@ class MHMove : public Go {
         double backup = node->getValue();
 
         auto gather = [](const vector<RandomNode*>& v) {
-            return accumulate(v.begin(), v.end(), 1., [](double acc, RandomNode* b) { return acc * b->density(); });
+            return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
         };
-        double likelihood_before = gather(downward) * node->density();
+        double likelihood_before = gather(downward) + node->logDensity();
         double hastings_ratio = Move::move(node);
-        double likelihood_after = gather(downward) * node->density();
+        double likelihood_after = gather(downward) + node->logDensity();
 
         bool accepted = (likelihood_after / likelihood_before * hastings_ratio) > uniform(generator);
         if (!accepted) {
@@ -112,7 +112,7 @@ class BayesianEngine : public Go {
 
     void go() {
         sampler->go();
-        output->header("# Theta\tSigma");
+        output->header("#Theta\tSigma");
         for (int i = 0; i < iterations; i++) {
             scheduler->go();
             vector<double> vect;
@@ -153,7 +153,7 @@ int main() {
     model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
 
     // bayesian engine
-    model.component<BayesianEngine>("BI", 50000);
+    model.component<BayesianEngine>("BI", 100000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
     model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
     model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
@@ -189,8 +189,8 @@ int main() {
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
     }
 
-    // PoissonGamma().dotToFile();
-    model.dotToFile();
+    PoissonGamma(3).dotToFile();
+    // model.dotToFile();
 
     // instantiate everything!
     Assembly<> assembly(model);

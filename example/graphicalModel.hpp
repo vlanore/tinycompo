@@ -61,7 +61,7 @@ class RandomNode : public Real {
     void clamp(double val) { clampedVal = val; }
     double clampedValue() const { return clampedVal; }
     virtual bool isConsistent() const { return clampedVal == getValue(); }
-    virtual double density() = 0;
+    virtual double logDensity() = 0;
 };
 
 class DataStream {
@@ -97,7 +97,7 @@ class FileOutput : public Component, public DataStream {
     void header(const std::string &str) override { file << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
         for (auto e : line) {
-            file << e << "  ";
+            file << e << "\t";
         }
         file << std::endl;
     }
@@ -174,9 +174,9 @@ class Exponential : public UnaryReal {
         setValue(d(gen));
     }
 
-    double density() final {
+    double logDensity() final {
         double lambda = param.getValue();
-        return lambda * exp(-param.getValue() * lambda);
+        return log(lambda) - param.getValue() * lambda;
     }
 };
 
@@ -191,9 +191,9 @@ class Gamma : public UnaryReal {
         setValue(d(gen));
     }
 
-    double density() final {
+    double logDensity() final {
         double k = param.getValue(), x = getValue();
-        return pow(x, k - 1.) * exp(-x / k) / (pow(k, k) * tgamma(k));
+        return (k - 1) * log(x) - x / k - k * log(k) + log(tgamma(k));
     }
 };
 
@@ -208,7 +208,7 @@ class Poisson : public UnaryReal {
         setValue(d(gen));
     }
 
-    double density() final {
+    double logDensity() final {
         double k = getValue(), lambda = param.getValue();
         std::function<int(int)> factorial = [&factorial](int n) {
             if (n < 2)
@@ -216,7 +216,7 @@ class Poisson : public UnaryReal {
             else
                 return n * factorial(n - 1);
         };
-        return exp(-lambda) * pow(lambda, k) / factorial(k);
+        return -lambda + k * log(lambda) - log(factorial(k));
     }
 };
 
