@@ -93,23 +93,26 @@ class MHMove : public Go {
 struct MoveScheduler : public Go {};
 
 class DummyScheduler : public MoveScheduler {
-    Go* move{nullptr};
+    vector<Go*> move{};
+    void addMove(Go* ptr) { move.push_back(ptr); }
 
   public:
-    DummyScheduler() { port("move", &DummyScheduler::move); }
+    DummyScheduler() { port("move", &DummyScheduler::addMove); }
 
     void go() {
-        // printf("DummyScheduler called!\n");
-        move->go();
+        for (auto ptr : move) {
+            ptr->go();
+        }
     }
 };
 
 class BayesianEngine : public Go {
     MoveScheduler* scheduler{nullptr};
     Sampler* sampler{nullptr};
+    DataStream* output{nullptr};
     int iterations;
 
-    vector<Real*> variables_of_interest{nullptr};
+    vector<Real*> variables_of_interest{};
     void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
 
   public:
@@ -118,12 +121,19 @@ class BayesianEngine : public Go {
         port("scheduler", &BayesianEngine::scheduler);
         port("sampler", &BayesianEngine::sampler);
         port("iterations", &BayesianEngine::iterations);
+        port("output", &BayesianEngine::output);
     }
 
     void go() {
         sampler->go();
+        output->header("# Theta\tSigma");
         for (int i = 0; i < iterations; i++) {
             scheduler->go();
+            vector<double> vect;
+            for (auto v : variables_of_interest) {
+                vect.push_back(v->getValue());
+            }
+            output->dataLine(vect);
         }
     }
 };
@@ -165,27 +175,35 @@ int main() {
     // model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
     // model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
+    model.component<BayesianEngine>("BI", 50000);
+    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
+    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
+    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
+
     model.component<DummyScheduler>("Scheduler");
 
+    // Moves
+    model.component<MHMove<Uniform>>("ThetaMove");
+    model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
+    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
+
+    model.component<MHMove<Uniform>>("SigmaMove");
+    model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
+    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
     for (int i = 0; i < 5; i++) {
+        model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
+        model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
         const char* moveName = iF("OmegaMove", i).c_str();
-        std::cout << "Adding " << moveName << " to assembly.\n";
-        printf("ptr = %p\n", moveName);
         model.component<MHMove<Uniform>>(moveName);
         model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
     }
 
-    model.component<BayesianEngine>("BI");
-    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
-    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
-    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
-
     // model.component<ConsoleOutput>("Console");
     // model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("Console"));
-    // model.component<FileOutput>("TraceFile", "tmp.trace");
-    // model.connect<Use<DataStream>>(Address("RS"), "output", Address("TraceFile"));
+    model.component<FileOutput>("TraceFile", "tmp.trace");
+    model.connect<Use<DataStream>>(PortAddress("output", "BI"), Address("TraceFile"));
 
     // PoissonGamma().dotToFile();
     model.dotToFile();
