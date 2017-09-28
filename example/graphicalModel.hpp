@@ -358,9 +358,7 @@ class RejectionSampling : public Go {
     void go() override {
         int accepted = 0;
         std::cout << "-- Starting rejection sampling!\n";
-        std::stringstream ss;
-        ss << "# Rejection sampling with " << nbIter << " iterations.";
-        output->header(ss.str());
+        output->header("#Sigma\tTheta\tOmega0\tOmega1\tOmega2\tOmega3\tOmega4\tX0\tX1\tX2\tX3\tX4");
         for (auto i = 0; i < nbIter; i++) {
             // std::cout << "\t* Iteration " << i << ". Sampling!\n";
             sampler->go();

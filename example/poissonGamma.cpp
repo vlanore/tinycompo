@@ -156,10 +156,10 @@ int main() {
     Model<> model;
 
     // graphical model part
-    int size = 10;
+    int size = 5;
     model.composite<PoissonGamma>("PG", size);
-    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{4, 1, 1, 3, 1, 2, 3, 1, 2, 1});
-    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{4, 1, 1, 3, 1, 2, 3, 1, 2, 1});
+    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 0});
+    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{0, 1, 1, 0, 0});
 
     // bayesian engine
     model.component<BayesianEngine>("BI", 100000);
@@ -197,6 +197,19 @@ int main() {
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
     }
 
+    // RS infrastructure
+    model.component<RejectionSampling>("RS", 100000);
+    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler2"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
+
+    model.component<MultiSample>("Sampler2");
+    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Sigma"), Address("PG", "Theta"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Omega"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "X"));
+
+    model.component<FileOutput>("TraceFile2", "tmp2.trace");
+    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
+
     PoissonGamma(3).dotToFile();
     // model.dotToFile();
 
@@ -204,6 +217,7 @@ int main() {
     Assembly<> assembly(model);
 
     assembly.call("BI", "go");
+    assembly.call("RS", "go");
 
     assembly.print_all();
 }
