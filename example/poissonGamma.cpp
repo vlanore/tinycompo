@@ -29,20 +29,12 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-void _iF(stringstream&) {}
-
-template <class Thing, class... Things>
-void _iF(stringstream& ss, Thing thing, Things... things) {
-    ss << thing;
-    _iF(ss, things...);
-}
-
-template <class... Things>
-string iF(Things... things) {
-    stringstream ss;
-    _iF(ss, things...);
-
-    return ss.str();
+template <typename... Args>
+string sf(const std::string& format, Args... args) {
+    size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
+    unique_ptr<char[]> buf(new char[size]);
+    snprintf(buf.get(), size, format.c_str(), args...);
+    return string(buf.get(), buf.get() + size - 1);
 }
 
 default_random_engine generator;
@@ -74,30 +66,24 @@ class MHMove : public Go {
             return accumulate(v.begin(), v.end(), 1., [](double acc, RandomNode* b) { return acc * b->density(); });
         };
         double likelihood_before = gather(downward) * node->density();
-        // std::cout << "Likelihood before: " << likelihood_before << '\n';
-
         double hastings_ratio = Move::move(node);
-
         double likelihood_after = gather(downward) * node->density();
-        // std::cout << "Likelihood after: " << likelihood_after << '\n';
 
         bool accepted = (likelihood_after / likelihood_before * hastings_ratio) > uniform(generator);
-        // std::cout << "Accepted :" << accepted << '\n';
         if (!accepted) {
             node->setValue(backup);
         }
-        // return accepted;
     }
 };
 
 struct MoveScheduler : public Go {};
 
-class DummyScheduler : public MoveScheduler {
+class BasicScheduler : public MoveScheduler {
     vector<Go*> move{};
     void addMove(Go* ptr) { move.push_back(ptr); }
 
   public:
-    DummyScheduler() { port("move", &DummyScheduler::addMove); }
+    BasicScheduler() { port("move", &BasicScheduler::addMove); }
 
     void go() {
         for (auto ptr : move) {
@@ -139,23 +125,22 @@ class BayesianEngine : public Go {
 };
 
 struct PoissonGamma : public Composite<> {
-    PoissonGamma() {
+    explicit PoissonGamma(int size) {
         component<Exponential>("Sigma");
         connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
 
         component<Exponential>("Theta");
         connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
 
-        composite<Array<Gamma>>("Omega", 5);
+        composite<Array<Gamma>>("Omega", size);
         connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
 
-        composite<Array<Product>>("rate", 5);
+        composite<Array<Product>>("rate", size);
         connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
         connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
 
-        composite<Array<Poisson>>("X", 5);
+        composite<Array<Poisson>>("X", size);
         connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
-        connect<ArraySet>(PortAddress("clamp", "X"), vector<double>{0, 1, 0, 0, 1});
     }
 };
 
@@ -163,7 +148,19 @@ int main() {
     Model<> model;
 
     // graphical model part
-    model.composite<PoissonGamma>("PG");
+    int size = 10;
+    model.composite<PoissonGamma>("PG", size);
+    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
+
+    // bayesian engine
+    model.component<BayesianEngine>("BI", 50000);
+    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
+    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
+    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
+
+    // output
+    model.component<FileOutput>("TraceFile", "tmp.trace");
+    model.connect<Use<DataStream>>(PortAddress("output", "BI"), Address("TraceFile"));
 
     // sampler
     model.component<MultiSample>("Sampler");
@@ -171,18 +168,9 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
-    // model.component<RejectionSampling>("RS", 10000);
-    // model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler"));
-    // model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
+    // moves
+    model.component<BasicScheduler>("Scheduler");
 
-    model.component<BayesianEngine>("BI", 50000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
-    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
-    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
-
-    model.component<DummyScheduler>("Scheduler");
-
-    // Moves
     model.component<MHMove<Uniform>>("ThetaMove");
     model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
@@ -190,20 +178,16 @@ int main() {
     model.component<MHMove<Uniform>>("SigmaMove");
     model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
-    for (int i = 0; i < 5; i++) {
+
+    for (int i = 0; i < size; i++) {
         model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
-        const char* moveName = iF("OmegaMove", i).c_str();
+        auto moveName = sf("OmegaMove%d", i);
         model.component<MHMove<Uniform>>(moveName);
         model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
     }
-
-    // model.component<ConsoleOutput>("Console");
-    // model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("Console"));
-    model.component<FileOutput>("TraceFile", "tmp.trace");
-    model.connect<Use<DataStream>>(PortAddress("output", "BI"), Address("TraceFile"));
 
     // PoissonGamma().dotToFile();
     model.dotToFile();
@@ -211,8 +195,7 @@ int main() {
     // instantiate everything!
     Assembly<> assembly(model);
 
-    // call sampling
     assembly.call("BI", "go");
 
-    assembly.print_all();
+    // assembly.print_all();
 }
