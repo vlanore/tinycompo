@@ -145,6 +145,7 @@ class UnaryReal : public Component, public RandomNode {
         port("paramPtr", &UnaryReal::setParam<Real *>);
         port("sample", &UnaryReal::sample);
         port("clamp", &UnaryReal::clamp);
+        port("value", &UnaryReal::setValue);
     };
 
     // methods required from parent classes
@@ -175,8 +176,9 @@ class Exponential : public UnaryReal {
     }
 
     double logDensity() final {
-        double lambda = param.getValue();
-        return log(lambda) - param.getValue() * lambda;
+        auto lambda = param.getValue();
+        auto x = getValue();
+        return log(lambda) - x * lambda;
     }
 };
 
@@ -192,8 +194,10 @@ class Gamma : public UnaryReal {
     }
 
     double logDensity() final {
-        double k = param.getValue(), x = getValue();
-        return (k - 1) * log(x) - x / k - k * log(k) + log(tgamma(k));
+        auto alpha = param.getValue();
+        auto beta = alpha;
+        auto x = getValue();
+        return alpha * log(beta) - log(tgamma(alpha)) + (alpha - 1) * log(x) - beta * x;
     }
 };
 
@@ -216,7 +220,9 @@ class Poisson : public UnaryReal {
             else
                 return n * factorial(n - 1);
         };
-        return -lambda + k * log(lambda) - log(factorial(k));
+
+        auto result = k * log(lambda) - lambda - log(factorial(k));
+        return result;
     }
 };
 

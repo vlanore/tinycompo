@@ -43,12 +43,20 @@ uniform_real_distribution<double> uniform{0.0, 1.0};
 struct Uniform {
     static double move(RandomNode* v) {
         v->setValue(uniform(generator));
-        return 1.;
+        return 0.;
+    }
+};
+
+struct Scaling {
+    static double move(RandomNode* v) {
+        v->setValue(v->getValue() * exp(uniform(generator) - 0.5));
+        return 0.;
     }
 };
 
 template <class Move>
 class MHMove : public Go {
+    int ntot{0}, nacc{0};
     RandomNode* node{nullptr};
     vector<RandomNode*> downward;
     void addDownward(RandomNode* ptr) { downward.push_back(ptr); }
@@ -59,7 +67,7 @@ class MHMove : public Go {
         port("downward", &MHMove::addDownward);
     }
 
-    void go() {
+    void go() override {
         double backup = node->getValue();
 
         auto gather = [](const vector<RandomNode*>& v) {
@@ -69,11 +77,16 @@ class MHMove : public Go {
         double hastings_ratio = Move::move(node);
         double likelihood_after = gather(downward) + node->logDensity();
 
-        bool accepted = (likelihood_after / likelihood_before * hastings_ratio) > uniform(generator);
+        bool accepted = (likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
         if (!accepted) {
             node->setValue(backup);
+        } else {
+            nacc++;
         }
+        ntot++;
     }
+
+    string _debug() const override { return sf("MHMove[%.1f\%]", nacc * 100. / ntot); }
 };
 
 struct MoveScheduler : public Go {};
@@ -111,6 +124,7 @@ class BayesianEngine : public Go {
     }
 
     void go() {
+        sampler->go();
         sampler->go();
         output->header("#Theta\tSigma");
         for (int i = 0; i < iterations; i++) {
@@ -151,6 +165,7 @@ int main() {
     int size = 10;
     model.composite<PoissonGamma>("PG", size);
     model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
+    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
 
     // bayesian engine
     model.component<BayesianEngine>("BI", 100000);
@@ -166,16 +181,15 @@ int main() {
     model.component<MultiSample>("Sampler");
     model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Sigma"), Address("PG", "Theta"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "X"));
 
     // moves
     model.component<BasicScheduler>("Scheduler");
 
-    model.component<MHMove<Uniform>>("ThetaMove");
+    model.component<MHMove<Scaling>>("ThetaMove");
     model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
-    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
+    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
 
-    model.component<MHMove<Uniform>>("SigmaMove");
+    model.component<MHMove<Scaling>>("SigmaMove");
     model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
 
@@ -183,7 +197,7 @@ int main() {
         model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
         auto moveName = sf("OmegaMove%d", i);
-        model.component<MHMove<Uniform>>(moveName);
+        model.component<MHMove<Scaling>>(moveName);
         model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
@@ -197,5 +211,5 @@ int main() {
 
     assembly.call("BI", "go");
 
-    // assembly.print_all();
+    assembly.print_all();
 }
