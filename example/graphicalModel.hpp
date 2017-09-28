@@ -30,8 +30,15 @@ license and that you accept its terms.*/
 #include <random>
 #include "tinycompo.hpp"
 
-/*
+template <typename... Args>
+std::string sf(const std::string &format, Args... args) {
+    size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
+    std::unique_ptr<char[]> buf(new char[size]);
+    snprintf(buf.get(), size, format.c_str(), args...);
+    return std::string(buf.get(), buf.get() + size - 1);
+}
 
+/*
 ===================================================================================================
   INTERFACES
 =================================================================================================*/
@@ -194,10 +201,12 @@ class Gamma : public UnaryReal {
     }
 
     double logDensity() final {
-        auto alpha = param.getValue();
-        auto beta = alpha;
+        auto k = param.getValue();
+        auto theta = k;
         auto x = getValue();
-        return alpha * log(beta) - log(tgamma(alpha)) + (alpha - 1) * log(x) - beta * x;
+        auto result = (k - 1) * log(x) - log(tgamma(k)) - k * log(theta) - x / theta;
+        // std::cout << sf("ld(gamma): %.1f\tx=%f, k=%.1f, theta=%.1f\n", result, x, k, theta);
+        return result;
     }
 };
 
@@ -222,6 +231,7 @@ class Poisson : public UnaryReal {
         };
 
         auto result = k * log(lambda) - lambda - log(factorial(k));
+        // std::cout << "logDensity : " << result << "\n";
         return result;
     }
 };

@@ -29,14 +29,6 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-template <typename... Args>
-string sf(const std::string& format, Args... args) {
-    size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
-    unique_ptr<char[]> buf(new char[size]);
-    snprintf(buf.get(), size, format.c_str(), args...);
-    return string(buf.get(), buf.get() + size - 1);
-}
-
 default_random_engine generator;
 uniform_real_distribution<double> uniform{0.0, 1.0};
 
@@ -77,7 +69,9 @@ class MHMove : public Go {
         double hastings_ratio = Move::move(node);
         double likelihood_after = gather(downward) + node->logDensity();
 
-        bool accepted = (likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
+        // std::cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
+
+        bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
         if (!accepted) {
             node->setValue(backup);
         } else {
@@ -164,8 +158,8 @@ int main() {
     // graphical model part
     int size = 10;
     model.composite<PoissonGamma>("PG", size);
-    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
-    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{0, 1, 1, 0, 1, 2, 0, 1, 2, 1});
+    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{4, 1, 1, 3, 1, 2, 3, 1, 2, 1});
+    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{4, 1, 1, 3, 1, 2, 3, 1, 2, 1});
 
     // bayesian engine
     model.component<BayesianEngine>("BI", 100000);
