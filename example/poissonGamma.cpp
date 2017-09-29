@@ -161,11 +161,8 @@ struct PoissonGamma : public Composite<> {
 template <class Key>
 void configMoves(Model<Key>& model, const std::string &modelName, const std::string &schedName, const std::string &spec) {
     regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
-    sregex_iterator begin{spec.begin(), spec.end(), e2};
-    sregex_iterator end{};
 
-    for (auto it = begin; it!=end; it++) {
-        std::cout << "Matched an expression!\n";
+    for (sregex_iterator it{spec.begin(), spec.end(), e2}; it!=sregex_iterator{}; it++) {
         int nrep = stoi((*it)[4]);
         double tuning = stof((*it)[3]);
         string node = (*it)[2];
