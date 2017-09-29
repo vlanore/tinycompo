@@ -322,8 +322,8 @@ class _Operation {
 
   public:
     template <class Connector, class... Args>
-    _Operation(_Type<Connector>, Args&&... args)
-        : _connect([=](A& assembly) { Connector::_connect(assembly, std::forward<const Args>(args)...); }),
+    _Operation(_Type<Connector>, Args... args)
+        : _connect([=](A& assembly) { Connector::_connect(assembly, args...); }),
           _debug([=](std::string s, std::string prefix) {
               return s + "[xlabel=\"" + TinycompoDebug::type<Connector>() + "\" shape=point];\n" +
                      getArgs(s, prefix, args...);

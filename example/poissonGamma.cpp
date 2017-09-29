@@ -39,7 +39,7 @@ struct Uniform {
 struct Scaling {
     static double move(RandomNode* v, double tuning = 1.0) {
         auto multiplier = exp(tuning * (uniform(generator) - 0.5));
-        std::cout << multiplier << '\n';
+        // std::cout << multiplier << '\n';
         v->setValue(v->getValue() * multiplier);
         return 0.;
     }
@@ -47,12 +47,11 @@ struct Scaling {
 
 template <class Move>
 class MHMove : public Go {
-    int ntot{0}, nacc{0};
+    double tuning;
+    int ntot{0}, nacc{0}, nrep{0};
     RandomNode* node{nullptr};
     vector<RandomNode*> downward;
     void addDownward(RandomNode* ptr) { downward.push_back(ptr); }
-    double tuning;
-    int nrep;
 
   public:
     explicit MHMove(double tuning = 1.0, int nrep = 1) : tuning(tuning), nrep(nrep) {
@@ -62,42 +61,39 @@ class MHMove : public Go {
 
     void go() override {
         for (int i = 0; i < nrep; i++) {
-            move();
+            double backup = node->getValue();
+
+            auto gather = [](const vector<RandomNode*>& v) {
+                return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
+            };
+            double likelihood_before = gather(downward) + node->logDensity();
+            double hastings_ratio = Move::move(node, tuning);
+            double likelihood_after = gather(downward) + node->logDensity();
+
+            // std::cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
+
+            bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
+            if (!accepted) {
+                node->setValue(backup);
+            } else {
+                nacc++;
+            }
+            ntot++;
         }
-    }
-
-    void move() {
-        double backup = node->getValue();
-
-        auto gather = [](const vector<RandomNode*>& v) {
-            return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
-        };
-        double likelihood_before = gather(downward) + node->logDensity();
-        double hastings_ratio = Move::move(node, tuning);
-        double likelihood_after = gather(downward) + node->logDensity();
-
-        // std::cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
-
-        bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
-        if (!accepted) {
-            node->setValue(backup);
-        } else {
-            nacc++;
-        }
-        ntot++;
     }
 
     string _debug() const override { return sf("MHMove[%.1f\%]", nacc * 100. / ntot); }
 };
 
-struct MoveScheduler : public Go {};
-
-class BasicScheduler : public MoveScheduler {
+class MoveScheduler : public Component {
     vector<Go*> move{};
     void addMove(Go* ptr) { move.push_back(ptr); }
 
   public:
-    BasicScheduler() { port("move", &BasicScheduler::addMove); }
+    MoveScheduler() {
+        port("go", &MoveScheduler::go);
+        port("move", &MoveScheduler::addMove);
+    }
 
     void go() {
         for (auto ptr : move) {
@@ -166,9 +162,10 @@ int main() {
 
     // graphical model part
     int size = 5;
+    std::vector<double> data{2, 1, 1, 3, 2};
     model.composite<PoissonGamma>("PG", size);
-    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), std::vector<double>{0, 1, 1, 0, 0});
-    model.connect<ArraySet>(PortAddress("value", "PG", "X"), std::vector<double>{0, 1, 1, 0, 0});
+    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), data);
+    model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // bayesian engine
     model.component<BayesianEngine>("BI", 100000);
@@ -186,13 +183,13 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
 
     // moves
-    model.component<BasicScheduler>("Scheduler");
+    model.component<MoveScheduler>("Scheduler");
 
-    model.component<MHMove<Scaling>>("ThetaMove", 0.1, 10);
+    model.component<MHMove<Scaling>>("ThetaMove", 3, 10);
     model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
 
-    model.component<MHMove<Scaling>>("SigmaMove", 0.1, 10);
+    model.component<MHMove<Scaling>>("SigmaMove", 3, 10);
     model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
 
@@ -200,14 +197,14 @@ int main() {
         model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
         auto moveName = sf("OmegaMove%d", i);
-        model.component<MHMove<Scaling>>(moveName, 0.1, 10);
+        model.component<MHMove<Scaling>>(moveName, 3, 10);
         model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
     }
 
     // RS infrastructure
-    model.component<RejectionSampling>("RS", 100000);
+    model.component<RejectionSampling>("RS", 1000000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler2"));
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
