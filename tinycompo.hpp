@@ -203,9 +203,9 @@ class _Type {};     // constructor below
 
 struct _Component {
     template <class T, class... Args>
-    _Component(_Type<T>, Args&&... args)
+    _Component(_Type<T>, Args... args)
         : _constructor([=]() {
-              return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(std::forward<const Args>(args)...)));
+              return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(args...)));
           }),
           _className(TinycompoDebug::type<T>()) {}
 

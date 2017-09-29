@@ -26,6 +26,7 @@ more generally, to use and operate it in the same conditions as regards security
 The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
 license and that you accept its terms.*/
 
+#include <regex>
 #include "graphicalModel.hpp"
 using namespace std;
 
@@ -39,7 +40,7 @@ struct Uniform {
 struct Scaling {
     static double move(RandomNode* v, double tuning = 1.0) {
         auto multiplier = exp(tuning * (uniform(generator) - 0.5));
-        // std::cout << multiplier << '\n';
+        // cout << multiplier << '\n';
         v->setValue(v->getValue() * multiplier);
         return 0.;
     }
@@ -70,7 +71,7 @@ class MHMove : public Go {
             double hastings_ratio = Move::move(node, tuning);
             double likelihood_after = gather(downward) + node->logDensity();
 
-            // std::cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
+            // cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
 
             bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
             if (!accepted) {
@@ -121,7 +122,7 @@ class BayesianEngine : public Go {
     }
 
     void go() {
-        std::cout << "-- Starting MCMC chain!\n";
+        cout << "-- Starting MCMC chain!\n";
         sampler->go();
         sampler->go();
         output->header("#Theta\tSigma");
@@ -133,7 +134,7 @@ class BayesianEngine : public Go {
             }
             output->dataLine(vect);
         }
-        std::cout << "-- Done. Wrote " << iterations << " lines in trace file.\n";
+        cout << "-- Done. Wrote " << iterations << " lines in trace file.\n";
     }
 };
 
@@ -157,18 +158,43 @@ struct PoissonGamma : public Composite<> {
     }
 };
 
+template <class Key>
+void configMoves(Model<Key>& model, const std::string &modelName, const std::string &schedName, const std::string &spec) {
+    regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
+    sregex_iterator begin{spec.begin(), spec.end(), e2};
+    sregex_iterator end{};
+
+    for (auto it = begin; it!=end; it++) {
+        std::cout << "Matched an expression!\n";
+        int nrep = stoi((*it)[4]);
+        double tuning = stof((*it)[3]);
+        string node = (*it)[2];
+        string moveName = sf("%sMove", node.c_str());
+        if ((*it)[1] == "Scaling") {
+            model.template component<MHMove<Scaling>>(moveName, tuning, nrep);
+        } else if ((*it)[1] == "Uniform") {
+            model.template component<MHMove<Uniform>>(moveName, tuning, nrep);
+        } else {
+            std::cerr << "Unknown move " << (*it)[1] << "!\n";
+            exit(1);
+        }
+        model.template connect<Use<RandomNode>>(PortAddress("node", moveName), Address(modelName, node));
+        model.template connect<Use<Go>>(PortAddress("move", schedName), Address(moveName));
+    }
+}
+
 int main() {
     Model<> model;
 
     // graphical model part
     int size = 5;
-    std::vector<double> data{2, 1, 1, 3, 2};
+    vector<double> data{0, 1, 1, 0, 1};
     model.composite<PoissonGamma>("PG", size);
     model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), data);
     model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // bayesian engine
-    model.component<BayesianEngine>("BI", 100000);
+    model.component<BayesianEngine>("BI", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
     model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
     model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
@@ -185,13 +211,15 @@ int main() {
     // moves
     model.component<MoveScheduler>("Scheduler");
 
-    model.component<MHMove<Scaling>>("ThetaMove", 3, 10);
-    model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
-    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
+    configMoves(model, "PG", "Scheduler", "Scaling(Theta, 3, 10, array Omega), Scaling(Sigma, 3, 10, array X)");
 
-    model.component<MHMove<Scaling>>("SigmaMove", 3, 10);
-    model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
-    model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
+    // model.component<MHMove<Scaling>>("ThetaMove", 3, 10);
+    // model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
+    // model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
+
+    // model.component<MHMove<Scaling>>("SigmaMove", 3, 10);
+    // model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
+    // model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
 
     for (int i = 0; i < size; i++) {
         model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
@@ -204,7 +232,7 @@ int main() {
     }
 
     // RS infrastructure
-    model.component<RejectionSampling>("RS", 1000000);
+    model.component<RejectionSampling>("RS", 100000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler2"));
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
