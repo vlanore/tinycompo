@@ -30,6 +30,14 @@ license and that you accept its terms.*/
 #include <random>
 #include "tinycompo.hpp"
 
+int factorial(int n) {
+    if (n < 2) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
 template <typename... Args>
 std::string sf(const std::string &format, Args... args) {
     size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
@@ -37,6 +45,9 @@ std::string sf(const std::string &format, Args... args) {
     snprintf(buf.get(), size, format.c_str(), args...);
     return std::string(buf.get(), buf.get() + size - 1);
 }
+
+std::default_random_engine generator;
+std::uniform_real_distribution<double> uniform{0.0, 1.0};
 
 /*
 ===================================================================================================
@@ -176,10 +187,8 @@ class Exponential : public UnaryReal {
     explicit Exponential(double value = 0.0) : UnaryReal("Exponential") { setValue(value); }
 
     void sample() override {
-        std::random_device rd;
-        std::mt19937 gen(rd());
         std::exponential_distribution<> d(param.getValue());
-        setValue(d(gen));
+        setValue(d(generator));
     }
 
     double logDensity() final {
@@ -194,18 +203,16 @@ class Gamma : public UnaryReal {
     explicit Gamma() : UnaryReal("Gamma") {}
 
     void sample() override {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::gamma_distribution<> d(param.getValue(), param.getValue());
-        setValue(d(gen));
+        std::gamma_distribution<double> d{param.getValue(), param.getValue()};
+        setValue(d(generator));
     }
 
     double logDensity() final {
-        auto k = param.getValue();
-        auto theta = k;
+        auto alpha = param.getValue();
+        auto beta = alpha;
         auto x = getValue();
-        auto result = (k - 1) * log(x) - log(tgamma(k)) - k * log(theta) - x / theta;
-        // std::cout << sf("ld(gamma): %.1f\tx=%f, k=%.1f, theta=%.1f\n", result, x, k, theta);
+        auto result = (alpha - 1) * log(x) - log(tgamma(alpha)) - alpha * log(beta) - x / beta;
+        // std::cout << sf("ld(gamma): %f\tx=%f, alpha=%f, beta=%f\n", result, x, alpha, beta);
         return result;
     }
 };
@@ -215,24 +222,13 @@ class Poisson : public UnaryReal {
     explicit Poisson(double value = 0.0) : UnaryReal("Poisson") { setValue(value); }
 
     void sample() override {
-        std::random_device rd;
-        std::mt19937 gen(rd());
         std::poisson_distribution<> d(param.getValue());
-        setValue(d(gen));
+        setValue(d(generator));
     }
 
     double logDensity() final {
         double k = getValue(), lambda = param.getValue();
-        std::function<int(int)> factorial = [&factorial](int n) {
-            if (n < 2)
-                return 1;
-            else
-                return n * factorial(n - 1);
-        };
-
-        auto result = k * log(lambda) - lambda - log(factorial(k));
-        // std::cout << "logDensity : " << result << "\n";
-        return result;
+        return k * log(lambda) - lambda - log(factorial(k));
     }
 };
 

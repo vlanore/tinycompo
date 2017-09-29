@@ -29,19 +29,18 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-default_random_engine generator;
-uniform_real_distribution<double> uniform{0.0, 1.0};
-
 struct Uniform {
-    static double move(RandomNode* v) {
+    static double move(RandomNode* v, double = 1.0) {
         v->setValue(uniform(generator));
         return 0.;
     }
 };
 
 struct Scaling {
-    static double move(RandomNode* v) {
-        v->setValue(v->getValue() * exp(uniform(generator) - 0.5));
+    static double move(RandomNode* v, double tuning = 1.0) {
+        auto multiplier = exp(tuning * (uniform(generator) - 0.5));
+        std::cout << multiplier << '\n';
+        v->setValue(v->getValue() * multiplier);
         return 0.;
     }
 };
@@ -52,21 +51,29 @@ class MHMove : public Go {
     RandomNode* node{nullptr};
     vector<RandomNode*> downward;
     void addDownward(RandomNode* ptr) { downward.push_back(ptr); }
+    double tuning;
+    int nrep;
 
   public:
-    MHMove() {
+    explicit MHMove(double tuning = 1.0, int nrep = 1) : tuning(tuning), nrep(nrep) {
         port("node", &MHMove::node);
         port("downward", &MHMove::addDownward);
     }
 
     void go() override {
+        for (int i = 0; i < nrep; i++) {
+            move();
+        }
+    }
+
+    void move() {
         double backup = node->getValue();
 
         auto gather = [](const vector<RandomNode*>& v) {
             return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
         };
         double likelihood_before = gather(downward) + node->logDensity();
-        double hastings_ratio = Move::move(node);
+        double hastings_ratio = Move::move(node, tuning);
         double likelihood_after = gather(downward) + node->logDensity();
 
         // std::cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
@@ -118,6 +125,7 @@ class BayesianEngine : public Go {
     }
 
     void go() {
+        std::cout << "-- Starting MCMC chain!\n";
         sampler->go();
         sampler->go();
         output->header("#Theta\tSigma");
@@ -129,6 +137,7 @@ class BayesianEngine : public Go {
             }
             output->dataLine(vect);
         }
+        std::cout << "-- Done. Wrote " << iterations << " lines in trace file.\n";
     }
 };
 
@@ -179,11 +188,11 @@ int main() {
     // moves
     model.component<BasicScheduler>("Scheduler");
 
-    model.component<MHMove<Scaling>>("ThetaMove");
+    model.component<MHMove<Scaling>>("ThetaMove", 0.1, 10);
     model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
 
-    model.component<MHMove<Scaling>>("SigmaMove");
+    model.component<MHMove<Scaling>>("SigmaMove", 0.1, 10);
     model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
     model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
 
@@ -191,7 +200,7 @@ int main() {
         model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
         auto moveName = sf("OmegaMove%d", i);
-        model.component<MHMove<Scaling>>(moveName);
+        model.component<MHMove<Scaling>>(moveName, 0.1, 10);
         model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
         model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
         model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
@@ -210,8 +219,8 @@ int main() {
     model.component<FileOutput>("TraceFile2", "tmp2.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
-    PoissonGamma(3).dotToFile();
-    // model.dotToFile();
+    // PoissonGamma(3).dotToFile();
+    model.dotToFile();
 
     // instantiate everything!
     Assembly<> assembly(model);
