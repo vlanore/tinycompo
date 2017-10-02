@@ -138,26 +138,6 @@ class BayesianEngine : public Go {
     }
 };
 
-struct PoissonGamma : public Composite<> {
-    explicit PoissonGamma(int size) {
-        component<Exponential>("Sigma");
-        connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
-
-        component<Exponential>("Theta");
-        connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
-
-        composite<Array<Gamma>>("Omega", size);
-        connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
-
-        composite<Array<Product>>("rate", size);
-        connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
-        connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
-
-        composite<Array<Poisson>>("X", size);
-        connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
-    }
-};
-
 template <class Key>
 void configMoves(Model<Key>& model, const std::string& modelName, const std::string& schedName, const std::string& spec) {
     regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
@@ -179,6 +159,26 @@ void configMoves(Model<Key>& model, const std::string& modelName, const std::str
         model.template connect<Use<Go>>(PortAddress("move", schedName), Address(moveName));
     }
 }
+
+struct PoissonGamma : public Composite<> {
+    explicit PoissonGamma(int size) {
+        component<Exponential>("Sigma");
+        connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
+
+        component<Exponential>("Theta");
+        connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
+
+        composite<Array<Gamma>>("Omega", size);
+        connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
+
+        composite<Array<Product>>("rate", size);
+        connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
+        connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
+
+        composite<Array<Poisson>>("X", size);
+        connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
+    }
+};
 
 int main() {
     Model<> model;
