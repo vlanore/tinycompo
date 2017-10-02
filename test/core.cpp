@@ -242,14 +242,6 @@ TEST_CASE("Model test: temporary keys") {
     CHECK(model.size() == 5);
 }
 
-TEST_CASE("Model test: metadata") {
-    Model<> model;
-    model.component<MyInt>("compo", 1);
-    model.meta("compo", "my fancy data");
-    CHECK(model.meta("compo") == "my fancy data");
-    CHECK(model.meta("youpi") == "");
-}
-
 /*
 ====================================================================================================
   ~*~ Assembly ~*~

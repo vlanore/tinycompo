@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <stdio.h>
+#include <set>
 #include "tinycompo.hpp"
 
 using namespace std;
@@ -85,23 +86,70 @@ class LocalSender : public Component, public MPIConfig {
     }
 };
 
+class MPIModel : public Model<>, public MPIConfig {
+    map<string, bool> resources;
+
+  public:
+    void resource(const string& compo, const set<int>& s) { resources[compo] = (s.find(rank) != s.end()); }
+    bool local(const string& compo) {
+        try {
+            return resources.at(compo);
+        } catch (std::out_of_range) {
+            return false;
+        }
+    }
+};
+
+Model<> emptymodel;
+
+class MPIAssembly : public Assembly<>, public MPIConfig {
+  public:
+    explicit MPIAssembly(MPIModel& model) : Assembly<>(emptymodel) {
+        for (auto& c : model.components) {
+            if (model.local(c.first)) {
+                instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
+            }
+        }
+        for (auto& o : model.operations) {
+            o._connect(*this);
+        }
+    }
+};
+
+set<int> interval(int start, int end) {
+    int aend = (end == -1) ? MPIConfig().size : end;
+    set<int> result;
+    for (int i = start; i < aend; i++) {
+        result.insert(i);
+    }
+    return result;
+}
+
 int main() {
     MPI_Init(NULL, NULL);
     int rank = MPIConfig().rank, size = MPIConfig().size;
 
-    Model<> model;
+    MPIModel model;
+    model.component<MPIReducer>("reducer");
+    model.resource("reducer", set<int>{0});
+
+    model.component<LocalSender>("sender", (rank * 11 + 3) % 7);
+    model.resource("sender", interval(1, -1));
+
     if (rank == 0) {
-        model.component<MPIReducer>("compo");
         for (int i = 0; i < size - 1; i++) {
-            model.connect<Set>(PortAddress("ports", "compo"), MPIPort{i + 1, i + 1});
+            model.connect<Set>(PortAddress("ports", "reducer"), MPIPort{i + 1, i + 1});
         }
     } else {
-        model.component<LocalSender>("compo", (rank * 11 + 3) % 8);
-        model.connect<Set>(PortAddress("port", "compo"), MPIPort{0, rank});
+        model.connect<Set>(PortAddress("port", "sender"), MPIPort{0, rank});
     }
 
-    Assembly<> assembly(model);
-    assembly.call("compo", "go");
+    MPIAssembly assembly(model);
+    if (rank == 0) {
+        assembly.call("reducer", "go");
+    } else {
+        assembly.call("sender", "go");
+    }
 
     MPI_Finalize();
 }
