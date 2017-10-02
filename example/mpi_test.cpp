@@ -96,7 +96,7 @@ int main() {
             model.connect<Set>(PortAddress("ports", "compo"), MPIPort{i + 1, i + 1});
         }
     } else {
-        model.component<LocalSender>("compo");
+        model.component<LocalSender>("compo", (rank * 11 + 3) % 8);
         model.connect<Set>(PortAddress("port", "compo"), MPIPort{0, rank});
     }
 

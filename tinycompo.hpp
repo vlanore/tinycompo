@@ -416,6 +416,7 @@ class Model {
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, _Composite> composites;
+    std::map<Key, std::string> metadata;
 
     Model() = default;
 
@@ -489,6 +490,16 @@ class Model {
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
+
+    void meta(const Key& address, const std::string& data) { metadata[address] = data; }
+
+    std::string meta(const Key& address) {
+        try {
+            return metadata.at(address);
+        } catch (std::out_of_range) {
+            return "";
+        }
+    }
 
     _DotData _debug(const std::string& myname = "") {
         std::string prefix = myname == "" ? "" : myname + "__";
