@@ -159,10 +159,10 @@ struct PoissonGamma : public Composite<> {
 };
 
 template <class Key>
-void configMoves(Model<Key>& model, const std::string &modelName, const std::string &schedName, const std::string &spec) {
+void configMoves(Model<Key>& model, const std::string& modelName, const std::string& schedName, const std::string& spec) {
     regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
 
-    for (sregex_iterator it{spec.begin(), spec.end(), e2}; it!=sregex_iterator{}; it++) {
+    for (sregex_iterator it{spec.begin(), spec.end(), e2}; it != sregex_iterator{}; it++) {
         int nrep = stoi((*it)[4]);
         double tuning = stof((*it)[3]);
         string node = (*it)[2];
@@ -218,15 +218,13 @@ int main() {
     // model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
     // model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
 
-    for (int i = 0; i < size; i++) {
-        model.connect<Use<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega", i));
-        model.connect<Use<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X", i));
-        auto moveName = sf("OmegaMove%d", i);
-        model.component<MHMove<Scaling>>(moveName, 3, 10);
-        model.connect<Use<RandomNode>>(PortAddress("node", moveName), Address("PG", "Omega", i));
-        model.connect<Use<RandomNode>>(PortAddress("downward", moveName), Address("PG", "X", i));
-        model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address(moveName));
-    }
+    model.connect<MultiUse<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X"));
+
+    model.composite<Array<MHMove<Scaling>>>("OmegaMove", 5, 3, 10);
+    model.connect<ArrayOneToOne<RandomNode>>(PortAddress("node", "OmegaMove"), Address("PG", "Omega"));
+    model.connect<ArrayOneToOne<RandomNode>>(PortAddress("downward", "OmegaMove"), Address("PG", "X"));
+    model.connect<MultiUse<Go>>(PortAddress("move", "Scheduler"), Address("OmegaMove"));
 
     // RS infrastructure
     model.component<RejectionSampling>("RS", 100000);
@@ -234,7 +232,7 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<MultiSample>("Sampler2");
-    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Sigma"), Address("PG", "Theta"));
+    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Theta"), Address("PG", "Sigma"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Omega"));
     model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "X"));
 
