@@ -30,6 +30,33 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of : std::false_type {};
+
+template <template <typename...> class Template, typename... Args>
+struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
+
+template <class Interface>
+struct UseInComposite {
+    template <class Key, class... Keys, class... Keys2, class... Args>
+    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite,
+                         const vector<Key>& keys) {
+        auto& compositeRef = assembly.at<Assembly<Key>>(composite);
+        auto& userRef = assembly.at(user.address);
+        for (auto k : keys) {
+            auto& providerRef = compositeRef.at(k);
+            auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
+            if (providerArrayPtr != nullptr) {  // component is an array
+                for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
+                    userRef.set(user.prop, &providerArrayPtr->at<Interface>(i));
+                }
+            } else {
+                userRef.set(user.prop, dynamic_cast<Interface*>(&providerRef));
+            }
+        }
+    }
+};
+
 struct Uniform {
     static double move(RandomNode* v, double = 1.0) {
         v->setValue(uniform(generator));
@@ -232,9 +259,13 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<MultiSample>("Sampler2");
-    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Theta"), Address("PG", "Sigma"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Omega"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "X"));
+    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"),
+                                              vector<string>{"Theta", "Sigma", "Omega", "X"});
+
+    // model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Theta"), Address("PG",
+    // "Sigma"));
+    // model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Omega"));
+    // model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "X"));
 
     model.component<FileOutput>("TraceFile2", "tmp2.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
