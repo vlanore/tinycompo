@@ -71,6 +71,12 @@ class MPIAssembly : public Assembly<>, public MPIConfig {
     vector<int> resource(const std::string& compo) { return internal_model.resource(compo); }
 
     bool local(const std::string& compo) { return internal_model.local(compo); }
+
+    void ccall(const std::string& compo, const std::string& prop) {
+        if (local(compo)) {
+            call(compo, prop);
+        }
+    }
 };
 
 vector<int> interval(int start, int end) {
@@ -161,11 +167,8 @@ int main() {
     model.connect<MPIp2p>(PortAddress("port", "sender"), PortAddress("ports", "reducer"));
 
     MPIAssembly assembly(model);
-    if (rank == 0) {
-        assembly.call("reducer", "go");
-    } else {
-        assembly.call("sender", "go");
-    }
+    assembly.ccall("reducer", "go");
+    assembly.ccall("sender", "go");
 
     MPI_Finalize();
 }
