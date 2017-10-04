@@ -36,7 +36,7 @@ struct UseInComposite {
     static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
                          Args... args) {
         using Key = typename _Key<Arg>::actualType;
-        std::vector<Key> keys{arg, args...};
+        vector<Key> keys{arg, args...};
         auto& compositeRef = assembly.at<Assembly<Key>>(composite);
         auto& userRef = assembly.at(user.address);
         for (auto k : keys) {
@@ -93,8 +93,6 @@ class MHMove : public Go {
             double likelihood_before = gather(downward) + node->logDensity();
             double hastings_ratio = Move::move(node, tuning);
             double likelihood_after = gather(downward) + node->logDensity();
-
-            // cout << sf("Move: ll before = %.2f, ll after = %.2f\n", exp(likelihood_before), exp(likelihood_after));
 
             bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
             if (!accepted) {
@@ -161,8 +159,22 @@ class BayesianEngine : public Go {
     }
 };
 
+bool isArray(const string& s) {
+    regex e("array\\s([a-zA-Z0-9]+)");
+    smatch m;
+    regex_match(s, m, e);
+    return m.size() == 2;
+}
+
+string arrayName(const string& s) {
+    regex e("array\\s([a-zA-Z0-9]+)");
+    smatch m;
+    regex_match(s, m, e);
+    return m[1];
+}
+
 template <class Key>
-void configMoves(Model<Key>& model, const std::string& modelName, const std::string& schedName, const std::string& spec) {
+void configMoves(Model<Key>& model, const string& modelName, const string& schedName, const string& spec) {
     regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
 
     for (sregex_iterator it{spec.begin(), spec.end(), e2}; it != sregex_iterator{}; it++) {
@@ -175,7 +187,7 @@ void configMoves(Model<Key>& model, const std::string& modelName, const std::str
         } else if ((*it)[1] == "Uniform") {
             model.template component<MHMove<Uniform>>(moveName, tuning, nrep);
         } else {
-            std::cerr << "Unknown move " << (*it)[1] << "!\n";
+            cerr << "Unknown move " << (*it)[1] << "!\n";
             exit(1);
         }
         model.template connect<Use<RandomNode>>(PortAddress("node", moveName), Address(modelName, node));
@@ -225,8 +237,7 @@ int main() {
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Sigma"), Address("PG", "Theta"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler"), Address("PG", "Omega"));
+    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler"), Address("PG"), "Sigma", "Theta", "Omega");
 
     // moves
     model.component<MoveScheduler>("Scheduler");
@@ -266,7 +277,7 @@ int main() {
     model.component<FileOutput>("TraceFile2", "tmp2.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
-    // PoissonGamma(3).dotToFile();
+    PoissonGamma(3).dotToFile("tmp2.dot");
     model.dotToFile();
 
     // instantiate everything!
