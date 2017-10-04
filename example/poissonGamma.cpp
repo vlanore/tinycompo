@@ -170,7 +170,7 @@ string arrayName(const string& s) {
     regex e("array\\s([a-zA-Z0-9]+)");
     smatch m;
     regex_match(s, m, e);
-    return m[1];
+    return m.size() == 2 ? m[1] : s;
 }
 
 template <class Key>
@@ -182,6 +182,7 @@ void configMoves(Model<Key>& model, const string& modelName, const string& sched
         double tuning = stof((*it)[3]);
         string node = (*it)[2];
         string moveName = sf("%sMove", node.c_str());
+
         if ((*it)[1] == "Scaling") {
             model.template component<MHMove<Scaling>>(moveName, tuning, nrep);
         } else if ((*it)[1] == "Uniform") {
@@ -193,7 +194,7 @@ void configMoves(Model<Key>& model, const string& modelName, const string& sched
         model.template connect<Use<RandomNode>>(PortAddress("node", moveName), Address(modelName, node));
         model.template connect<Use<Go>>(PortAddress("move", schedName), Address(moveName));
         string downwardString = (*it)[5];
-        string downwardName = isArray(downwardString) ? arrayName(downwardString) : downwardString;
+        string downwardName = arrayName(downwardString);
         if (isArray(downwardString)) {
             model.template connect<MultiUse<RandomNode>>(PortAddress("downward", moveName),
                                                          Address(modelName, downwardName));
