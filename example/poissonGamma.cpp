@@ -192,6 +192,14 @@ void configMoves(Model<Key>& model, const string& modelName, const string& sched
         }
         model.template connect<Use<RandomNode>>(PortAddress("node", moveName), Address(modelName, node));
         model.template connect<Use<Go>>(PortAddress("move", schedName), Address(moveName));
+        string downwardString = (*it)[5];
+        string downwardName = isArray(downwardString) ? arrayName(downwardString) : downwardString;
+        if (isArray(downwardString)) {
+            model.template connect<MultiUse<RandomNode>>(PortAddress("downward", moveName),
+                                                         Address(modelName, downwardName));
+        } else {
+            model.template connect<Use<RandomNode>>(PortAddress("downward", moveName), Address(modelName, downwardName));
+        }
     }
 }
 
@@ -243,17 +251,6 @@ int main() {
     model.component<MoveScheduler>("Scheduler");
 
     configMoves(model, "PG", "Scheduler", "Scaling(Theta, 3, 10, array Omega), Scaling(Sigma, 3, 10, array X)");
-
-    // model.component<MHMove<Scaling>>("ThetaMove", 3, 10);
-    // model.connect<Use<RandomNode>>(PortAddress("node", "ThetaMove"), Address("PG", "Theta"));
-    // model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("ThetaMove"));
-
-    // model.component<MHMove<Scaling>>("SigmaMove", 3, 10);
-    // model.connect<Use<RandomNode>>(PortAddress("node", "SigmaMove"), Address("PG", "Sigma"));
-    // model.connect<Use<Go>>(PortAddress("move", "Scheduler"), Address("SigmaMove"));
-
-    model.connect<MultiUse<RandomNode>>(PortAddress("downward", "ThetaMove"), Address("PG", "Omega"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("downward", "SigmaMove"), Address("PG", "X"));
 
     model.composite<Array<MHMove<Scaling>>>("OmegaMove", 5, 3, 10);
     model.connect<ArrayOneToOne<RandomNode>>(PortAddress("node", "OmegaMove"), Address("PG", "Omega"));
