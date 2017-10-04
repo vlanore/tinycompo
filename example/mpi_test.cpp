@@ -10,12 +10,17 @@ using namespace std;
 ===================================================================================
   TinyCompoMPI classes
 ===================================================================================*/
-struct MPIConfig {
+struct MPIUtils {
     int rank{-1};
     int size{-1};
-    MPIConfig() {
+    MPIUtils() {
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    }
+    template <class... Args>
+    void message(const std::string& format, Args... args) {
+        string format2 = "<%d/%d> " + format + "\n";
+        printf(format2.c_str(), rank, size, args...);
     }
 };
 
@@ -30,7 +35,7 @@ struct MPIPort {
     }
 };
 
-class MPIModel : public Model<>, public MPIConfig {
+class MPIModel : public Model<>, public MPIUtils {
     map<string, vector<int>> resources;
 
   public:
@@ -53,7 +58,7 @@ class MPIModel : public Model<>, public MPIConfig {
 
 Model<> emptymodel;
 
-class MPIAssembly : public Assembly<>, public MPIConfig {
+class MPIAssembly : public Assembly<>, public MPIUtils {
     MPIModel& internal_model;
 
   public:
@@ -80,7 +85,7 @@ class MPIAssembly : public Assembly<>, public MPIConfig {
 };
 
 vector<int> interval(int start, int end) {
-    int aend = (end == -1) ? MPIConfig().size : end;
+    int aend = (end == -1) ? MPIUtils().size : end;
     vector<int> result;
     for (int i = start; i < aend; i++) {
         result.push_back(i);
@@ -111,7 +116,7 @@ struct MPIp2p {
 ===================================================================================
   User-defined classes
 ===================================================================================*/
-class MPIReducer : public Component, public MPIConfig {
+class MPIReducer : public Component, public MPIUtils {
     vector<MPIPort> ports;
     void addPort(MPIPort port) { ports.push_back(port); }
 
@@ -128,11 +133,11 @@ class MPIReducer : public Component, public MPIConfig {
             p.receive(&data, 1, MPI_INT);
             total += data;
         }
-        printf("<%d/%d> Total is %d\n", rank, size, total);
+        message("Total is %d", total);
     }
 };
 
-class LocalSender : public Component, public MPIConfig {
+class LocalSender : public Component, public MPIUtils {
     MPIPort reducer;
     int data;
 
@@ -143,9 +148,9 @@ class LocalSender : public Component, public MPIConfig {
     }
 
     void go() {
-        printf("<%d/%d> Sending %d to reducer!\n", rank, size, data);
+        message("Sending %d to reducer!", data);
         reducer.send(&data, 1, MPI_INT);
-        printf("<%d/%d> Done!\n", rank, size);
+        message("Done!");
     }
 };
 
@@ -155,7 +160,7 @@ class LocalSender : public Component, public MPIConfig {
 ===================================================================================*/
 int main() {
     MPI_Init(NULL, NULL);
-    int rank = MPIConfig().rank;
+    int rank = MPIUtils().rank;
 
     MPIModel model;
     model.component<MPIReducer>("reducer");

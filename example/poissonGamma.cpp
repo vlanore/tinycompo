@@ -267,11 +267,6 @@ int main() {
     model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Theta", "Sigma", "Omega",
                                               "X");
 
-    // model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Theta"), Address("PG",
-    // "Sigma"));
-    // model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Omega"));
-    // model.connect<MultiUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "X"));
-
     model.component<FileOutput>("TraceFile2", "tmp2.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
