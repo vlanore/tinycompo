@@ -30,17 +30,13 @@ license and that you accept its terms.*/
 #include "graphicalModel.hpp"
 using namespace std;
 
-template <template <typename...> class Template, typename T>
-struct is_instantiation_of : std::false_type {};
-
-template <template <typename...> class Template, typename... Args>
-struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
-
 template <class Interface>
 struct UseInComposite {
-    template <class Key, class... Keys, class... Keys2, class... Args>
-    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite,
-                         const vector<Key>& keys) {
+    template <class... Keys, class... Keys2, class Arg, class... Args>
+    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
+                         Args... args) {
+        using Key = typename _Key<Arg>::actualType;
+        std::vector<Key> keys{arg, args...};
         auto& compositeRef = assembly.at<Assembly<Key>>(composite);
         auto& userRef = assembly.at(user.address);
         for (auto k : keys) {
@@ -259,8 +255,8 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<MultiSample>("Sampler2");
-    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"),
-                                              vector<string>{"Theta", "Sigma", "Omega", "X"});
+    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Theta", "Sigma", "Omega",
+                                              "X");
 
     // model.connect<ListUse<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG", "Theta"), Address("PG",
     // "Sigma"));
