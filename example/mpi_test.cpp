@@ -10,16 +10,19 @@ using namespace std;
 ===================================================================================
   TinyCompoMPI classes
 ===================================================================================*/
-struct MPIUtils {
+class MPICore {
+    const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
+
+  public:
     int rank{-1};
     int size{-1};
-    MPIUtils() {
+    MPICore() {
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     }
     template <class... Args>
     void message(const std::string& format, Args... args) {
-        string format2 = "<%d/%d> " + format + "\n";
+        string format2 = "\e[" + to_string(colors[rank]) + "m<%d/%d> " + format + "\e[0m\n";
         printf(format2.c_str(), rank, size, args...);
     }
 };
@@ -29,14 +32,19 @@ struct MPIPort {
     int tag{-1};
     MPIPort() = default;
     MPIPort(int p, int t) : proc(p), tag(t) {}
+
+    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD); }
     void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, MPI_COMM_WORLD); }
+
+    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
     void receive(void* data, int count, MPI_Datatype type) {
         MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 };
 
-class MPIModel : public Model<>, public MPIUtils {
+class MPIModel : public Model<> {
     map<string, vector<int>> resources;
+    MPICore core;
 
   public:
     void resource(const string& compo, const vector<int>& v) { resources[compo] = v; }
@@ -49,7 +57,7 @@ class MPIModel : public Model<>, public MPIUtils {
     }
     bool local(const string& compo) {
         try {
-            return find(resources.at(compo).begin(), resources.at(compo).end(), rank) != resources.at(compo).end();
+            return find(resources.at(compo).begin(), resources.at(compo).end(), core.rank) != resources.at(compo).end();
         } catch (std::out_of_range) {
             return false;
         }
@@ -58,7 +66,7 @@ class MPIModel : public Model<>, public MPIUtils {
 
 Model<> emptymodel;
 
-class MPIAssembly : public Assembly<>, public MPIUtils {
+class MPIAssembly : public Assembly<>, public MPICore {
     MPIModel& internal_model;
 
   public:
@@ -85,7 +93,7 @@ class MPIAssembly : public Assembly<>, public MPIUtils {
 };
 
 vector<int> interval(int start, int end) {
-    int aend = (end == -1) ? MPIUtils().size : end;
+    int aend = (end == -1) ? MPICore().size : end;
     vector<int> result;
     for (int i = start; i < aend; i++) {
         result.push_back(i);
@@ -116,9 +124,11 @@ struct MPIp2p {
 ===================================================================================
   User-defined classes
 ===================================================================================*/
-class MPIReducer : public Component, public MPIUtils {
+class MPIReducer : public Component {
     vector<MPIPort> ports;
     void addPort(MPIPort port) { ports.push_back(port); }
+    int data_buffer{-1};
+    MPICore core;
 
   public:
     MPIReducer() {
@@ -129,16 +139,16 @@ class MPIReducer : public Component, public MPIUtils {
     void go() {
         int total{0};
         for (auto p : ports) {
-            int data;
-            p.receive(&data, 1, MPI_INT);
-            total += data;
+            p.receive(data_buffer);
+            total += data_buffer;
         }
-        message("Total is %d", total);
+        core.message("Total is %d", total);
     }
 };
 
-class LocalSender : public Component, public MPIUtils {
+class LocalSender : public Component {
     MPIPort reducer;
+    MPICore core;
     int data;
 
   public:
@@ -148,9 +158,10 @@ class LocalSender : public Component, public MPIUtils {
     }
 
     void go() {
-        message("Sending %d to reducer!", data);
-        reducer.send(&data, 1, MPI_INT);
-        message("Done!");
+        core.message("Sending %d to reducer!", data);
+        reducer.send(data);
+        reducer.send(1);
+        core.message("Done!");
     }
 };
 
@@ -160,7 +171,7 @@ class LocalSender : public Component, public MPIUtils {
 ===================================================================================*/
 int main() {
     MPI_Init(NULL, NULL);
-    int rank = MPIUtils().rank;
+    int rank = MPICore().rank;
 
     MPIModel model;
     model.component<MPIReducer>("reducer");
