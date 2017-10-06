@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <algorithm>
+#include <numeric>
 #include <set>
 #include "tinycompo.hpp"
 
@@ -10,6 +11,37 @@ using namespace std;
 ===================================================================================
   TinyCompoMPI classes
 ===================================================================================*/
+namespace std {
+    template <class T>
+    struct _Unique_if {
+        typedef unique_ptr<T> _Single_object;
+    };
+
+    template <class T>
+    struct _Unique_if<T[]> {
+        typedef unique_ptr<T[]> _Unknown_bound;
+    };
+
+    template <class T, size_t N>
+    struct _Unique_if<T[N]> {
+        typedef void _Known_bound;
+    };
+
+    template <class T, class... Args>
+    typename _Unique_if<T>::_Single_object make_unique(Args&&... args) {
+        return unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+
+    template <class T>
+    typename _Unique_if<T>::_Unknown_bound make_unique(size_t n) {
+        typedef typename remove_extent<T>::type U;
+        return unique_ptr<T>(new U[n]());
+    }
+
+    template <class T, class... Args>
+    typename _Unique_if<T>::_Known_bound make_unique(Args&&...) = delete;
+}
+
 class MPICore {
     const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
 
@@ -22,7 +54,7 @@ class MPICore {
     }
     template <class... Args>
     void message(const std::string& format, Args... args) {
-        string format2 = "\e[" + to_string(colors[rank]) + "m<%d/%d> " + format + "\e[0m\n";
+        string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
         printf(format2.c_str(), rank, size, args...);
     }
 };
@@ -39,6 +71,17 @@ struct MPIPort {
     void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
     void receive(void* data, int count, MPI_Datatype type) {
         MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+};
+
+struct MPIComm {
+    MPI_Comm comm{MPI_COMM_WORLD};
+    int size{-1};
+    explicit MPIComm(MPI_Comm comm) : comm(comm) { MPI_Comm_size(comm, &size); }
+    vector<int> all_gather(int data_send) {
+        vector<int> result(size, 0);
+        MPI_Allgather(&data_send, 1, MPI_INT, result.data(), 1, MPI_INT, comm);
+        return result;
     }
 };
 
@@ -165,6 +208,21 @@ class LocalSender : public Component {
     }
 };
 
+class Gatherer : public Component {
+    MPICore core;
+    MPIComm comm;
+
+  public:
+    Gatherer() : comm(MPI_COMM_WORLD) { port("go", &Gatherer::go); }
+
+    void go() {
+        int myint = ((core.rank + 7) * 5) % 9;
+        core.message("Sending %d to other processes", myint);
+        auto data = comm.all_gather(myint);
+        core.message("Gathered data sums to %d", accumulate(data.begin(), data.end(), 0));
+    }
+};
+
 /*
 ===================================================================================
   Main
@@ -180,11 +238,16 @@ int main() {
     model.component<LocalSender>("sender", (rank * 11 + 3) % 7);
     model.resource("sender", interval(1, -1));
 
+    model.component<Gatherer>("gatherer");
+    model.resource("gatherer", interval(0, -1));
+
     model.connect<MPIp2p>(PortAddress("port", "sender"), PortAddress("ports", "reducer"));
 
     MPIAssembly assembly(model);
     assembly.ccall("reducer", "go");
     assembly.ccall("sender", "go");
+
+    assembly.ccall("gatherer", "go");
 
     MPI_Finalize();
 }
