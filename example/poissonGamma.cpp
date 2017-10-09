@@ -62,10 +62,10 @@ struct Uniform {
 
 struct Scaling {
     static double move(RandomNode* v, double tuning = 1.0) {
-        auto multiplier = exp(tuning * (uniform(generator) - 0.5));
+        auto multiplier = tuning * (uniform(generator) - 0.5);
         // cout << multiplier << '\n';
-        v->setValue(v->getValue() * multiplier);
-        return 0.;
+        v->setValue(v->getValue() * exp(multiplier));
+        return multiplier;
     }
 };
 
@@ -241,7 +241,7 @@ int main() {
     model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
 
     // output
-    model.component<FileOutput>("TraceFile", "tmp.trace");
+    model.component<FileOutput>("TraceFile", "tmp_mcmc.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "BI"), Address("TraceFile"));
 
     // sampler
@@ -267,10 +267,10 @@ int main() {
     model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Theta", "Sigma", "Omega",
                                               "X");
 
-    model.component<FileOutput>("TraceFile2", "tmp2.trace");
+    model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
-    PoissonGamma(3).dotToFile("tmp2.dot");
+    PoissonGamma(3).dotToFile("tmp_pg.dot");
     model.dotToFile();
 
     // instantiate everything!
