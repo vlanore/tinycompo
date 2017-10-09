@@ -90,11 +90,11 @@ class MHMove : public Go {
             auto gather = [](const vector<RandomNode*>& v) {
                 return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
             };
-            double likelihood_before = gather(downward) + node->logDensity();
+            double logprob_before = gather(downward) + node->logDensity();
             double hastings_ratio = Move::move(node, tuning);
-            double likelihood_after = gather(downward) + node->logDensity();
+            double logprob_after = gather(downward) + node->logDensity();
 
-            bool accepted = exp(likelihood_after - likelihood_before + hastings_ratio) > uniform(generator);
+            bool accepted = exp(logprob_after - logprob_before + hastings_ratio) > uniform(generator);
             if (!accepted) {
                 node->setValue(backup);
             } else {
@@ -124,7 +124,7 @@ class MoveScheduler : public Component {
     }
 };
 
-class BayesianEngine : public Go {
+class MCMCEngine : public Go {
     MoveScheduler* scheduler{nullptr};
     Sampler* sampler{nullptr};
     DataStream* output{nullptr};
@@ -134,12 +134,12 @@ class BayesianEngine : public Go {
     void addVarOfInterest(Real* val) { variables_of_interest.push_back(val); }
 
   public:
-    explicit BayesianEngine(int iterations = 10) : iterations(iterations) {
-        port("variables", &BayesianEngine::addVarOfInterest);
-        port("scheduler", &BayesianEngine::scheduler);
-        port("sampler", &BayesianEngine::sampler);
-        port("iterations", &BayesianEngine::iterations);
-        port("output", &BayesianEngine::output);
+    explicit MCMCEngine(int iterations = 10) : iterations(iterations) {
+        port("variables", &MCMCEngine::addVarOfInterest);
+        port("scheduler", &MCMCEngine::scheduler);
+        port("sampler", &MCMCEngine::sampler);
+        port("iterations", &MCMCEngine::iterations);
+        port("output", &MCMCEngine::output);
     }
 
     void go() {
@@ -235,7 +235,7 @@ int main() {
     model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // bayesian engine
-    model.component<BayesianEngine>("BI", 10000);
+    model.component<MCMCEngine>("BI", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
     model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
     model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
