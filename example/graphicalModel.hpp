@@ -307,9 +307,7 @@ class MultiSample : public Sampler {
     MultiSample() { port("register", &MultiSample::registerNode); }
 
     void go() override {
-        for (auto &node : nodes) {
-            node->sample();
-        }
+        std::for_each(nodes.begin(), nodes.end(), [](RandomNode *n) { n->sample(); });
     }
 
     std::string _debug() const override { return "MultiSample"; }
@@ -346,10 +344,8 @@ class RejectionSampling : public Go {
         output->header("#Theta\tSigma\tOmega0\tOmega1\tOmega2\tOmega3\tOmega4\tX0\tX1\tX2\tX3\tX4");
         for (auto i = 0; i < nbIter; i++) {
             sampler->go();
-            bool valid = true;
-            for (auto node : observedData) {
-                valid = valid && node->isConsistent();
-            }
+            bool valid = std::accumulate(observedData.begin(), observedData.end(), true,
+                                         [](bool acc, RandomNode *n) { return acc && n->isConsistent(); });
             if (valid) {  // accept
                 accepted++;
                 output->dataLine(sampler->getSample());
