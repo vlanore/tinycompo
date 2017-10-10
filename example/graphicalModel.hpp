@@ -206,8 +206,7 @@ class Gamma : public UnaryReal {
         auto alpha = param.getValue();
         auto beta = alpha;
         auto x = getValue();
-        auto result = (alpha - 1) * log(x) - log(tgamma(alpha)) - alpha * log(beta) - x / beta;
-        return result;
+        return (alpha - 1) * log(x) - log(tgamma(alpha)) - alpha * log(beta) - x / beta;
     }
 };
 

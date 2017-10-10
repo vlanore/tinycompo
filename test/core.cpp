@@ -29,6 +29,7 @@ license and that you accept its terms.*/
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "test_utils.hpp"
+using namespace std;
 
 /*
 ====================================================================================================
@@ -223,7 +224,7 @@ TEST_CASE("Model test: dot output") {
     model.component<MyBasicCompo>(Address("composite", 2));
     model.connect<Use<MyBasicCompo>>(PortAddress("buddy", "mycompo"), Address("composite", 2));
 
-    std::stringstream ss;
+    stringstream ss;
     model.dot(ss);
     CHECK(ss.str() ==
           "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
@@ -235,7 +236,7 @@ TEST_CASE("Model test: dot output") {
 TEST_CASE("Model test: temporary keys") {
     Model<> model;
     for (int i = 0; i < 5; i++) {
-        std::stringstream ss;
+        stringstream ss;
         ss << "compo" << i;
         model.component<MyInt>(ss.str());
     }
@@ -259,7 +260,7 @@ TEST_CASE("Assembly test: instances and call.") {
     b.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
     CHECK(ref2.j == 79);
-    std::stringstream ss;
+    stringstream ss;
     b.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
 }
@@ -271,7 +272,7 @@ TEST_CASE("Assembly test: instantiating composites.") {
     model.component<MyInt>(Address("composite", 0), 12);
     Assembly<> assembly(model);
 
-    std::stringstream ss;
+    stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "composite: Composite {\n0: MyInt\n}\n");
     auto& refComposite = assembly.at<Assembly<int>>("composite");
@@ -311,6 +312,15 @@ TEST_CASE("Assembly test: incorrect address.") {
                               "Existing addresses are:\n  * compo0\n  * compo1\n\n");
 }
 
+TEST_CASE("Assembly test: component names.") {
+    Model<> model;
+    model.component<MyCompo>("compoYoupi");
+    model.component<MyCompo>("compoYoupla");
+    Assembly<> assembly(model);
+    CHECK(assembly.at<MyCompo>("compoYoupi").getName() == "compoYoupi");
+    CHECK(assembly.at<MyCompo>("compoYoupla").getName() == "compoYoupla");
+}
+
 /*
 ====================================================================================================
   ~*~ Ports ~*~
@@ -320,7 +330,7 @@ TEST_CASE("Use/provide test.") {
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
     Assembly<> assembly(model);
-    std::stringstream ss;
+    stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     Use<IntInterface>::_connect(assembly, PortAddress("ptr", "Compo2"), Address("Compo1"));
@@ -410,7 +420,7 @@ TEST_CASE("Tree tests.") {
     CHECK(myTree.getParent(ref1) == -1);
     CHECK(myTree.getParent(ref2) == ref1);
     CHECK(myTree.getParent(ref4) == ref2);
-    CHECK(myTree.getChildren(ref1) == (std::vector<TreeRef>{ref2, ref3}));
+    CHECK(myTree.getChildren(ref1) == (vector<TreeRef>{ref2, ref3}));
 
     Assembly<TreeRef> a(myTree);
 
@@ -435,7 +445,7 @@ TEST_CASE("ToChildren tests.") {
     auto leaf = treeRef.addChild<MyInt>(root, 11);
     auto child = treeRef.addChild<MyIntProxy>(root);
     treeRef.addChild<MyInt>(child, 3);
-    CHECK(treeRef.getChildren(root) == (std::vector<TreeRef>{leaf, child}));
+    CHECK(treeRef.getChildren(root) == (vector<TreeRef>{leaf, child}));
     Assembly<> assembly(model);
     ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");
     CHECK(assembly.at<IntReducer>(Address("tree", root)).get() == 17);  // 11 + 2*3

@@ -138,6 +138,7 @@ struct _ProvidePort : public _VirtualPort {
 ==================================================================================================*/
 class Component {
     std::map<std::string, std::unique_ptr<_VirtualPort>> _ports;
+    std::string name{""};
 
   public:
     Component(const Component&) = delete;  // forbidding copy
@@ -188,6 +189,9 @@ class Component {
     Interface* get(std::string name) {
         return dynamic_cast<_ProvidePort<Interface>*>(_ports[name].get())->_get();
     }
+
+    void setName(const std::string& n) { name = n; }
+    std::string getName() { return name; }
 };
 
 /*
@@ -549,6 +553,9 @@ class Assembly : public Component {
     explicit Assembly(Model<Key>& model) : internal_model(model) {
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
+            std::stringstream ss;
+            ss << c.first;
+            instances.at(c.first).get()->setName(ss.str());
         }
         for (auto& c : model.composites) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
