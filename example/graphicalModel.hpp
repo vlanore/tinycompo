@@ -28,6 +28,7 @@ license and that you accept its terms.*/
 
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <random>
 #include "tinycompo.hpp"
 
@@ -47,7 +48,8 @@ std::string sf(const std::string &format, Args... args) {
     return std::string(buf.get(), buf.get() + size - 1);
 }
 
-std::default_random_engine generator;
+std::random_device r;
+std::default_random_engine generator(r());
 std::uniform_real_distribution<double> uniform{0.0, 1.0};
 
 /*
@@ -90,7 +92,6 @@ class DataStream {
 };
 
 /*
-
 ===================================================================================================
   Helper classes
 =================================================================================================*/
@@ -106,11 +107,12 @@ class ConsoleOutput : public Component, public DataStream {
 
 class FileOutput : public Component, public DataStream {
     std::ofstream file{};
+    std::string filename;
 
   public:
-    explicit FileOutput(const std::string &filename) { file.open(filename); }
+    explicit FileOutput(const std::string &filename) : filename(filename) { file.open(filename); }
     ~FileOutput() { file.close(); }
-    std::string _debug() const override { return "FileOutput"; }
+    std::string _debug() const override { return sf("FileOutput(%s)", filename.c_str()); }
     void header(const std::string &str) override { file << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
         std::for_each(line.begin(), line.end(), [this](double e) { file << e << "\t"; });
@@ -141,19 +143,21 @@ class RealProp {
 };
 
 /*
-
 ===================================================================================================
   Graphical model nodes
 =================================================================================================*/
 class UnaryReal : public Component, public RandomNode {
   protected:
     RealProp param{};
-    double value{0.0};
+    template <class... Args>
+    void setParam(Args... args) {
+        param = RealProp(std::forward<Args>(args)...);
+    }
 
-  public:
+    double value{0.0};
     std::string name{};
 
-    // constructors
+  public:
     UnaryReal() = delete;
     explicit UnaryReal(const std::string &name) : name(name) {
         port("paramConst", &UnaryReal::setParam<double>);
@@ -163,20 +167,14 @@ class UnaryReal : public Component, public RandomNode {
         port("value", &UnaryReal::setValue);
     };
 
-    // methods required from parent classes
     std::string _debug() const override {
         std::stringstream ss;
         ss << name << "(" << param.getValue() << "):" << value << "[" << clampedValue() << "]";
         return ss.str();
     }
+
     double getValue() const override { return value; }
     void setValue(double valuein) override { value = valuein; }
-
-    // class-specific methods
-    template <class... Args>
-    void setParam(Args... args) {
-        param = RealProp(std::forward<Args>(args)...);
-    }
 };
 
 class Exponential : public UnaryReal {
@@ -228,15 +226,16 @@ class Poisson : public UnaryReal {
     }
 };
 
-class Product : public Component, public Real {
+template <class Op>
+class BinaryOperation : public Component, public Real {
     RealProp a{};
     RealProp b{};
 
   public:
-    Product() {
-        port("aPtr", &Product::setA<Real *>);
-        port("bPtr", &Product::setB<Real *>);
-        port("bConst", &Product::setB<double>);
+    BinaryOperation() {
+        port("aPtr", &BinaryOperation::setA<Real *>);
+        port("bPtr", &BinaryOperation::setB<Real *>);
+        port("bConst", &BinaryOperation::setB<double>);
     }
 
     template <class... Args>
@@ -250,17 +249,18 @@ class Product : public Component, public Real {
     }
 
     void setA(Real *ptr) { a = RealProp(ptr); }
-    double getValue() const override { return a.getValue() * b.getValue(); }
+    double getValue() const override { return Op()(a.getValue(), b.getValue()); }
     void setValue(double) override { std::cerr << "-- Warning! Trying to set a deterministic node!\n"; }
     std::string _debug() const override {
         std::stringstream ss;
-        ss << "Product(" << a.getValue() << "," << b.getValue() << "):" << getValue();
+        ss << "BinaryOperation(" << a.getValue() << "," << b.getValue() << "):" << getValue();
         return ss.str();
     }
 };
 
-/*
+using Product = BinaryOperation<std::multiplies<double>>;
 
+/*
 ===================================================================================================
   Moves and MCMC-related things
 =================================================================================================*/
@@ -268,16 +268,15 @@ class SimpleMove : public Go {
     RandomNode *target{nullptr};
 
   public:
-    SimpleMove() { port("target", &SimpleMove::setTarget); }
+    SimpleMove() { port("target", &SimpleMove::target); }
 
     std::string _debug() const override { return "SimpleMove"; }
     void go() override { target->sample(); }
-
-    void setTarget(RandomNode *targetin) { target = targetin; }
 };
 
 class Scheduler : public Go {
     std::vector<SimpleMove *> moves;
+    void registerMove(SimpleMove *ptr) { moves.push_back(ptr); }
 
   public:
     Scheduler() { port("register", &Scheduler::registerMove); }
@@ -285,9 +284,7 @@ class Scheduler : public Go {
     void go() override {
         std::cout << "\n-- Scheduler started!\n"
                   << "-- Sampling everything!\n";
-        for (auto &move : moves) {
-            move->go();
-        }
+        std::for_each(moves.begin(), moves.end(), [](SimpleMove *m) { m->go(); });
         std::cout << "-- Done.\n\n";
     }
 
@@ -296,12 +293,11 @@ class Scheduler : public Go {
         ss << "Scheduler[" << moves.size() << "]";
         return ss.str();
     }
-
-    void registerMove(SimpleMove *ptr) { moves.push_back(ptr); }
 };
 
 class MultiSample : public Sampler {
     std::vector<RandomNode *> nodes;
+    void registerNode(RandomNode *ptr) { nodes.push_back(ptr); }
 
   public:
     MultiSample() { port("register", &MultiSample::registerNode); }
@@ -312,8 +308,6 @@ class MultiSample : public Sampler {
 
     std::string _debug() const override { return "MultiSample"; }
 
-    void registerNode(RandomNode *ptr) { nodes.push_back(ptr); }
-
     std::vector<double> getSample() const override {
         std::vector<double> tmp(nodes.size(), 0.);
         std::transform(nodes.begin(), nodes.end(), tmp.begin(), [](RandomNode *n) { return n->getValue(); });
@@ -323,19 +317,18 @@ class MultiSample : public Sampler {
 
 class RejectionSampling : public Go {
     std::vector<RandomNode *> observedData;
+    void addData(RandomNode *ptr) { observedData.push_back(ptr); }
+
     Sampler *sampler{nullptr};
     int nbIter{0};
     DataStream *output{nullptr};
 
   public:
-    explicit RejectionSampling(int iter = 5) {
-        nbIter = iter;
+    explicit RejectionSampling(int iter = 5) : nbIter(iter) {
         port("sampler", &RejectionSampling::sampler);
         port("data", &RejectionSampling::addData);
         port("output", &RejectionSampling::output);
     }
-
-    void addData(RandomNode *ptr) { observedData.push_back(ptr); }
 
     std::string _debug() const override { return "RejectionSampling"; }
     void go() override {

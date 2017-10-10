@@ -259,7 +259,7 @@ int main() {
     model.connect<MultiUse<Go>>(PortAddress("move", "Scheduler"), Address("OmegaMove"));
 
     // RS infrastructure
-    model.component<RejectionSampling>("RS", 100000);
+    model.component<RejectionSampling>("RS", 500000);
     model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler2"));
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
