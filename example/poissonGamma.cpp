@@ -235,14 +235,14 @@ int main() {
     model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // bayesian engine
-    model.component<MCMCEngine>("BI", 10000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", "BI"), Address("Sampler"));
-    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "BI"), Address("Scheduler"));
-    model.connect<ListUse<Real>>(PortAddress("variables", "BI"), Address("PG", "Theta"), Address("PG", "Sigma"));
+    model.component<MCMCEngine>("MCMC", 10000);
+    model.connect<Use<Sampler>>(PortAddress("sampler", "MCMC"), Address("Sampler"));
+    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", "MCMC"), Address("Scheduler"));
+    model.connect<ListUse<Real>>(PortAddress("variables", "MCMC"), Address("PG", "Theta"), Address("PG", "Sigma"));
 
     // output
     model.component<FileOutput>("TraceFile", "tmp_mcmc.trace");
-    model.connect<Use<DataStream>>(PortAddress("output", "BI"), Address("TraceFile"));
+    model.connect<Use<DataStream>>(PortAddress("output", "MCMC"), Address("TraceFile"));
 
     // sampler
     model.component<MultiSample>("Sampler");
@@ -276,7 +276,7 @@ int main() {
     // instantiate everything!
     Assembly<> assembly(model);
 
-    assembly.call("BI", "go");
+    assembly.call("MCMC", "go");
     assembly.call("RS", "go");
 
     assembly.print_all();

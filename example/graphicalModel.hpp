@@ -26,6 +26,7 @@ more generally, to use and operate it in the same conditions as regards security
 The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
 license and that you accept its terms.*/
 
+#include <algorithm>
 #include <fstream>
 #include <random>
 #include "tinycompo.hpp"
@@ -98,9 +99,7 @@ class ConsoleOutput : public Component, public DataStream {
     std::string _debug() const override { return "ConsoleOutput"; }
     void header(const std::string &str) override { std::cout << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
-        for (auto e : line) {
-            std::cout << e << "  ";
-        }
+        std::for_each(line.begin(), line.end(), [](double e) { std::cout << e << "  "; });
         std::cout << std::endl;
     }
 };
@@ -114,9 +113,7 @@ class FileOutput : public Component, public DataStream {
     std::string _debug() const override { return "FileOutput"; }
     void header(const std::string &str) override { file << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
-        for (auto e : line) {
-            file << e << "\t";
-        }
+        std::for_each(line.begin(), line.end(), [this](double e) { file << e << "\t"; });
         file << std::endl;
     }
 };
@@ -307,10 +304,7 @@ class MultiSample : public Sampler {
     std::vector<RandomNode *> nodes;
 
   public:
-    MultiSample() {
-        port("register", &MultiSample::registerNode);
-        port("registerVec", &MultiSample::registerVec);
-    }
+    MultiSample() { port("register", &MultiSample::registerNode); }
 
     void go() override {
         for (auto &node : nodes) {
@@ -322,13 +316,9 @@ class MultiSample : public Sampler {
 
     void registerNode(RandomNode *ptr) { nodes.push_back(ptr); }
 
-    void registerVec(std::vector<RandomNode *> vec) { nodes = vec; }
-
     std::vector<double> getSample() const override {
-        std::vector<double> tmp{};
-        for (auto node : nodes) {
-            tmp.push_back(node->getValue());
-        }
+        std::vector<double> tmp(nodes.size(), 0.);
+        std::transform(nodes.begin(), nodes.end(), tmp.begin(), [](RandomNode *n) { return n->getValue(); });
         return tmp;
     }
 };
