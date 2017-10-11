@@ -80,10 +80,15 @@ class RandomNode : public Real {
   public:
     RandomNode() = default;
     virtual void sample() = 0;
-    void clamp(double val) { clampedVal = val; }
-    double clampedValue() const { return clampedVal; }
-    virtual bool isConsistent() const { return clampedVal == getValue(); }
-    virtual double logDensity() = 0;
+    void clamp(double val) {
+        is_clamped = true;
+        clampedVal = val;
+    }
+    double clamped_value() const { return clampedVal; }
+    virtual bool is_consistent() const { return clampedVal == getValue(); }
+    virtual double log_density() = 0;
+
+    bool is_clamped{false};
 };
 
 class DataStream {
@@ -170,7 +175,7 @@ class UnaryReal : public RandomNode {
 
     std::string _debug() const override {
         std::stringstream ss;
-        ss << name << "(" << param.getValue() << "):" << value << "[" << clampedValue() << "]";
+        ss << name << "(" << param.getValue() << "):" << value << "[" << clamped_value() << "]";
         return ss.str();
     }
 
@@ -187,7 +192,7 @@ class Exponential : public UnaryReal {
         setValue(d(generator));
     }
 
-    double logDensity() final {
+    double log_density() final {
         auto lambda = param.getValue();
         auto x = getValue();
         return log(lambda) - x * lambda;
@@ -203,7 +208,7 @@ class Gamma : public UnaryReal {
         setValue(d(generator));
     }
 
-    double logDensity() final {
+    double log_density() final {
         auto alpha = param.getValue();
         auto beta = alpha;
         auto x = getValue();
@@ -220,7 +225,7 @@ class Poisson : public UnaryReal {
         setValue(d(generator));
     }
 
-    double logDensity() final {
+    double log_density() final {
         double k = getValue(), lambda = param.getValue();
         return k * log(lambda) - lambda - log(factorial(k));
     }
@@ -344,7 +349,7 @@ class RejectionSampling : public Go {
         for (auto i = 0; i < nbIter; i++) {
             sampler->go();
             bool valid = std::accumulate(observedData.begin(), observedData.end(), true,
-                                         [](bool acc, RandomNode *n) { return acc && n->isConsistent(); });
+                                         [](bool acc, RandomNode *n) { return acc && n->is_consistent(); });
             if (valid) {  // accept
                 accepted++;
                 output->dataLine(sampler->getSample());

@@ -39,6 +39,7 @@ license and that you accept its terms.*/
 #include <list>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -609,6 +610,14 @@ class Assembly : public Component {
         for (auto& i : instances) {
             os << i.first << ": " << i.second->_debug() << std::endl;
         }
+    }
+
+    std::set<Key> all_keys() const {
+        std::set<Key> result;
+        for (auto& c : instances) {
+            result.insert(c.first);
+        }
+        return result;
     }
 
     template <class... Args>

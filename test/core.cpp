@@ -325,6 +325,14 @@ TEST_CASE("Assembly test: component names.") {
     CHECK(assembly.at<MyCompo>(Address("composite", 3)).getName() == "composite_3");
 }
 
+TEST_CASE("Assembly test: all_keys.") {
+    Model<> model;
+    model.component<MyCompo>("compoYoupi");
+    model.component<MyCompo>("compoYoupla");
+    Assembly<> assembly(model);
+    CHECK(assembly.all_keys() == (set<string>{"compoYoupi", "compoYoupla"}));
+}
+
 /*
 ====================================================================================================
   ~*~ Ports ~*~

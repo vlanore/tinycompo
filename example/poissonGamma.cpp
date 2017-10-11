@@ -53,6 +53,56 @@ struct UseInComposite {
     }
 };
 
+bool isRandomNode(Component& ref) { return dynamic_cast<RandomNode*>(&ref) != nullptr; }
+bool isUnclamped(Component& ref) {
+    auto refRandom = dynamic_cast<RandomNode*>(&ref);
+    return (refRandom != nullptr) && (!refRandom->is_clamped);
+}
+
+// struct UseAllRandomNodes {
+//     template <class... Keys, class... Keys2>
+//     static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+//         auto& modelRef = assembly.at<Assembly<string>>(model);
+//         auto& userRef = assembly.at(user.address);
+//         for (auto k : modelRef.all_keys()) {
+//             cerr << "AllRandom : " << k << '\n';
+//             auto& providerRef = modelRef.at(k);
+//             auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
+//             if (providerArrayPtr != nullptr && isRandomNode(providerArrayPtr->at(0))) {
+//                 cerr << "array\n";
+//                 for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
+//                     userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
+//                 }
+//             } else if (isRandomNode(providerRef)){
+//                 userRef.set(user.prop, dynamic_cast<RandomNode*>(&providerRef));
+//             }
+//             cerr << "Done.\n";
+//         }
+//     }
+// };
+
+struct UseAllUnclampedNodes {
+    template <class... Keys, class... Keys2>
+    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+        auto& modelRef = assembly.at<Assembly<string>>(model);
+        auto& userRef = assembly.at(user.address);
+        for (auto k : modelRef.all_keys()) {
+            cerr << "AllUnclamped : " << k << '\n';
+            auto& providerRef = modelRef.at(k);
+            auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
+            if (providerArrayPtr != nullptr && isUnclamped(providerArrayPtr->at(0))) {
+                cerr << "array\n";
+                for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
+                    userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
+                }
+            } else if (isUnclamped(providerRef)) {
+                userRef.set(user.prop, dynamic_cast<RandomNode*>(&providerRef));
+            }
+            cerr << "Done.\n";
+        }
+    }
+};
+
 struct Uniform {
     static double move(RandomNode* v, double = 1.0) {
         v->setValue(uniform(generator));
@@ -88,11 +138,11 @@ class MHMove : public Go {
             double backup = node->getValue();
 
             auto gather = [](const vector<RandomNode*>& v) {
-                return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->logDensity(); });
+                return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode* b) { return acc + b->log_density(); });
             };
-            double logprob_before = gather(downward) + node->logDensity();
+            double logprob_before = gather(downward) + node->log_density();
             double hastings_ratio = Move::move(node, tuning);
-            double logprob_after = gather(downward) + node->logDensity();
+            double logprob_after = gather(downward) + node->log_density();
 
             bool accepted = exp(logprob_after - logprob_before + hastings_ratio) > uniform(generator);
             if (!accepted) {
@@ -226,6 +276,13 @@ struct PoissonGamma : public Composite<> {
     }
 };
 
+// struct Moves : public Composite<> {
+//     Moves() {
+//         component<MHMove<Scaling>>("MoveSigma", 3, 10);
+//         component<MHMove<Scaling>>("Theta", 3, 10);
+//     }
+// };
+
 int main() {
     Model<> model;
 
@@ -248,7 +305,7 @@ int main() {
 
     // sampler
     model.component<MultiSample>("Sampler");
-    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler"), Address("PG"), "Sigma", "Theta", "Omega");
+    model.connect<UseAllUnclampedNodes>(PortAddress("register", "Sampler"), Address("PG"));
 
     // moves
     model.component<MoveScheduler>("Scheduler");
@@ -266,7 +323,7 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<MultiSample>("Sampler2");
-    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Theta", "Sigma", "Omega",
+    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Sigma", "Theta", "Omega",
                                               "X");
 
     model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
