@@ -87,18 +87,15 @@ struct UseAllUnclampedNodes {
         auto& modelRef = assembly.at<Assembly<string>>(model);
         auto& userRef = assembly.at(user.address);
         for (auto k : modelRef.all_keys()) {
-            cerr << "AllUnclamped : " << k << '\n';
             auto& providerRef = modelRef.at(k);
             auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
             if (providerArrayPtr != nullptr && isUnclamped(providerArrayPtr->at(0))) {
-                cerr << "array\n";
                 for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
                     userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
                 }
             } else if (isUnclamped(providerRef)) {
                 userRef.set(user.prop, dynamic_cast<RandomNode*>(&providerRef));
             }
-            cerr << "Done.\n";
         }
     }
 };
@@ -197,7 +194,7 @@ class MCMCEngine : public Go {
         sampler->go();
         sampler->go();
         string header = accumulate(variables_of_interest.begin(), variables_of_interest.end(), string("#"),
-                                   [](string acc, Real* v) { return acc + v->getName() + "\t"; });
+                                   [](string acc, Real* v) { return acc + v->get_name() + "\t"; });
         output->header(header);
         for (int i = 0; i < iterations; i++) {
             scheduler->go();
@@ -329,8 +326,8 @@ int main() {
     model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
-    PoissonGamma(3).dotToFile("tmp_pg.dot");
-    model.dotToFile();
+    PoissonGamma(3).dot_to_file("tmp_pg.dot");
+    model.dot_to_file();
 
     // instantiate everything!
     Assembly<> assembly(model);

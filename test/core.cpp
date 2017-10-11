@@ -320,9 +320,9 @@ TEST_CASE("Assembly test: component names.") {
     model.composite<MyComposite>("composite");
     model.component<MyCompo>(Address("composite", 3));
     Assembly<> assembly(model);
-    CHECK(assembly.at<MyCompo>("compoYoupi").getName() == "compoYoupi");
-    CHECK(assembly.at<MyCompo>("compoYoupla").getName() == "compoYoupla");
-    CHECK(assembly.at<MyCompo>(Address("composite", 3)).getName() == "composite_3");
+    CHECK(assembly.at<MyCompo>("compoYoupi").get_name() == "compoYoupi");
+    CHECK(assembly.at<MyCompo>("compoYoupla").get_name() == "compoYoupla");
+    CHECK(assembly.at<MyCompo>(Address("composite", 3)).get_name() == "composite_3");
 }
 
 TEST_CASE("Assembly test: all_keys.") {

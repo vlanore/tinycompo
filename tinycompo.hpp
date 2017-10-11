@@ -191,8 +191,8 @@ class Component {
         return dynamic_cast<_ProvidePort<Interface>*>(_ports[name].get())->_get();
     }
 
-    void setName(const std::string& n) { name = n; }
-    std::string getName() { return name; }
+    void set_name(const std::string& n) { name = n; }
+    std::string get_name() { return name; }
 };
 
 /*
@@ -210,10 +210,10 @@ struct _Component {
     template <class T, class... Args>
     _Component(_Type<T>, Args... args)
         : _constructor([=]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(args...))); }),
-          _className(TinycompoDebug::type<T>()) {}
+          _class_name(TinycompoDebug::type<T>()) {}
 
     std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
-    std::string _className{""};
+    std::string _class_name{""};
 };
 
 /*
@@ -228,7 +228,7 @@ class _Key {
     using actualType = Type;
     explicit _Key(Type value) : value(value) {}
     Type get() const { return value; }
-    void set(Type newValue) { value = newValue; }
+    void set(Type new_value) { value = new_value; }
 };
 
 template <>
@@ -239,16 +239,16 @@ class _Key<const char*> {
     using actualType = std::string;
     explicit _Key(const char* value) : value(value) {}
     std::string get() const { return value; }
-    void set(std::string newValue) { value = newValue; }
+    void set(std::string new_value) { value = new_value; }
 };
 
 class _AbstractAddress {};
 
 template <class Key, class... Keys>
 struct _Address : public _AbstractAddress {
-    std::string toString() const {
+    std::string to_string() const {
         std::stringstream ss;
-        ss << key.get() << "__" << rest.toString();
+        ss << key.get() << "__" << rest.to_string();
         return ss.str();
     }
 
@@ -261,7 +261,7 @@ struct _Address : public _AbstractAddress {
 
 template <class Key>
 struct _Address<Key> : public _AbstractAddress {
-    std::string toString() const {
+    std::string to_string() const {
         std::stringstream ss;
         ss << key.get();
         return ss.str();
@@ -298,28 +298,28 @@ _PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
 template <class A, class Key>
 class _Operation {
     template <class... Keys>
-    std::string getArgs(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
+    std::string get_args(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
         std::stringstream ss;
-        ss << s << " -- " << prefix << a.toString() << " ;\n";
+        ss << s << " -- " << prefix << a.to_string() << " ;\n";
         return ss.str();
     }
 
     template <class... Keys>
-    std::string getArgs(const std::string& s, const std::string& prefix, _PortAddress<Keys...> a) {
+    std::string get_args(const std::string& s, const std::string& prefix, _PortAddress<Keys...> a) {
         std::stringstream ss;
-        ss << s << " -- " << prefix << a.address.toString() << " [label=\"" << a.prop << "\"];\n";
+        ss << s << " -- " << prefix << a.address.to_string() << " [label=\"" << a.prop << "\"];\n";
         return ss.str();
     }
 
     template <class Arg>
-    std::string getArgs(const std::string&, const std::string&, Arg) {
+    std::string get_args(const std::string&, const std::string&, Arg) {
         return "";
     }
 
     template <class Arg, class... Args>
-    std::string getArgs(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
+    std::string get_args(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
         std::stringstream ss;
-        ss << getArgs(s, prefix, arg) << getArgs(s, prefix, std::forward<Args>(args)...);
+        ss << get_args(s, prefix, arg) << get_args(s, prefix, std::forward<Args>(args)...);
         return ss.str();
     }
 
@@ -329,7 +329,7 @@ class _Operation {
         : _connect([=](A& assembly) { Connector::_connect(assembly, args...); }),
           _debug([=](std::string s, std::string prefix) {
               return s + "[xlabel=\"" + TinycompoDebug::type<Connector>() + "\" shape=point];\n" +
-                     getArgs(s, prefix, args...);
+                     get_args(s, prefix, args...);
           }) {}
 
     std::function<void(A&)> _connect;
@@ -358,7 +358,7 @@ class Composite : public Model<Key>, public _AbstractComposite {};
 
 struct _DotData {
     std::string output;
-    std::vector<std::string> compositeNames;
+    std::vector<std::string> composite_names;
 };
 
 class _Composite {
@@ -407,7 +407,7 @@ class Model {
         }
     };
 
-    std::string ReplaceString(std::string subject, const std::string& search, const std::string& replace) {
+    std::string replace_string(std::string subject, const std::string& search, const std::string& replace) {
         size_t pos = 0;
         while ((pos = subject.find(search, pos)) != std::string::npos) {
             subject.replace(pos, search.length(), replace);
@@ -425,10 +425,10 @@ class Model {
 
     Model() = default;
 
-    void merge(const Model& newData) {
-        components.insert(newData.components.begin(), newData.components.end());
-        operations.insert(operations.end(), newData.operations.begin(), newData.operations.end());
-        composites.insert(composites.end(), newData.composites.begin(), newData.composites.end());
+    void merge(const Model& new_data) {
+        components.insert(new_data.components.begin(), new_data.components.end());
+        operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
+        composites.insert(composites.end(), new_data.composites.begin(), new_data.composites.end());
     }
 
     template <bool isComposite, class T, class Key1, class... Args>
@@ -502,7 +502,7 @@ class Model {
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
 
         for (auto& c : components) {
-            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._className
+            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._class_name
                << ")\" shape=component margin=0.15];\n";
         }
         auto i = 0;
@@ -518,21 +518,21 @@ class Model {
             compositeName << prefix << c.first;
             _DotData dataBis = c.second._debug(compositeName.str());
             ss << dataBis.output;
-            data.compositeNames.insert(data.compositeNames.end(), dataBis.compositeNames.begin(),
-                                       dataBis.compositeNames.end());
-            data.compositeNames.push_back(compositeName.str());
+            data.composite_names.insert(data.composite_names.end(), dataBis.composite_names.begin(),
+                                        dataBis.composite_names.end());
+            data.composite_names.push_back(compositeName.str());
         }
         ss << "}\n";
         data.output = ss.str();
-        for (auto& name : data.compositeNames) {
-            data.output = ReplaceString(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
+        for (auto& name : data.composite_names) {
+            data.output = replace_string(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
         }
         return data;
     }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
 
-    void dotToFile(const std::string& fileName = "tmp.dot") {
+    void dot_to_file(const std::string& fileName = "tmp.dot") {
         std::ofstream file;
         file.open(fileName);
         dot(file);
@@ -553,16 +553,16 @@ class Assembly : public Component {
   public:
     Assembly() = delete;
     explicit Assembly(Model<Key>& model, const std::string& name = "") : internal_model(model) {
-        setName(name);
+        set_name(name);
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
-            ss << getName() << ((getName() != "") ? "_" : "") << c.first;
-            instances.at(c.first).get()->setName(ss.str());
+            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+            instances.at(c.first).get()->set_name(ss.str());
         }
         for (auto& c : model.composites) {
             std::stringstream ss;
-            ss << getName() << ((getName() != "") ? "_" : "") << c.first;
+            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(ss.str())));
         }
         for (auto& o : model.operations) {
@@ -649,9 +649,9 @@ template <class Interface>
 struct Use {
     template <class Key, class... Keys, class... Keys2>
     static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> provider) {
-        auto& refUser = assembly.at(user.address);
-        auto& refProvider = assembly.template at<Interface>(provider);
-        refUser.set(user.prop, &refProvider);
+        auto& ref_user = assembly.at(user.address);
+        auto& ref_provider = assembly.template at<Interface>(provider);
+        ref_user.set(user.prop, &ref_provider);
     }
 };
 
@@ -682,9 +682,9 @@ template <class Interface>
 struct UseProvide {
     template <class Key, class... Keys, class... Keys2>
     static void _connect(Assembly<Key>& assembly, _PortAddress<Keys...> user, _PortAddress<Keys2...> provider) {
-        auto& refUser = assembly.at(user.address);
-        auto& refProvider = assembly.at(provider.address);
-        refUser.set(user.prop, refProvider.template get<Interface>(provider.prop));
+        auto& ref_user = assembly.at(user.address);
+        auto& ref_provider = assembly.at(provider.address);
+        ref_user.set(user.prop, ref_provider.template get<Interface>(provider.prop));
     }
 };
 /*
@@ -695,8 +695,8 @@ template <class T>
 class Array : public Composite<int> {
   public:
     template <class... Args>
-    explicit Array(int nbElems, Args... args) {
-        for (int i = 0; i < nbElems; i++) {
+    explicit Array(int nb_elems, Args... args) {
+        for (int i = 0; i < nb_elems; i++) {
             component<T>(i, std::forward<Args>(args)...);
         }
     }
@@ -736,7 +736,7 @@ struct ArrayOneToOne {
             }
         } else {
             TinycompoDebug e{"Array connection: mismatched sizes"};
-            e << array1.address.toString() << " has size " << ref1.size() << " while " << array2.toString() << " has size "
+            e << array1.address.to_string() << " has size " << ref1.size() << " while " << array2.to_string() << " has size "
               << ref2.size() << ".";
             e.fail();
         }
@@ -807,18 +807,18 @@ class Tree : public Composite<TreeRef> {
     }
 
     template <class T, class... Args>
-    TreeRef addChild(TreeRef refParent, Args&&... args) {
-        auto nodeRef = parent.size();
-        component<T>(nodeRef, std::forward<Args>(args)...);
-        parent.push_back(refParent);
+    TreeRef addChild(TreeRef ref_parent, Args&&... args) {
+        auto node_ref = parent.size();
+        component<T>(node_ref, std::forward<Args>(args)...);
+        parent.push_back(ref_parent);
         children.emplace_back();  // empty children list for newly added node
-        children.at(refParent).push_back(nodeRef);
-        return nodeRef;
+        children.at(ref_parent).push_back(node_ref);
+        return node_ref;
     }
 
     TreeRef getParent(TreeRef refChild) { return parent.at(refChild); }
 
-    const std::vector<TreeRef>& getChildren(TreeRef refParent) { return children.at(refParent); }
+    const std::vector<TreeRef>& getChildren(TreeRef ref_parent) { return children.at(ref_parent); }
 };
 
 /*
@@ -830,13 +830,13 @@ template <class Interface, class Key = std::string>
 class ToChildren {
   public:
     static void _connect(Assembly<>& a, Key tree, std::string prop) {
-        auto& treeRef = a.at<Assembly<TreeRef>>(tree);
-        auto& treeModelRef = a.model().compositeRef<Tree>(tree);
-        for (auto i = 0; i < static_cast<int>(treeRef.size()); i++) {  // for each node...
-            auto& nodeRef = treeRef.at(i);
-            auto& children = treeModelRef.getChildren(i);
+        auto& tree_ref = a.at<Assembly<TreeRef>>(tree);
+        auto& tree_model_ref = a.model().compositeRef<Tree>(tree);
+        for (auto i = 0; i < static_cast<int>(tree_ref.size()); i++) {  // for each node...
+            auto& node_ref = tree_ref.at(i);
+            auto& children = tree_model_ref.getChildren(i);
             for (auto j : children) {  // for every one of its children...
-                nodeRef.set(prop, &treeRef.template at<Interface>(j));
+                node_ref.set(prop, &tree_ref.template at<Interface>(j));
             }
         }
     }

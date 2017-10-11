@@ -315,7 +315,7 @@ class MultiSample : public Sampler {
 
     std::string getVarList() const override {
         return std::accumulate(nodes.begin(), nodes.end(), std::string("#"),
-                               [](std::string acc, RandomNode *n) { return acc + n->getName() + '\t'; });
+                               [](std::string acc, RandomNode *n) { return acc + n->get_name() + '\t'; });
     }
 
     std::vector<double> getSample() const override {
