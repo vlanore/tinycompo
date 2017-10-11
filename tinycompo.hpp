@@ -416,12 +416,15 @@ class Model {
         return subject;
     }
 
-  public:
-    using KeyType = Key;
+    template <class>
+    friend class Assembly;
 
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, _Composite> composites;
+
+  public:
+    using KeyType = Key;
 
     Model() = default;
 
@@ -431,12 +434,12 @@ class Model {
         composites.insert(composites.end(), new_data.composites.begin(), new_data.composites.end());
     }
 
-    template <bool isComposite, class T, class Key1, class... Args>
+    template <bool is_composite, class T, class Key1, class... Args>
     void _route(_Address<Key1> address, Args&&... args) {
-        _Helper<T, isComposite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
+        _Helper<T, is_composite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
     }
 
-    template <bool isComposite, class T, class Key1, class Key2, class... Keys, class... Args>
+    template <bool is_composite, class T, class Key1, class Key2, class... Keys, class... Args>
     void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
         auto compositeIt = composites.find(address.key.get());
         if (compositeIt != composites.end()) {
@@ -447,7 +450,7 @@ class Model {
                   << address.key.get() << " seems to have another key type.";
                 e.fail();
             }
-            ptr->template _route<isComposite, T>(address.rest, std::forward<Args>(args)...);
+            ptr->template _route<is_composite, T>(address.rest, std::forward<Args>(args)...);
         } else {
             TinycompoDebug e("composite does not exist");
             e << "Assembly contains no composite at address " << address.key.get() << '.';
@@ -528,6 +531,12 @@ class Model {
             data.output = replace_string(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
         }
         return data;
+    }
+
+    // TODO make it work with addresses
+    template <class CompositeKey>
+    Model<CompositeKey>& get_composite(Key key) {
+        return *dynamic_cast<Model<CompositeKey>*>(composites.at(key).get());
     }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
@@ -687,6 +696,7 @@ struct UseProvide {
         ref_user.set(user.prop, ref_provider.template get<Interface>(provider.prop));
     }
 };
+
 /*
 ====================================================================================================
   ~*~ Array class ~*~

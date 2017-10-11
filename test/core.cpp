@@ -165,9 +165,11 @@ TEST_CASE("model test: components in composites") {
     model.composite<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
     CHECK(model.size() == 1);  // top level contains only one component which is a composite
-    auto& compo0 = dynamic_cast<Model<int>&>(*model.composites.find("compo0")->second.get());
+    auto& compo0 = model.get_composite<int>("compo0");
+    // auto& compo0 = dynamic_cast<Model<int>&>(*model.composites.find("compo0")->second.get());
     CHECK(compo0.size() == 2);
-    auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites.find(2)->second.get());
+    // auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites.find(2)->second.get());
+    auto& compo0_2 = compo0.get_composite<int>(2);
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
