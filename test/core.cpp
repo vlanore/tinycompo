@@ -313,12 +313,16 @@ TEST_CASE("Assembly test: incorrect address.") {
 }
 
 TEST_CASE("Assembly test: component names.") {
+    struct MyComposite : public Composite<int> {};
     Model<> model;
     model.component<MyCompo>("compoYoupi");
     model.component<MyCompo>("compoYoupla");
+    model.composite<MyComposite>("composite");
+    model.component<MyCompo>(Address("composite", 3));
     Assembly<> assembly(model);
     CHECK(assembly.at<MyCompo>("compoYoupi").getName() == "compoYoupi");
     CHECK(assembly.at<MyCompo>("compoYoupla").getName() == "compoYoupla");
+    CHECK(assembly.at<MyCompo>(Address("composite", 3)).getName() == "composite_3");
 }
 
 /*
