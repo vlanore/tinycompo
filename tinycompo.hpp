@@ -482,8 +482,7 @@ class Model {
 
     friend class _Composite;  // to call _debug
 
-    // friend class
-
+  protected:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, _Composite> composites;

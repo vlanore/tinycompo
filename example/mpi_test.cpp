@@ -89,6 +89,8 @@ class MPIModel : public Model<> {
     map<string, vector<int>> resources;
     MPICore core;
 
+    friend class MPIAssembly;
+
   public:
     void resource(const string& compo, const vector<int>& v) { resources[compo] = v; }
     vector<int> resource(const std::string& compo) {
