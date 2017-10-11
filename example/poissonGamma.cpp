@@ -146,7 +146,9 @@ class MCMCEngine : public Go {
         cout << "-- Starting MCMC chain!\n";
         sampler->go();
         sampler->go();
-        output->header("#Theta\tSigma");
+        string header = accumulate(variables_of_interest.begin(), variables_of_interest.end(), string("#"),
+                                   [](string acc, Real* v) { return acc + v->getName() + "\t"; });
+        output->header(header);
         for (int i = 0; i < iterations; i++) {
             scheduler->go();
             vector<double> vect;

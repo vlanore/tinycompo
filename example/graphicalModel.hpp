@@ -65,9 +65,10 @@ class Go : public Component {
 class Sampler : public Go {
   public:
     virtual std::vector<double> getSample() const = 0;
+    virtual std::string getVarList() const = 0;
 };
 
-class Real {
+class Real : public Component {
   public:
     virtual double getValue() const = 0;
     virtual void setValue(double value) = 0;
@@ -146,7 +147,7 @@ class RealProp {
 ===================================================================================================
   Graphical model nodes
 =================================================================================================*/
-class UnaryReal : public Component, public RandomNode {
+class UnaryReal : public RandomNode {
   protected:
     RealProp param{};
     template <class... Args>
@@ -226,7 +227,7 @@ class Poisson : public UnaryReal {
 };
 
 template <class Op>
-class BinaryOperation : public Component, public Real {
+class BinaryOperation : public Real {
     RealProp a{};
     RealProp b{};
 
@@ -307,6 +308,11 @@ class MultiSample : public Sampler {
 
     std::string _debug() const override { return "MultiSample"; }
 
+    std::string getVarList() const override {
+        return std::accumulate(nodes.begin(), nodes.end(), std::string("#"),
+                               [](std::string acc, RandomNode *n) { return acc + n->getName() + '\t'; });
+    }
+
     std::vector<double> getSample() const override {
         std::vector<double> tmp(nodes.size(), 0.);
         std::transform(nodes.begin(), nodes.end(), tmp.begin(), [](RandomNode *n) { return n->getValue(); });
@@ -333,7 +339,8 @@ class RejectionSampling : public Go {
     void go() override {
         int accepted = 0;
         std::cout << "-- Starting rejection sampling!\n";
-        output->header("#Theta\tSigma\tOmega0\tOmega1\tOmega2\tOmega3\tOmega4\tX0\tX1\tX2\tX3\tX4");
+
+        output->header(sampler->getVarList());
         for (auto i = 0; i < nbIter; i++) {
             sampler->go();
             bool valid = std::accumulate(observedData.begin(), observedData.end(), true,

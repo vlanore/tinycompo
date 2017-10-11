@@ -542,26 +542,41 @@ class Model {
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
+struct _AbstractAssembly {
+    virtual void setNames() = 0;
+};
+
 template <class Key = std::string>
-class Assembly : public Component {
+class Assembly : public Component, public _AbstractAssembly {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
     Model<Key>& internal_model;
 
   public:
     Assembly() = delete;
-    explicit Assembly(Model<Key>& model) : internal_model(model) {
+    explicit Assembly(Model<Key>& model, const std::string& name = "") : internal_model(model) {
+        setName(name);
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
-            std::stringstream ss;
-            ss << c.first;
-            instances.at(c.first).get()->setName(ss.str());
         }
         for (auto& c : model.composites) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
         }
         for (auto& o : model.operations) {
             o._connect(*this);
+        }
+        setNames();  // FIXME, pas très efficace :/
+    }
+
+    void setNames() override {
+        for (auto& c : instances) {
+            std::stringstream ss;
+            ss << getName() << ((getName() != "") ? "_" : "") << c.first;
+            instances.at(c.first).get()->setName(ss.str());
+            auto ptr = dynamic_cast<_AbstractAssembly*>(c.second.get());
+            if (ptr != nullptr) {  // is a composite
+                ptr->setNames();
+            }
         }
     }
 
