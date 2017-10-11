@@ -365,7 +365,7 @@ class _Composite {
     std::function<_AbstractComposite*()> _clone;
 
   public:
-    std::function<Component*()> _constructor;
+    std::function<Component*(std::string)> _constructor;
     std::function<_DotData(std::string)> _debug;
 
     _Composite() = delete;
@@ -374,8 +374,9 @@ class _Composite {
     explicit _Composite(_Type<T>, Args&&... args)
         : ptr(std::unique_ptr<_AbstractComposite>(new T(std::forward<Args>(args)...))),
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
-          _constructor(
-              [=]() { return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()))); }),
+          _constructor([=](std::string s) {
+              return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()), s));
+          }),
           _debug([=](std::string s) { return dynamic_cast<T&>(*ptr.get())._debug(s); }) {}
 
     _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
@@ -542,12 +543,8 @@ class Model {
 ====================================================================================================
   ~*~ Assembly class ~*~
 ==================================================================================================*/
-struct _AbstractAssembly {
-    virtual void setNames() = 0;
-};
-
 template <class Key = std::string>
-class Assembly : public Component, public _AbstractAssembly {
+class Assembly : public Component {
   protected:
     std::map<Key, std::unique_ptr<Component>> instances;
     Model<Key>& internal_model;
@@ -558,25 +555,17 @@ class Assembly : public Component, public _AbstractAssembly {
         setName(name);
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
-        }
-        for (auto& c : model.composites) {
-            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
-        }
-        for (auto& o : model.operations) {
-            o._connect(*this);
-        }
-        setNames();  // FIXME, pas très efficace :/
-    }
-
-    void setNames() override {
-        for (auto& c : instances) {
             std::stringstream ss;
             ss << getName() << ((getName() != "") ? "_" : "") << c.first;
             instances.at(c.first).get()->setName(ss.str());
-            auto ptr = dynamic_cast<_AbstractAssembly*>(c.second.get());
-            if (ptr != nullptr) {  // is a composite
-                ptr->setNames();
-            }
+        }
+        for (auto& c : model.composites) {
+            std::stringstream ss;
+            ss << getName() << ((getName() != "") ? "_" : "") << c.first;
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(ss.str())));
+        }
+        for (auto& o : model.operations) {
+            o._connect(*this);
         }
     }
 
