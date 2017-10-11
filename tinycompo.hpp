@@ -451,20 +451,20 @@ class Model {
         }
         auto i = 0;
         for (auto& o : operations) {
-            std::stringstream portName;
-            portName << prefix << i;
-            ss << o._debug(portName.str(), prefix);
+            std::stringstream port_name;
+            port_name << prefix << i;
+            ss << o._debug(port_name.str(), prefix);
             i++;
         }
         _DotData data;
         for (auto& c : composites) {
-            std::stringstream compositeName;
-            compositeName << prefix << c.first;
-            _DotData dataBis = c.second._debug(compositeName.str());
-            ss << dataBis.output;
-            data.composite_names.insert(data.composite_names.end(), dataBis.composite_names.begin(),
-                                        dataBis.composite_names.end());
-            data.composite_names.push_back(compositeName.str());
+            std::stringstream composite_name;
+            composite_name << prefix << c.first;
+            _DotData data_bis = c.second._debug(composite_name.str());
+            ss << data_bis.output;
+            data.composite_names.insert(data.composite_names.end(), data_bis.composite_names.begin(),
+                                        data_bis.composite_names.end());
+            data.composite_names.push_back(composite_name.str());
         }
         ss << "}\n";
         data.output = ss.str();
