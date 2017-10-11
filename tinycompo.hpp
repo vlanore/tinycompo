@@ -440,11 +440,49 @@ class Model {
         }
     }
 
-    template <class>
-    friend class Assembly;
+    _DotData _debug(const std::string& myname = "") {
+        std::string prefix = myname == "" ? "" : myname + "__";
+        std::stringstream ss;
+        ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
+
+        for (auto& c : components) {
+            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._class_name
+               << ")\" shape=component margin=0.15];\n";
+        }
+        auto i = 0;
+        for (auto& o : operations) {
+            std::stringstream portName;
+            portName << prefix << i;
+            ss << o._debug(portName.str(), prefix);
+            i++;
+        }
+        _DotData data;
+        for (auto& c : composites) {
+            std::stringstream compositeName;
+            compositeName << prefix << c.first;
+            _DotData dataBis = c.second._debug(compositeName.str());
+            ss << dataBis.output;
+            data.composite_names.insert(data.composite_names.end(), dataBis.composite_names.begin(),
+                                        dataBis.composite_names.end());
+            data.composite_names.push_back(compositeName.str());
+        }
+        ss << "}\n";
+        data.output = ss.str();
+        for (auto& name : data.composite_names) {
+            data.output = replace_string(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
+        }
+        return data;
+    }
 
     template <class>
-    friend class Model;
+    friend class Assembly;  // to access internal data
+
+    template <class>
+    friend class Model;  // to call _route
+
+    friend class _Composite;  // to call _debug
+
+    // friend class
 
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
@@ -501,46 +539,6 @@ class Model {
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
-
-    _DotData _debug(const std::string& myname = "") {
-        std::string prefix = myname == "" ? "" : myname + "__";
-        std::stringstream ss;
-        ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
-
-        for (auto& c : components) {
-            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._class_name
-               << ")\" shape=component margin=0.15];\n";
-        }
-        auto i = 0;
-        for (auto& o : operations) {
-            std::stringstream portName;
-            portName << prefix << i;
-            ss << o._debug(portName.str(), prefix);
-            i++;
-        }
-        _DotData data;
-        for (auto& c : composites) {
-            std::stringstream compositeName;
-            compositeName << prefix << c.first;
-            _DotData dataBis = c.second._debug(compositeName.str());
-            ss << dataBis.output;
-            data.composite_names.insert(data.composite_names.end(), dataBis.composite_names.begin(),
-                                        dataBis.composite_names.end());
-            data.composite_names.push_back(compositeName.str());
-        }
-        ss << "}\n";
-        data.output = ss.str();
-        for (auto& name : data.composite_names) {
-            data.output = replace_string(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
-        }
-        return data;
-    }
-
-    // // TODO make it work with addresses
-    // template <class CompositeKey>
-    // Model<CompositeKey>& get_composite(Key key) {
-    //     return *dynamic_cast<Model<CompositeKey>*>(composites.at(key).get());
-    // }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
 
