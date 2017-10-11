@@ -165,11 +165,11 @@ TEST_CASE("model test: components in composites") {
     model.composite<MyComposite>(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
     CHECK(model.size() == 1);  // top level contains only one component which is a composite
-    auto& compo0 = model.get_composite<int>("compo0");
+    auto& compo0 = model.get_composite<MyComposite>("compo0");
     // auto& compo0 = dynamic_cast<Model<int>&>(*model.composites.find("compo0")->second.get());
     CHECK(compo0.size() == 2);
     // auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites.find(2)->second.get());
-    auto& compo0_2 = compo0.get_composite<int>(2);
+    auto& compo0_2 = compo0.get_composite<MyComposite>(2);
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
@@ -205,11 +205,11 @@ TEST_CASE("model test: composite referencees") {
 
     Model<> model;
     model.composite<MyComposite>("compo0");
-    auto& compo0ref = model.compositeRef<MyComposite>("compo0");
+    auto& compo0ref = model.get_composite<MyComposite>("compo0");
     compo0ref.component<MyCompo>(1, 17, 18);
     compo0ref.component<MyCompo>(2, 21, 22);
     CHECK(model.size() == 1);
-    CHECK(model.compositeRef<MyComposite>("compo0").size() == 2);
+    CHECK(model.get_composite<MyComposite>("compo0").size() == 2);
 }
 
 struct MyComposite : public Composite<int> {};
@@ -427,10 +427,10 @@ TEST_CASE("Attribute port declaration.") {
 ==================================================================================================*/
 TEST_CASE("Tree tests.") {
     Tree myTree;
-    auto ref1 = myTree.addRoot<MyCompo>(7, 7);
-    auto ref2 = myTree.addChild<MyCompo>(ref1, 9, 9);
-    auto ref3 = myTree.addChild<MyCompo>(ref1, 10, 10);
-    auto ref4 = myTree.addChild<MyCompo>(ref2, 11, 11);
+    auto ref1 = myTree.add_root<MyCompo>(7, 7);
+    auto ref2 = myTree.add_child<MyCompo>(ref1, 9, 9);
+    auto ref3 = myTree.add_child<MyCompo>(ref1, 10, 10);
+    auto ref4 = myTree.add_child<MyCompo>(ref2, 11, 11);
     CHECK(myTree.getParent(ref1) == -1);
     CHECK(myTree.getParent(ref2) == ref1);
     CHECK(myTree.getParent(ref4) == ref2);
@@ -442,8 +442,8 @@ TEST_CASE("Tree tests.") {
     CHECK(a._debug() == "Composite {\n0: MyCompo\n1: MyCompo\n2: MyCompo\n3: MyCompo\n}");
 
     Tree myFaultyTree;
-    myFaultyTree.addRoot<MyCompo>(1, 1);
-    TINYCOMPO_TEST_ERRORS { myFaultyTree.addRoot<MyCompo>(0, 0); }
+    myFaultyTree.add_root<MyCompo>(1, 1);
+    TINYCOMPO_TEST_ERRORS { myFaultyTree.add_root<MyCompo>(0, 0); }
     TINYCOMPO_TEST_ERRORS_END("trying to add root to non-empty Tree.", "-- Error: trying to add root to non-empty Tree.\n");
 }
 
@@ -454,11 +454,11 @@ TEST_CASE("Tree tests.") {
 TEST_CASE("ToChildren tests.") {
     Model<> model;
     model.composite<Tree>("tree");
-    auto& treeRef = model.compositeRef<Tree>("tree");
-    auto root = treeRef.addRoot<IntReducer>();
-    auto leaf = treeRef.addChild<MyInt>(root, 11);
-    auto child = treeRef.addChild<MyIntProxy>(root);
-    treeRef.addChild<MyInt>(child, 3);
+    auto& treeRef = model.get_composite<Tree>("tree");
+    auto root = treeRef.add_root<IntReducer>();
+    auto leaf = treeRef.add_child<MyInt>(root, 11);
+    auto child = treeRef.add_child<MyIntProxy>(root);
+    treeRef.add_child<MyInt>(child, 3);
     CHECK(treeRef.getChildren(root) == (vector<TreeRef>{leaf, child}));
     Assembly<> assembly(model);
     ToChildren<IntInterface>::_connect(assembly, "tree", "ptr");

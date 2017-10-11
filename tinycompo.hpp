@@ -416,24 +416,6 @@ class Model {
         return subject;
     }
 
-    template <class>
-    friend class Assembly;
-
-    std::map<Key, _Component> components;
-    std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, _Composite> composites;
-
-  public:
-    using KeyType = Key;
-
-    Model() = default;
-
-    void merge(const Model& new_data) {
-        components.insert(new_data.components.begin(), new_data.components.end());
-        operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
-        composites.insert(composites.end(), new_data.composites.begin(), new_data.composites.end());
-    }
-
     template <bool is_composite, class T, class Key1, class... Args>
     void _route(_Address<Key1> address, Args&&... args) {
         _Helper<T, is_composite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
@@ -456,6 +438,27 @@ class Model {
             e << "Assembly contains no composite at address " << address.key.get() << '.';
             e.fail();
         }
+    }
+
+    template <class>
+    friend class Assembly;
+
+    template <class>
+    friend class Model;
+
+    std::map<Key, _Component> components;
+    std::vector<_Operation<Assembly<Key>, Key>> operations;
+    std::map<Key, _Composite> composites;
+
+  public:
+    using KeyType = Key;
+
+    Model() = default;
+
+    void merge(const Model& new_data) {
+        components.insert(new_data.components.begin(), new_data.components.end());
+        operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
+        composites.insert(composites.end(), new_data.composites.begin(), new_data.composites.end());
     }
 
     // horrible enable_if to avoid ambiguous call with version below
@@ -487,7 +490,7 @@ class Model {
     }
 
     template <class CompositeType>
-    CompositeType& compositeRef(const Key& address) {
+    CompositeType& get_composite(const Key& address) {
         auto compositeIt = composites.find(address);
         return dynamic_cast<CompositeType&>(*compositeIt->second.get());
     }
@@ -533,11 +536,11 @@ class Model {
         return data;
     }
 
-    // TODO make it work with addresses
-    template <class CompositeKey>
-    Model<CompositeKey>& get_composite(Key key) {
-        return *dynamic_cast<Model<CompositeKey>*>(composites.at(key).get());
-    }
+    // // TODO make it work with addresses
+    // template <class CompositeKey>
+    // Model<CompositeKey>& get_composite(Key key) {
+    //     return *dynamic_cast<Model<CompositeKey>*>(composites.at(key).get());
+    // }
 
     void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
 
@@ -805,7 +808,7 @@ class Tree : public Composite<TreeRef> {
 
   public:
     template <class T, class... Args>
-    TreeRef addRoot(Args&&... args) {
+    TreeRef add_root(Args&&... args) {
         if (size() != 0) {
             TinycompoDebug("trying to add root to non-empty Tree.").fail();
         } else {
@@ -817,7 +820,7 @@ class Tree : public Composite<TreeRef> {
     }
 
     template <class T, class... Args>
-    TreeRef addChild(TreeRef ref_parent, Args&&... args) {
+    TreeRef add_child(TreeRef ref_parent, Args&&... args) {
         auto node_ref = parent.size();
         component<T>(node_ref, std::forward<Args>(args)...);
         parent.push_back(ref_parent);
@@ -841,7 +844,7 @@ class ToChildren {
   public:
     static void _connect(Assembly<>& a, Key tree, std::string prop) {
         auto& tree_ref = a.at<Assembly<TreeRef>>(tree);
-        auto& tree_model_ref = a.model().compositeRef<Tree>(tree);
+        auto& tree_model_ref = a.model().get_composite<Tree>(tree);
         for (auto i = 0; i < static_cast<int>(tree_ref.size()); i++) {  // for each node...
             auto& node_ref = tree_ref.at(i);
             auto& children = tree_model_ref.getChildren(i);
