@@ -219,7 +219,7 @@ struct MyBasicCompo : public Component {
     void setBuddy(MyBasicCompo* buddyin) { buddy = buddyin; }
 };
 
-TEST_CASE("Model test: dot output") {
+TEST_CASE("Model test: dot output and representation print") {
     Model<> model;
     model.component<MyBasicCompo>("mycompo");
     model.composite<MyComposite>("composite");
@@ -233,6 +233,12 @@ TEST_CASE("Model test: dot output") {
           "[xlabel=\"Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
           "composite_2;\n\tsubgraph cluster_composite {\n\t\tcomposite_2 [label=\"2\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n\t}\n}\n");
+
+    stringstream ss2;
+    model.print_representation(ss2);
+    CHECK(ss2.str() ==
+          "mycompo (MyBasicCompo) \nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite composite "
+          "{\n	2 (MyBasicCompo) \n}\n");
 }
 
 TEST_CASE("Model test: temporary keys") {

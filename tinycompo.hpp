@@ -365,7 +365,7 @@ class _GraphAddress {
   public:
     _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
 
-    void print() { std::cout << "->" << address << ((port == "") ? "" : ("." + port)); }
+    void print(std::ostream& os = std::cout) { os << "->" << address << ((port == "") ? "" : ("." + port)); }
 };
 
 template <class Key>
@@ -393,20 +393,20 @@ struct _Node {
         neighbors_from_args(args...);
     }
 
-    void print(int tabs = 0) {
-        std::cout << std::string(tabs, '\t') << ((name == "") ? "Connector" : name) << " (" << type << ") ";
+    void print(std::ostream& os = std::cout, int tabs = 0) {
+        os << std::string(tabs, '\t') << ((name == "") ? "Connector" : name) << " (" << type << ") ";
         for (auto& n : neighbors) {
-            n.print();
-            std::cout << " ";
+            n.print(os);
+            os << " ";
         }
-        std::cout << '\n';
+        os << '\n';
     }
 };
 
 struct _AbstractAssemblyGraph {
-    virtual void print(int) = 0;
+    virtual void print(std::ostream&, int) = 0;
     virtual bool is_composite(const std::string&) = 0;
-    virtual void to_dot(int, const std::string&, std::ostream&) = 0;
+    virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
 };
 
 template <class Key>
@@ -460,17 +460,17 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
         os << std::string(tabs, '\t') << "}\n";
     }
 
-    void print(int tabs = 0) override {
+    void print(std::ostream& os = std::cout, int tabs = 0) override {
         for (auto& c : components) {
-            c.print(tabs);
+            c.print(os, tabs);
         }
         for (auto& c : connectors) {
-            c.print(tabs);
+            c.print(os, tabs);
         }
         for (auto& c : composites) {
-            std::cout << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
-            c.second.print(tabs + 1);
-            std::cout << std::string(tabs, '\t') << "}\n";
+            os << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
+            c.second.print(os, tabs + 1);
+            os << std::string(tabs, '\t') << "}\n";
         }
     }
 };
@@ -480,7 +480,7 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
   ~*~ Model ~*~
 ==================================================================================================*/
 struct _AbstractModel {
-    virtual void print_representation(int) = 0;
+    virtual void print_representation(std::ostream&, int) = 0;
     virtual _AbstractAssemblyGraph& get_representation() = 0;
 };
 
@@ -620,7 +620,7 @@ class Model : public _AbstractModel {
         dot(file);
     }
 
-    void print_representation(int tabs = 0) override { representation.print(tabs); }
+    void print_representation(std::ostream& os = std::cout, int tabs = 0) override { representation.print(os, tabs); }
 
     _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
 };
