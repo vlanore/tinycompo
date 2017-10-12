@@ -39,6 +39,7 @@ license and that you accept its terms.*/
 #include <list>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <sstream>
 #include <string>
@@ -405,6 +406,9 @@ class _Composite {
   Small classes implementing a simple easily explorable graph representation for TinyCompo component
   assemblies.
 ==================================================================================================*/
+template <class>
+class _AssemblyGraph;
+
 class _GraphAddress {
     std::string address;
     std::string port;
@@ -452,13 +456,44 @@ struct _Node {
 
 struct _AbstractAssemblyGraph {
     virtual void print(int) = 0;
+    virtual bool is_composite(const std::string&) = 0;
+    virtual void to_dot(int, const std::string&, std::ostream&) = 0;
 };
 
 template <class Key>
-struct _AssemblyGraph : public _AbstractAssemblyGraph {
+class _AssemblyGraph : public _AbstractAssemblyGraph {
     std::vector<_Node<Key>> components;
     std::vector<_Node<Key>> connectors;
     std::map<Key, _AbstractAssemblyGraph&> composites;
+
+    template <class>
+    friend class Model;
+
+    std::string strip(std::string s) {
+        auto it = s.find('_');
+        return s.substr(++it);
+    }
+
+    bool is_composite(const std::string& address) override {
+        return std::accumulate(composites.begin(), composites.end(), false,
+                               [this, address](bool acc, std::pair<Key, _AbstractAssemblyGraph&> ref) {
+                                   return acc || ref.second.is_composite(strip(address)) ||
+                                          (_Key<Key>(ref.first).to_string() == address);
+                               });
+    }
+
+  public:
+    void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) override {
+        if (name == "") {  // toplevel
+            os << std::string(tabs, '\t') << "graph g {\n";
+        } else {
+            os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
+        }
+        for (auto& c : composites) {
+            c.second.to_dot(tabs + 1, _Key<Key>(c.first).to_string(), os);
+        }
+        os << std::string(tabs, '\t') << "}\n";
+    }
 
     void print(int tabs = 0) override {
         for (auto& c : components) {
@@ -660,6 +695,8 @@ class Model : public _AbstractModel {
     }
 
     void print_representation(int tabs = 0) override { representation.print(tabs); }
+
+    void test_dot() { representation.to_dot(); }
 
     _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
 };
