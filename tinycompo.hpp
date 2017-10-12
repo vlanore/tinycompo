@@ -96,8 +96,6 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 /*
 ====================================================================================================
   ~*~ _Port class ~*~
-  A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
-  and provides a method called '_set(Args...)' which calls prop.
   _Port<Args...> derives from _VirtualPort which allows the storage of pointers to _Port by
   converting them to _VirtualPort*. These classes are for internal use by tinycompo and should not
   be seen by the user (as denoted by the underscore prefixes).
@@ -230,11 +228,15 @@ class _Key {
     explicit _Key(Type value) : value(value) {}
     Type get() const { return value; }
     void set(Type new_value) { value = new_value; }
-    std::string to_string() { return std::to_string(value); }
+    std::string to_string() {
+        std::stringstream ss;
+        ss << value;
+        return ss.str();
+    }
 };
 
 template <>
-class _Key<const char*> {
+class _Key<const char*> {  // special case: type needs to actually be string
     std::string value;
 
   public:
@@ -245,19 +247,7 @@ class _Key<const char*> {
     std::string to_string() { return get(); }
 };
 
-template <>
-class _Key<std::string> {
-    std::string value;
-
-  public:
-    using actualType = std::string;
-    explicit _Key(const std::string& value) : value(value) {}
-    std::string get() const { return value; }
-    void set(std::string new_value) { value = new_value; }
-    std::string to_string() { return get(); }
-};
-
-class _AbstractAddress {};
+class _AbstractAddress {};  // for identification of _Address types encountered in the wild
 
 template <class Key, class... Keys>
 struct _Address : public _AbstractAddress {
@@ -311,34 +301,7 @@ _PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
   ~*~ _Operation class ~*~
 ==================================================================================================*/
 template <class A, class Key>
-class _Operation {
-    template <class... Keys>
-    std::string get_args(const std::string& s, const std::string& prefix, _Address<Keys...> a) {
-        std::stringstream ss;
-        ss << s << " -- " << prefix << a.to_string() << " ;\n";
-        return ss.str();
-    }
-
-    template <class... Keys>
-    std::string get_args(const std::string& s, const std::string& prefix, _PortAddress<Keys...> a) {
-        std::stringstream ss;
-        ss << s << " -- " << prefix << a.address.to_string() << " [label=\"" << a.prop << "\"];\n";
-        return ss.str();
-    }
-
-    template <class Arg>
-    std::string get_args(const std::string&, const std::string&, Arg) {
-        return "";
-    }
-
-    template <class Arg, class... Args>
-    std::string get_args(const std::string& s, const std::string& prefix, Arg arg, Args... args) {
-        std::stringstream ss;
-        ss << get_args(s, prefix, arg) << get_args(s, prefix, std::forward<Args>(args)...);
-        return ss.str();
-    }
-
-  public:
+struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args... args) : _connect([=](A& assembly) { Connector::_connect(assembly, args...); }) {}
 
@@ -347,28 +310,19 @@ class _Operation {
 
 /*
 ====================================================================================================
-  ~*~ Random utility classes and declarations ~*~
+  ~*~ Composite ~*~
 ==================================================================================================*/
 template <class Key>
 class Assembly;  // forward-decl
 template <class Key>
 class Model;  // forward-decl
 
-/*
-====================================================================================================
-  ~*~ Composite ~*~
-==================================================================================================*/
 struct _AbstractComposite {  // inheritance-only class
     virtual ~_AbstractComposite() = default;
 };
 
 template <class Key = std::string>
 class Composite : public Model<Key>, public _AbstractComposite {};
-
-struct _DotData {
-    std::string output;
-    std::vector<std::string> composite_names;
-};
 
 class _Composite {
     std::unique_ptr<_AbstractComposite> ptr;
@@ -587,8 +541,6 @@ class Model : public _AbstractModel {
     template <class>
     friend class Model;  // to call _route
 
-    // friend class _Composite;  // to call _debug
-
   protected:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
@@ -618,7 +570,6 @@ class Model : public _AbstractModel {
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key.get()),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
 
-        // FIXME temporary
         representation.components.push_back(_Node<Key>());
         representation.components.back().name = key.to_string();
         representation.components.back().type = TinycompoDebug::type<T>();
@@ -654,7 +605,6 @@ class Model : public _AbstractModel {
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
 
-        // FIXME temporary
         representation.connectors.push_back(_Node<Key>());
         representation.connectors.back().type = TinycompoDebug::type<C>();
         representation.connectors.back().neighbors_from_args(args...);
@@ -668,7 +618,6 @@ class Model : public _AbstractModel {
         std::ofstream file;
         file.open(fileName);
         dot(file);
-        file.close();
     }
 
     void print_representation(int tabs = 0) override { representation.print(tabs); }
