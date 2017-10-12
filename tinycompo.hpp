@@ -340,15 +340,9 @@ class _Operation {
 
   public:
     template <class Connector, class... Args>
-    _Operation(_Type<Connector>, Args... args)
-        : _connect([=](A& assembly) { Connector::_connect(assembly, args...); }),
-          _debug([=](std::string s, std::string prefix) {
-              return s + "[xlabel=\"" + TinycompoDebug::type<Connector>() + "\" shape=point];\n" +
-                     get_args(s, prefix, args...);
-          }) {}
+    _Operation(_Type<Connector>, Args... args) : _connect([=](A& assembly) { Connector::_connect(assembly, args...); }) {}
 
     std::function<void(A&)> _connect;
-    std::function<std::string(std::string, std::string)> _debug{[](std::string, std::string) { return ""; }};
 };
 
 /*
@@ -382,7 +376,6 @@ class _Composite {
 
   public:
     std::function<Component*(std::string)> _constructor;
-    std::function<_DotData(std::string)> _debug;
 
     _Composite() = delete;
 
@@ -392,8 +385,7 @@ class _Composite {
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
           _constructor([=](std::string s) {
               return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()), s));
-          }),
-          _debug([=](std::string s) { return dynamic_cast<T&>(*ptr.get())._debug(s); }) {}
+          }) {}
 
     _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
@@ -487,28 +479,29 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
 
   public:
     void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) override {
+        std::string prefix = name + (name == "" ? "" : "_");
         if (name == "") {  // toplevel
             os << std::string(tabs, '\t') << "graph g {\n";
         } else {
             os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
         }
         for (auto& c : components) {
-            os << std::string(tabs + 1, '\t') << name << (name == "" ? "" : "_") << c.name << " [label=\"" << c.name
-               << "\\n(" << c.type << ")\" shape=component margin=0.15];\n";
+            os << std::string(tabs + 1, '\t') << prefix << c.name << " [label=\"" << c.name << "\\n(" << c.type
+               << ")\" shape=component margin=0.15];\n";
         }
         int i = 0;
         for (auto& c : connectors) {
-            std::string cname = "connect_" + name + (name == "" ? "" : "_") + std::to_string(i);
+            std::string cname = "connect_" + prefix + std::to_string(i);
             os << std::string(tabs + 1, '\t') << cname << " [xlabel=\"" << c.type << "\" shape=point];\n";
             for (auto& n : c.neighbors) {
                 os << std::string(tabs + 1, '\t') << cname << " -- "
-                   << (is_composite(n.address) ? "cluster_" + n.address : n.address)
+                   << (is_composite(n.address) ? "cluster_" + prefix + n.address : prefix + n.address)
                    << (n.port == "" ? "" : "[xlabel=\"" + n.port + "\"]") << ";\n";
             }
             i++;
         }
         for (auto& c : composites) {
-            c.second.to_dot(tabs + 1, _Key<Key>(c.first).to_string(), os);
+            c.second.to_dot(tabs + 1, prefix + _Key<Key>(c.first).to_string(), os);
         }
         os << std::string(tabs, '\t') << "}\n";
     }
@@ -588,47 +581,13 @@ class Model : public _AbstractModel {
         }
     }
 
-    _DotData _debug(const std::string& myname = "") {
-        std::string prefix = myname == "" ? "" : myname + "_";
-        std::stringstream ss;
-        ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
-
-        for (auto& c : components) {
-            ss << prefix << c.first << "[label=\"" << c.first << "\\n(" << c.second._class_name
-               << ")\" shape=component margin=0.15];\n";
-        }
-        auto i = 0;
-        for (auto& o : operations) {
-            std::stringstream port_name;
-            port_name << prefix << i;
-            ss << o._debug(port_name.str(), prefix);
-            i++;
-        }
-        _DotData data;
-        for (auto& c : composites) {
-            std::stringstream composite_name;
-            composite_name << prefix << c.first;
-            _DotData data_bis = c.second._debug(composite_name.str());
-            ss << data_bis.output;
-            data.composite_names.insert(data.composite_names.end(), data_bis.composite_names.begin(),
-                                        data_bis.composite_names.end());
-            data.composite_names.push_back(composite_name.str());
-        }
-        ss << "}\n";
-        data.output = ss.str();
-        for (auto& name : data.composite_names) {
-            data.output = replace_string(data.output, "-- " + name + " ", "-- cluster_" + name + " ");
-        }
-        return data;
-    }
-
     template <class>
     friend class Assembly;  // to access internal data
 
     template <class>
     friend class Model;  // to call _route
 
-    friend class _Composite;  // to call _debug
+    // friend class _Composite;  // to call _debug
 
   protected:
     std::map<Key, _Component> components;
@@ -703,7 +662,7 @@ class Model : public _AbstractModel {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    void dot(std::ostream& stream = std::cout) { stream << _debug().output; }
+    void dot(std::ostream& stream = std::cout) { representation.to_dot(0, "", stream); }
 
     void dot_to_file(const std::string& fileName = "tmp.dot") {
         std::ofstream file;
@@ -713,13 +672,6 @@ class Model : public _AbstractModel {
     }
 
     void print_representation(int tabs = 0) override { representation.print(tabs); }
-
-    void test_dot() {
-        std::ofstream file;
-        file.open("tmp_yolo.dot");
-        representation.to_dot(0, "", file);
-        file.close();
-    }
 
     _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
 };

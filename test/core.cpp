@@ -229,10 +229,10 @@ TEST_CASE("Model test: dot output") {
     stringstream ss;
     model.dot(ss);
     CHECK(ss.str() ==
-          "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
-          "margin=0.15];\n0[xlabel=\"Use<MyBasicCompo>\" shape=point];\n0 -- mycompo [label=\"buddy\"];\n0 -- "
-          "composite_2 ;\nsubgraph cluster_composite {\ncomposite_2[label=\"2\\n(MyBasicCompo)\" "
-          "shape=component margin=0.15];\n}\n}\n");
+          "graph g {\n\tmycompo [label=\"mycompo\\n(MyBasicCompo)\" shape=component margin=0.15];\n\tconnect_0 "
+          "[xlabel=\"Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
+          "composite_2;\n\tsubgraph cluster_composite {\n\t\tcomposite_2 [label=\"2\\n(MyBasicCompo)\" shape=component "
+          "margin=0.15];\n\t}\n}\n");
 }
 
 TEST_CASE("Model test: temporary keys") {
