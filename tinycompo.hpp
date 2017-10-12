@@ -94,6 +94,53 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
 ====================================================================================================
+  ~*~ Graph representation classes ~*~
+  Small classes implementing a simple easily explorable graph representation for TinyCompo component
+  assemblies.
+==================================================================================================*/
+template <class Key>
+struct _Node {
+    std::string name;
+    std::string type;
+    std::map<std::string, std::string> successors;
+    std::map<std::string, std::string> predecessors;
+
+    void print() {
+        std::cout << "Node(\"" << name << "\")[" << type << "] .-> ";
+        for (auto& s : successors) {
+            if (s.first != "") {
+                std::cout << "(" << s.first << ")";
+            }
+            std::cout << s.second << " ";
+        }
+        std::cout << "| .<- ";
+        for (auto& p : successors) {
+            if (p.first != "") {
+                std::cout << "(" << p.first << ")";
+            }
+            std::cout << p.second << " ";
+        }
+        std::cout << '\n';
+    }
+};
+
+template <class Key>
+struct _AssemblyGraph {
+    std::vector<_Node<Key>> components;
+    std::vector<_Node<Key>> connectors;
+
+    void print() {
+        for (auto& c : components) {
+            c.print();
+        }
+        for (auto& c : connectors) {
+            c.print();
+        }
+    }
+};
+
+/*
+====================================================================================================
   ~*~ _Port class ~*~
   A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
   and provides a method called '_set(Args...)' which calls prop.
@@ -487,6 +534,8 @@ class Model {
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<Key, _Composite> composites;
 
+    _AssemblyGraph<Key> representation;
+
   public:
     using KeyType = Key;
 
@@ -508,6 +557,11 @@ class Model {
         _Key<CallKey> key(address);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key.get()),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+
+        // FIXME temporary
+        representation.components.push_back(_Node<Key>());
+        representation.components.back().name = address;
+        representation.components.back().type = components.at(key.get())._class_name;
     }
 
     template <class T, class Key1, class Key2, class... Keys, class... Args>
@@ -535,6 +589,9 @@ class Model {
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+
+        // FIXME temporary
+        representation.connectors.push_back(_Node<Key>());
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
@@ -547,6 +604,8 @@ class Model {
         dot(file);
         file.close();
     }
+
+    void print_representation() { representation.print(); }
 };
 
 /*
