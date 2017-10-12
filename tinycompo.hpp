@@ -450,17 +450,27 @@ struct _Node {
     }
 };
 
+struct _AbstractAssemblyGraph {
+    virtual void print(int) = 0;
+};
+
 template <class Key>
-struct _AssemblyGraph {
+struct _AssemblyGraph : public _AbstractAssemblyGraph {
     std::vector<_Node<Key>> components;
     std::vector<_Node<Key>> connectors;
+    std::map<Key, _AbstractAssemblyGraph&> composites;
 
-    void print(int tabs = 0) {
+    void print(int tabs = 0) override {
         for (auto& c : components) {
             c.print(tabs);
         }
         for (auto& c : connectors) {
             c.print(tabs);
+        }
+        for (auto& c : composites) {
+            std::cout << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
+            c.second.print(tabs + 1);
+            std::cout << std::string(tabs, '\t') << "}\n";
         }
     }
 };
@@ -471,6 +481,7 @@ struct _AssemblyGraph {
 ==================================================================================================*/
 struct _AbstractModel {
     virtual void print_representation(int) = 0;
+    virtual _AbstractAssemblyGraph& get_representation() = 0;
 };
 
 template <class Key = std::string>
@@ -610,6 +621,10 @@ class Model : public _AbstractModel {
     void composite(Key key, Args&&... args) {
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+
+        representation.composites.emplace(
+            std::piecewise_construct, std::forward_as_tuple(key),
+            std::forward_as_tuple(dynamic_cast<_AbstractModel*>(composites.at(key).get())->get_representation()));
     }
 
     template <class T, class... Keys, class... Args>
@@ -644,14 +659,9 @@ class Model : public _AbstractModel {
         file.close();
     }
 
-    void print_representation(int tabs = 0) {
-        representation.print(tabs);
-        for (auto& c : composites) {
-            std::cout << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
-            dynamic_cast<_AbstractModel*>(c.second.get())->print_representation(tabs + 1);
-            std::cout << std::string(tabs, '\t') << "}\n";
-        }
-    }
+    void print_representation(int tabs = 0) override { representation.print(tabs); }
+
+    _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
 };
 
 /*
