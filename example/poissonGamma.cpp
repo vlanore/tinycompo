@@ -336,5 +336,5 @@ int main() {
     assembly.call("RS", "go");
 
     assembly.print_all();
-    model.test_dot();
+    PoissonGamma(2).test_dot();
 }

@@ -413,6 +413,9 @@ class _GraphAddress {
     std::string address;
     std::string port;
 
+    template <class>
+    friend class _AssemblyGraph;
+
   public:
     _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
 
@@ -488,6 +491,21 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
             os << std::string(tabs, '\t') << "graph g {\n";
         } else {
             os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
+        }
+        for (auto& c : components) {
+            os << std::string(tabs + 1, '\t') << name << (name == "" ? "" : "_") << c.name << " [label=\"" << c.name
+               << "\\n(" << c.type << ")\" shape=component margin=0.15];\n";
+        }
+        int i = 0;
+        for (auto& c : connectors) {
+            std::string cname = "connect_" + name + (name == "" ? "" : "_") + std::to_string(i);
+            os << std::string(tabs + 1, '\t') << cname << " [xlabel=\"" << c.type << "\" shape=point];\n";
+            for (auto& n : c.neighbors) {
+                os << std::string(tabs + 1, '\t') << cname << " -- "
+                   << (is_composite(n.address) ? "cluster_" + n.address : n.address)
+                   << (n.port == "" ? "" : "[xlabel=\"" + n.port + "\"]") << ";\n";
+            }
+            i++;
         }
         for (auto& c : composites) {
             c.second.to_dot(tabs + 1, _Key<Key>(c.first).to_string(), os);
@@ -696,7 +714,12 @@ class Model : public _AbstractModel {
 
     void print_representation(int tabs = 0) override { representation.print(tabs); }
 
-    void test_dot() { representation.to_dot(); }
+    void test_dot() {
+        std::ofstream file;
+        file.open("tmp_yolo.dot");
+        representation.to_dot(0, "", file);
+        file.close();
+    }
 
     _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
 };
