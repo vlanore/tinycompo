@@ -336,4 +336,5 @@ int main() {
     assembly.call("RS", "go");
 
     assembly.print_all();
+    model.print_representation();
 }

@@ -94,53 +94,6 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
 ====================================================================================================
-  ~*~ Graph representation classes ~*~
-  Small classes implementing a simple easily explorable graph representation for TinyCompo component
-  assemblies.
-==================================================================================================*/
-template <class Key>
-struct _Node {
-    std::string name;
-    std::string type;
-    std::map<std::string, std::string> successors;
-    std::map<std::string, std::string> predecessors;
-
-    void print() {
-        std::cout << "Node(\"" << name << "\")[" << type << "] .-> ";
-        for (auto& s : successors) {
-            if (s.first != "") {
-                std::cout << "(" << s.first << ")";
-            }
-            std::cout << s.second << " ";
-        }
-        std::cout << "| .<- ";
-        for (auto& p : successors) {
-            if (p.first != "") {
-                std::cout << "(" << p.first << ")";
-            }
-            std::cout << p.second << " ";
-        }
-        std::cout << '\n';
-    }
-};
-
-template <class Key>
-struct _AssemblyGraph {
-    std::vector<_Node<Key>> components;
-    std::vector<_Node<Key>> connectors;
-
-    void print() {
-        for (auto& c : components) {
-            c.print();
-        }
-        for (auto& c : connectors) {
-            c.print();
-        }
-    }
-};
-
-/*
-====================================================================================================
   ~*~ _Port class ~*~
   A class that is initialized with a pointer to a method 'void prop(Args)' of an object of class C,
   and provides a method called '_set(Args...)' which calls prop.
@@ -276,6 +229,7 @@ class _Key {
     explicit _Key(Type value) : value(value) {}
     Type get() const { return value; }
     void set(Type new_value) { value = new_value; }
+    std::string to_string() { return std::to_string(value); }
 };
 
 template <>
@@ -287,6 +241,19 @@ class _Key<const char*> {
     explicit _Key(const char* value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
+    std::string to_string() { return get(); }
+};
+
+template <>
+class _Key<std::string> {
+    std::string value;
+
+  public:
+    using actualType = std::string;
+    explicit _Key(const std::string& value) : value(value) {}
+    std::string get() const { return value; }
+    void set(std::string new_value) { value = new_value; }
+    std::string to_string() { return get(); }
 };
 
 class _AbstractAddress {};
@@ -295,7 +262,7 @@ template <class Key, class... Keys>
 struct _Address : public _AbstractAddress {
     std::string to_string() const {
         std::stringstream ss;
-        ss << key.get() << "__" << rest.to_string();
+        ss << key.get() << "_" << rest.to_string();
         return ss.str();
     }
 
@@ -434,10 +401,80 @@ class _Composite {
 
 /*
 ====================================================================================================
+  ~*~ Graph representation classes ~*~
+  Small classes implementing a simple easily explorable graph representation for TinyCompo component
+  assemblies.
+==================================================================================================*/
+class _GraphAddress {
+    std::string address;
+    std::string port;
+
+  public:
+    _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
+
+    void print() { std::cout << "->" << address << ((port == "") ? "" : ("." + port)); }
+};
+
+template <class Key>
+struct _Node {
+    std::string name;
+    std::string type;
+    std::vector<_GraphAddress> neighbors;
+
+    void neighbors_from_args() {}
+
+    template <class Arg, class... Args>
+    void neighbors_from_args(Arg, Args... args) {
+        neighbors_from_args(args...);
+    }
+
+    template <class... Keys, class... Args>
+    void neighbors_from_args(_Address<Keys...> arg, Args... args) {
+        neighbors.push_back(_GraphAddress(arg.to_string()));
+        neighbors_from_args(args...);
+    }
+
+    template <class... Keys, class... Args>
+    void neighbors_from_args(_PortAddress<Keys...> arg, Args... args) {
+        neighbors.push_back(_GraphAddress(arg.address.to_string(), arg.prop));
+        neighbors_from_args(args...);
+    }
+
+    void print(int tabs = 0) {
+        std::cout << std::string(tabs, '\t') << ((name == "") ? "Connector" : name) << " (" << type << ") ";
+        for (auto& n : neighbors) {
+            n.print();
+            std::cout << " ";
+        }
+        std::cout << '\n';
+    }
+};
+
+template <class Key>
+struct _AssemblyGraph {
+    std::vector<_Node<Key>> components;
+    std::vector<_Node<Key>> connectors;
+
+    void print(int tabs = 0) {
+        for (auto& c : components) {
+            c.print(tabs);
+        }
+        for (auto& c : connectors) {
+            c.print(tabs);
+        }
+    }
+};
+
+/*
+====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
+struct _AbstractModel {
+    virtual void print_representation(int) = 0;
+};
+
 template <class Key = std::string>
-class Model {
+class Model : public _AbstractModel {
     template <class T, bool b>
     struct _Helper {
         template <class... Args>
@@ -488,7 +525,7 @@ class Model {
     }
 
     _DotData _debug(const std::string& myname = "") {
-        std::string prefix = myname == "" ? "" : myname + "__";
+        std::string prefix = myname == "" ? "" : myname + "_";
         std::stringstream ss;
         ss << (myname == "" ? "graph g {\n" : "subgraph cluster_" + myname + " {\n");
 
@@ -560,8 +597,8 @@ class Model {
 
         // FIXME temporary
         representation.components.push_back(_Node<Key>());
-        representation.components.back().name = address;
-        representation.components.back().type = components.at(key.get())._class_name;
+        representation.components.back().name = key.to_string();
+        representation.components.back().type = TinycompoDebug::type<T>();
     }
 
     template <class T, class Key1, class Key2, class... Keys, class... Args>
@@ -588,10 +625,12 @@ class Model {
 
     template <class C, class... Args>
     void connect(Args&&... args) {
-        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+        operations.emplace_back(_Type<C>(), args...);
 
         // FIXME temporary
         representation.connectors.push_back(_Node<Key>());
+        representation.connectors.back().type = TinycompoDebug::type<C>();
+        representation.connectors.back().neighbors_from_args(args...);
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
@@ -605,7 +644,14 @@ class Model {
         file.close();
     }
 
-    void print_representation() { representation.print(); }
+    void print_representation(int tabs = 0) {
+        representation.print(tabs);
+        for (auto& c : composites) {
+            std::cout << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
+            dynamic_cast<_AbstractModel*>(c.second.get())->print_representation(tabs + 1);
+            std::cout << std::string(tabs, '\t') << "}\n";
+        }
+    }
 };
 
 /*

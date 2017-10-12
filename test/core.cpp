@@ -231,7 +231,7 @@ TEST_CASE("Model test: dot output") {
     CHECK(ss.str() ==
           "graph g {\nmycompo[label=\"mycompo\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n0[xlabel=\"Use<MyBasicCompo>\" shape=point];\n0 -- mycompo [label=\"buddy\"];\n0 -- "
-          "composite__2 ;\nsubgraph cluster_composite {\ncomposite__2[label=\"2\\n(MyBasicCompo)\" "
+          "composite_2 ;\nsubgraph cluster_composite {\ncomposite_2[label=\"2\\n(MyBasicCompo)\" "
           "shape=component margin=0.15];\n}\n}\n");
 }
 
