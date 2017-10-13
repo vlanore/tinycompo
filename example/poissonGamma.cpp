@@ -35,7 +35,7 @@ struct UseInComposite {
     template <class... Keys, class... Keys2, class Arg, class... Args>
     static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
                          Args... args) {
-        using Key = typename _Key<Arg>::actualType;
+        using Key = typename _Key<Arg>::actual_type;
         vector<Key> keys{arg, args...};
         auto& compositeRef = assembly.at<Assembly<Key>>(composite);
         auto& userRef = assembly.at(user.address);
