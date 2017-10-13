@@ -237,8 +237,8 @@ TEST_CASE("Model test: dot output and representation print") {
     stringstream ss2;
     model.print_representation(ss2);
     CHECK(ss2.str() ==
-          "mycompo (MyBasicCompo) \nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite composite "
-          "{\n	2 (MyBasicCompo) \n}\n");
+          "Component \"mycompo\" (MyBasicCompo) \nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
+          "composite {\n	Component \"2\" (MyBasicCompo) \n}\n");
 }
 
 TEST_CASE("Model test: temporary keys") {

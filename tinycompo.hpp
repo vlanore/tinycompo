@@ -394,7 +394,7 @@ struct _Node {
     }
 
     void print(std::ostream& os = std::cout, int tabs = 0) {
-        os << std::string(tabs, '\t') << ((name == "") ? "Connector" : name) << " (" << type << ") ";
+        os << std::string(tabs, '\t') << ((name == "") ? "Connector" : "Component \"" + name + "\"") << " (" << type << ") ";
         for (auto& n : neighbors) {
             n.print(os);
             os << " ";
