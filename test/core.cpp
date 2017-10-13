@@ -154,8 +154,8 @@ TEST_CASE("address tests.") {
 }
 
 TEST_CASE("_Key basic tests.") {
-    // actualType for const char*
-    CHECK((is_same<std::string, typename _Key<const char*>::actualType>::value));
+    // actual_type for const char*
+    CHECK((is_same<std::string, typename _Key<const char*>::actual_type>::value));
 
     // get/set
     _Key<string> key1("hello");

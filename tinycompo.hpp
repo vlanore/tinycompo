@@ -217,14 +217,14 @@ struct _Component {
 
 /*
 ====================================================================================================
-  ~*~ Address ~*~
+  ~*~ _Key ~*~
 ==================================================================================================*/
 template <class Type>
 class _Key {
     Type value;
 
   public:
-    using actualType = Type;
+    using actual_type = Type;
     explicit _Key(Type value) : value(value) {}
     explicit _Key(const std::string& s) {
         std::stringstream ss(s);
@@ -240,11 +240,11 @@ class _Key {
 };
 
 template <>
-class _Key<std::string> {  // special case: type needs to actually be string
+class _Key<std::string> {  // simpler than general case
     std::string value;
 
   public:
-    using actualType = std::string;
+    using actual_type = std::string;
     explicit _Key(const std::string& value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
@@ -256,13 +256,17 @@ class _Key<const char*> {  // special case: type needs to actually be string
     std::string value;
 
   public:
-    using actualType = std::string;
+    using actual_type = std::string;
     explicit _Key(const std::string& value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
     std::string to_string() { return get(); }
 };
 
+/*
+====================================================================================================
+  ~*~ Addresses ~*~
+==================================================================================================*/
 class _AbstractAddress {};  // for identification of _Address types encountered in the wild
 
 template <class Key, class... Keys>
@@ -303,7 +307,6 @@ template <class... Keys>
 struct _PortAddress {
     std::string prop;
     _Address<Keys...> address;
-
     _PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(Address(std::forward<Keys>(keys)...)) {}
 };
 
@@ -536,10 +539,10 @@ class Model : public _AbstractModel {
     void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
         auto compositeIt = composites.find(address.key.get());
         if (compositeIt != composites.end()) {
-            auto ptr = dynamic_cast<Model<typename _Key<Key2>::actualType>*>(compositeIt->second.get());
+            auto ptr = dynamic_cast<Model<typename _Key<Key2>::actual_type>*>(compositeIt->second.get());
             if (ptr == nullptr) {
                 TinycompoDebug e("key type does not match composite key type");
-                e << "Key has type " << TinycompoDebug::type<typename _Key<Key2>::actualType>() << " while composite "
+                e << "Key has type " << TinycompoDebug::type<typename _Key<Key2>::actual_type>() << " while composite "
                   << address.key.get() << " seems to have another key type.";
                 e.fail();
             }
@@ -702,7 +705,7 @@ class Assembly : public Component {
 
     template <class T = Component, class Key1, class Key2, class... Keys>
     T& at(const _Address<Key1, Key2, Keys...>& address) const {
-        return at<Assembly<typename _Key<Key2>::actualType>>(address.key.get()).template at<T>(address.rest);
+        return at<Assembly<typename _Key<Key2>::actual_type>>(address.key.get()).template at<T>(address.rest);
     }
 
     Model<Key>& model() const { return internal_model; }
