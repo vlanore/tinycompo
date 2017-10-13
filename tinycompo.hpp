@@ -426,7 +426,7 @@ struct _AbstractAssemblyGraph {
     virtual void print(std::ostream&, int) = 0;
     virtual bool is_composite(const std::string&) = 0;
     virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
-    virtual std::vector<std::string> all_component_names(int = 0) = 0;
+    virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") = 0;
 };
 
 template <class Key>
@@ -494,14 +494,15 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
         }
     }
 
-    std::vector<std::string> all_component_names(int depth = 0) override {
+    std::vector<std::string> all_component_names(int depth = 0, const std::string& name = "") override {
+        std::string prefix = name + (name == "" ? "" : "_");
         std::vector<std::string> result;
-        for (auto& c : components) {   // local components
-            result.push_back(c.name);  // stringified name
+        for (auto& c : components) {            // local components
+            result.push_back(prefix + c.name);  // stringified name
         }
         if (depth > 0) {
             for (auto& c : composites) {  // names from composites until a certain depth
-                auto subresult = c.second.all_component_names(depth - 1);
+                auto subresult = c.second.all_component_names(depth - 1, prefix + _Key<Key>(c.first).to_string());
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
