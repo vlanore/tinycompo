@@ -180,6 +180,29 @@ TEST_CASE("_Key basic tests.") {
 
 /*
 ====================================================================================================
+  ~*~ Graph representation ~*~
+==================================================================================================*/
+TEST_CASE("_AssemblyGraph test: all_component_names") {
+    class CharComposite : public Composite<char> {};
+    Model<int> model;
+    model.component<MyInt>(0, 17);
+    model.component<MyInt>(2, 31);
+    model.composite<CharComposite>(1);
+    model.component<MyInt>(Address(1, 'r'), 21);
+    model.composite<CharComposite>(Address(1, 't'));
+    model.component<MyInt>(Address(1, 't', 'l'), 23);
+
+    auto& representation = dynamic_cast<_AssemblyGraph<int>&>(model.get_representation());
+    vector<string> vec0 = representation.all_component_names();
+    vector<string> vec1 = representation.all_component_names(1);
+    vector<string> vec2 = representation.all_component_names(2);
+    CHECK((set<string>(vec0.begin(), vec0.end())) == (set<string>{"0", "2"}));
+    CHECK((set<string>(vec1.begin(), vec1.end())) == (set<string>{"0", "2", "r"}));
+    CHECK((set<string>(vec2.begin(), vec2.end())) == (set<string>{"0", "2", "r", "l"}));
+}
+
+/*
+====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
 TEST_CASE("model test: components in composites") {
