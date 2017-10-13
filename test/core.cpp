@@ -153,6 +153,31 @@ TEST_CASE("address tests.") {
     CHECK(a.rest.rest.rest.final == true);
 }
 
+TEST_CASE("_Key basic tests.") {
+    // actualType for const char*
+    CHECK((is_same<std::string, typename _Key<const char*>::actualType>::value));
+
+    // get/set
+    _Key<string> key1("hello");
+    _Key<double> key2(0.23);
+    CHECK(key1.get() == "hello");
+    CHECK(key2.get() == 0.23);
+    key1.set("hi");
+    key2.set(0.5);
+    CHECK(key1.get() == "hi");
+    CHECK(key2.get() == 0.5);
+
+    // from_string
+    _Key<const char*> key3(string("hi"));
+    _Key<int> key4("17");
+    CHECK(key3.get() == "hi");
+    CHECK(key4.get() == 17);
+
+    // to_string
+    CHECK(key4.to_string() == "17");
+    CHECK(key2.to_string() == "0.5");
+}
+
 /*
 ====================================================================================================
   ~*~ Model ~*~

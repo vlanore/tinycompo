@@ -226,6 +226,10 @@ class _Key {
   public:
     using actualType = Type;
     explicit _Key(Type value) : value(value) {}
+    explicit _Key(const std::string& s) {
+        std::stringstream ss(s);
+        ss >> value;
+    }
     Type get() const { return value; }
     void set(Type new_value) { value = new_value; }
     std::string to_string() {
@@ -236,12 +240,24 @@ class _Key {
 };
 
 template <>
+class _Key<std::string> {  // special case: type needs to actually be string
+    std::string value;
+
+  public:
+    using actualType = std::string;
+    explicit _Key(const std::string& value) : value(value) {}
+    std::string get() const { return value; }
+    void set(std::string new_value) { value = new_value; }
+    std::string to_string() { return get(); }
+};
+
+template <>
 class _Key<const char*> {  // special case: type needs to actually be string
     std::string value;
 
   public:
     using actualType = std::string;
-    explicit _Key(const char* value) : value(value) {}
+    explicit _Key(const std::string& value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
     std::string to_string() { return get(); }
