@@ -603,12 +603,6 @@ class Model : public _AbstractModel {
         }
     }
 
-    void merge(const Model& new_data) {  // FIXME make sure representation is updated correctly as well!
-        components.insert(new_data.components.begin(), new_data.components.end());
-        operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
-        composites.insert(new_data.composites.begin(), new_data.composites.end());
-    }
-
     // horrible enable_if to avoid ambiguous call with version below
     template <class T, class CallKey, class... Args,
               typename std::enable_if<!std::is_base_of<_AbstractAddress, CallKey>::value, int>::type = 0>
