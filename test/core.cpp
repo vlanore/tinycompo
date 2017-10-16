@@ -299,6 +299,23 @@ TEST_CASE("Model test: temporary keys") {
     CHECK(model.size() == 5);
 }
 
+TEST_CASE("Model test: copy and merge") {
+    Model<> model1;
+    Model<> model2;
+
+    model1.component<MyInt>("compo0", 3);
+    model1.component<MyIntProxy>("compo1");
+    model1.connect<Use<IntInterface>>(PortAddress("ptr", "compo1"), Address("compo0"));
+    model2.component<MyIntProxy>("compo3");
+    model2.merge(model1);
+    model2.connect<Use<IntInterface>>(PortAddress("ptr", "compo3"), Address("compo1"));
+
+    Assembly<> assembly(model2);
+    CHECK(assembly.at<IntInterface>("compo3").get() == 12);
+    // TODO check that model1 does not have compo3
+    // TODO check model copy
+}
+
 /*
 ====================================================================================================
   ~*~ Assembly ~*~
