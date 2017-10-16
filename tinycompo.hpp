@@ -60,14 +60,15 @@ template <class>
 class Assembly;
 
 struct _AssemblyGraphInterface {
-    virtual void print(std::ostream&, int) = 0;
-    virtual bool is_composite(const std::string&) = 0;
-    virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
-    virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") = 0;
+    virtual void print(std::ostream&, int) const = 0;
+    virtual bool is_composite(const std::string&) const = 0;
+    virtual void to_dot(int, const std::string&, std::ostream& = std::cout) const = 0;
+    virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") const = 0;
 };
 
 struct _ModelInterface {
-    virtual void print_representation(std::ostream&, int) = 0;
+    virtual void print_representation(std::ostream&, int) const = 0;
+    virtual const _AssemblyGraphInterface& get_representation() const = 0;
     virtual _AssemblyGraphInterface& get_representation() = 0;
 };
 
@@ -409,7 +410,7 @@ class _GraphAddress {
   public:
     _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
 
-    void print(std::ostream& os = std::cout) { os << "->" << address << ((port == "") ? "" : ("." + port)); }
+    void print(std::ostream& os = std::cout) const { os << "->" << address << ((port == "") ? "" : ("." + port)); }
 };
 
 template <class Key>
@@ -437,7 +438,7 @@ struct _Node {
         neighbors_from_args(args...);
     }
 
-    void print(std::ostream& os = std::cout, int tabs = 0) {
+    void print(std::ostream& os = std::cout, int tabs = 0) const {
         os << std::string(tabs, '\t') << ((name == "") ? "Connector" : "Component \"" + name + "\"") << " (" << type << ") ";
         for (auto& n : neighbors) {
             n.print(os);
@@ -456,12 +457,12 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
     template <class>
     friend class Model;
 
-    std::string strip(std::string s) {
+    std::string strip(std::string s) const {
         auto it = s.find('_');
         return s.substr(++it);
     }
 
-    bool is_composite(const std::string& address) override {
+    bool is_composite(const std::string& address) const override {
         return std::accumulate(composites.begin(), composites.end(), false,
                                [this, address](bool acc, std::pair<Key, _AssemblyGraphInterface&> ref) {
                                    return acc || ref.second.is_composite(strip(address)) ||
@@ -470,7 +471,7 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
     }
 
   public:
-    void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) override {
+    void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const override {
         std::string prefix = name + (name == "" ? "" : "_");
         if (name == "") {  // toplevel
             os << std::string(tabs, '\t') << "graph g {\n";
@@ -498,7 +499,7 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
         os << std::string(tabs, '\t') << "}\n";
     }
 
-    void print(std::ostream& os = std::cout, int tabs = 0) override {
+    void print(std::ostream& os = std::cout, int tabs = 0) const override {
         for (auto& c : components) {
             c.print(os, tabs);
         }
@@ -512,7 +513,7 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
         }
     }
 
-    std::vector<std::string> all_component_names(int depth = 0, const std::string& name = "") override {
+    std::vector<std::string> all_component_names(int depth = 0, const std::string& name = "") const override {
         std::string prefix = name + (name == "" ? "" : "_");
         std::vector<std::string> result;
         for (auto& c : components) {            // local components
@@ -588,9 +589,6 @@ class Model : public _ModelInterface {
 
     template <class>
     friend class Model;  // to call _route
-
-    template <class>
-    friend class _AssemblyGraph;  // to update composites
 
   protected:
     std::map<Key, _ComponentBuilder> components;
@@ -669,15 +667,19 @@ class Model : public _ModelInterface {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    void dot(std::ostream& stream = std::cout) { representation.to_dot(0, "", stream); }
+    void dot(std::ostream& stream = std::cout) const { representation.to_dot(0, "", stream); }
 
-    void dot_to_file(const std::string& fileName = "tmp.dot") {
+    void dot_to_file(const std::string& fileName = "tmp.dot") const {
         std::ofstream file;
         file.open(fileName);
         dot(file);
     }
 
-    void print_representation(std::ostream& os = std::cout, int tabs = 0) override { representation.print(os, tabs); }
+    void print_representation(std::ostream& os = std::cout, int tabs = 0) const override { representation.print(os, tabs); }
+
+    const _AssemblyGraphInterface& get_representation() const override {
+        return static_cast<const _AssemblyGraphInterface&>(representation);
+    }
 
     _AssemblyGraphInterface& get_representation() override { return static_cast<_AssemblyGraphInterface&>(representation); }
 };

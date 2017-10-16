@@ -192,7 +192,7 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
     model.composite<CharComposite>(Address(1, 't'));
     model.component<MyInt>(Address(1, 't', 'l'), 23);
 
-    auto& representation = dynamic_cast<_AssemblyGraph<int>&>(model.get_representation());
+    auto& representation = dynamic_cast<const _AssemblyGraph<int>&>(model.get_representation());
     vector<string> vec0 = representation.all_component_names();
     vector<string> vec1 = representation.all_component_names(1);
     vector<string> vec2 = representation.all_component_names(2);
