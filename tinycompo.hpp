@@ -59,24 +59,24 @@ class _AssemblyGraph;
 template <class>
 class Assembly;
 
-struct _AbstractAssemblyGraph {
+struct _AssemblyGraphInterface {
     virtual void print(std::ostream&, int) = 0;
     virtual bool is_composite(const std::string&) = 0;
     virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
     virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") = 0;
 };
 
-struct _AbstractModel {
+struct _ModelInterface {
     virtual void print_representation(std::ostream&, int) = 0;
-    virtual _AbstractAssemblyGraph& get_representation() = 0;
-};
-
-struct _AbstractPort {
-    virtual ~_AbstractPort() = default;
+    virtual _AssemblyGraphInterface& get_representation() = 0;
 };
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
+
+struct _AbstractPort {
+    virtual ~_AbstractPort() = default;
+};
 
 struct _AbstractAddress {};  // for identification of _Address types encountered in the wild
 
@@ -390,7 +390,7 @@ class _CompositeBuilder {
 
     _AbstractComposite* get() { return ptr.get(); }
 
-    _AbstractModel& get_model_ref() { return *dynamic_cast<_AbstractModel*>(ptr.get()); }
+    _ModelInterface& get_model_ref() { return *dynamic_cast<_ModelInterface*>(ptr.get()); }
 };
 
 /*
@@ -448,10 +448,10 @@ struct _Node {
 };
 
 template <class Key>
-class _AssemblyGraph : public _AbstractAssemblyGraph {
+class _AssemblyGraph : public _AssemblyGraphInterface {
     std::vector<_Node<Key>> components;
     std::vector<_Node<Key>> connectors;
-    std::map<Key, _AbstractAssemblyGraph&> composites;
+    std::map<Key, _AssemblyGraphInterface&> composites;
 
     template <class>
     friend class Model;
@@ -463,7 +463,7 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
 
     bool is_composite(const std::string& address) override {
         return std::accumulate(composites.begin(), composites.end(), false,
-                               [this, address](bool acc, std::pair<Key, _AbstractAssemblyGraph&> ref) {
+                               [this, address](bool acc, std::pair<Key, _AssemblyGraphInterface&> ref) {
                                    return acc || ref.second.is_composite(strip(address)) ||
                                           (_Key<Key>(ref.first).to_string() == address);
                                });
@@ -533,7 +533,7 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
   ~*~ Model ~*~
 ==================================================================================================*/
 template <class Key = std::string>
-class Model : public _AbstractModel {
+class Model : public _ModelInterface {
     template <class T, bool b>
     struct _Helper {
         template <class... Args>
@@ -612,7 +612,7 @@ class Model : public _AbstractModel {
         for (auto& c : composites) {
             representation.composites.emplace(
                 std::piecewise_construct, std::forward_as_tuple(c.first),
-                std::forward_as_tuple(dynamic_cast<_AbstractModel*>(c.second.get())->get_representation()));
+                std::forward_as_tuple(dynamic_cast<_ModelInterface*>(c.second.get())->get_representation()));
         }
     }
 
@@ -644,7 +644,7 @@ class Model : public _AbstractModel {
 
         representation.composites.emplace(
             std::piecewise_construct, std::forward_as_tuple(key),
-            std::forward_as_tuple(dynamic_cast<_AbstractModel*>(composites.at(key).get())->get_representation()));
+            std::forward_as_tuple(dynamic_cast<_ModelInterface*>(composites.at(key).get())->get_representation()));
     }
 
     template <class T, class... Keys, class... Args>
@@ -679,7 +679,7 @@ class Model : public _AbstractModel {
 
     void print_representation(std::ostream& os = std::cout, int tabs = 0) override { representation.print(os, tabs); }
 
-    _AbstractAssemblyGraph& get_representation() override { return static_cast<_AbstractAssemblyGraph&>(representation); }
+    _AssemblyGraphInterface& get_representation() override { return static_cast<_AssemblyGraphInterface&>(representation); }
 };
 
 /*
