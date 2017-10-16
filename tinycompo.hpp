@@ -48,6 +48,44 @@ license and that you accept its terms.*/
 
 /*
 ====================================================================================================
+  ~*~ Various forward-declarations and abstract interfaces ~*~
+==================================================================================================*/
+template <class Key>
+class Model;
+
+template <class>
+class _AssemblyGraph;
+
+template <class>
+class Assembly;
+
+struct _AbstractAssemblyGraph {
+    virtual void print(std::ostream&, int) = 0;
+    virtual bool is_composite(const std::string&) = 0;
+    virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
+    virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") = 0;
+};
+
+struct _AbstractModel {
+    virtual void print_representation(std::ostream&, int) = 0;
+    virtual _AbstractAssemblyGraph& get_representation() = 0;
+};
+
+struct _AbstractPort {
+    virtual ~_AbstractPort() = default;
+};
+
+template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
+class _Type {};     // constructor below
+
+struct _AbstractAddress {};  // for identification of _Address types encountered in the wild
+
+struct _AbstractComposite {  // inheritance-only class
+    virtual ~_AbstractComposite() = default;
+};
+
+/*
+====================================================================================================
   ~*~ Debug ~*~
   A few classes related to debug messages.
 ==================================================================================================*/
@@ -96,17 +134,12 @@ std::ostream* TinycompoDebug::error_stream = &std::cerr;
 /*
 ====================================================================================================
   ~*~ _Port class ~*~
-  _Port<Args...> derives from _VirtualPort which allows the storage of pointers to _Port by
-  converting them to _VirtualPort*. These classes are for internal use by tinycompo and should not
+  _Port<Args...> derives from _AbstractPort which allows the storage of pointers to _Port by
+  converting them to _AbstractPort*. These classes are for internal use by tinycompo and should not
   be seen by the user (as denoted by the underscore prefixes).
 ==================================================================================================*/
-class _VirtualPort {
-  public:
-    virtual ~_VirtualPort() = default;
-};
-
 template <class... Args>
-struct _Port : public _VirtualPort {
+struct _Port : public _AbstractPort {
     std::function<void(Args...)> _set;
 
     _Port() = delete;
@@ -120,7 +153,7 @@ struct _Port : public _VirtualPort {
 };
 
 template <class Interface>
-struct _ProvidePort : public _VirtualPort {
+struct _ProvidePort : public _AbstractPort {
     std::function<Interface*()> _get;
 
     _ProvidePort() = delete;
@@ -137,7 +170,7 @@ struct _ProvidePort : public _VirtualPort {
   infrastructure required to declare ports.
 ==================================================================================================*/
 class Component {
-    std::map<std::string, std::unique_ptr<_VirtualPort>> _ports;
+    std::map<std::string, std::unique_ptr<_AbstractPort>> _ports;
     std::string name{""};
 
   public:
@@ -149,20 +182,20 @@ class Component {
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {
-        _ports[name] = std::unique_ptr<_VirtualPort>(
-            static_cast<_VirtualPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
+        _ports[name] = std::unique_ptr<_AbstractPort>(
+            static_cast<_AbstractPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class C, class Arg>
     void port(std::string name, Arg(C::*prop)) {
         _ports[name] =
-            std::unique_ptr<_VirtualPort>(static_cast<_VirtualPort*>(new _Port<const Arg>(dynamic_cast<C*>(this), prop)));
+            std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _Port<const Arg>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class C, class Interface>
     void provide(std::string name, Interface* (C::*prop)()) {
-        _ports[name] = std::unique_ptr<_VirtualPort>(
-            static_cast<_VirtualPort*>(new _ProvidePort<Interface>(dynamic_cast<C*>(this), prop)));
+        _ports[name] = std::unique_ptr<_AbstractPort>(
+            static_cast<_AbstractPort*>(new _ProvidePort<Interface>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class... Args>
@@ -196,18 +229,15 @@ class Component {
 
 /*
 ====================================================================================================
-  ~*~ _Component class ~*~
+  ~*~ _ComponentBuilder class ~*~
   A small class that is capable of storing a constructor call for any Component child class and
   execute said call later on demand. The class itself is not templated (allowing direct storage)
   but the constructor call is. This is an internal tinycompo class that should never be seen by
   the user (as denoted by the underscore prefix).
 ==================================================================================================*/
-template <class T>  // this is an empty helper class that is used to pass T to the _Component
-class _Type {};     // constructor below
-
-struct _Component {
+struct _ComponentBuilder {
     template <class T, class... Args>
-    _Component(_Type<T>, Args... args)
+    _ComponentBuilder(_Type<T>, Args... args)
         : _constructor([=]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(args...))); }),
           _class_name(TinycompoDebug::type<T>()) {}
 
@@ -267,8 +297,6 @@ class _Key<const char*> {  // special case: type needs to actually be string
 ====================================================================================================
   ~*~ Addresses ~*~
 ==================================================================================================*/
-class _AbstractAddress {};  // for identification of _Address types encountered in the wild
-
 template <class Key, class... Keys>
 struct _Address : public _AbstractAddress {
     std::string to_string() const {
@@ -331,38 +359,38 @@ struct _Operation {
 ====================================================================================================
   ~*~ Composite ~*~
 ==================================================================================================*/
-template <class Key>
-class Assembly;  // forward-decl
-template <class Key>
-class Model;  // forward-decl
-
-struct _AbstractComposite {  // inheritance-only class
-    virtual ~_AbstractComposite() = default;
-};
-
 template <class Key = std::string>
 class Composite : public Model<Key>, public _AbstractComposite {};
 
-class _Composite {
+/*
+====================================================================================================
+  ~*~ _CompositeBuilder ~*~
+  A small template-less class capable of constructing or copying composites without knowing their
+  key type. Uses the _AbstractComposite class to store composites.
+==================================================================================================*/
+class _CompositeBuilder {
     std::unique_ptr<_AbstractComposite> ptr;
     std::function<_AbstractComposite*()> _clone;
 
   public:
     std::function<Component*(std::string)> _constructor;
 
-    _Composite() = delete;
+    _CompositeBuilder() = delete;
 
     template <class T, class... Args>
-    explicit _Composite(_Type<T>, Args&&... args)
+    explicit _CompositeBuilder(_Type<T>, Args&&... args)
         : ptr(std::unique_ptr<_AbstractComposite>(new T(std::forward<Args>(args)...))),
           _clone([=]() { return static_cast<_AbstractComposite*>(new T(dynamic_cast<T&>(*ptr.get()))); }),
           _constructor([=](std::string s) {
               return static_cast<Component*>(new Assembly<typename T::KeyType>(dynamic_cast<T&>(*ptr.get()), s));
           }) {}
 
-    _Composite(const _Composite& other) : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
+    _CompositeBuilder(const _CompositeBuilder& other)
+        : ptr(other._clone()), _clone(other._clone), _constructor(other._constructor) {}
 
     _AbstractComposite* get() { return ptr.get(); }
+
+    _AbstractModel& get_model_ref() { return *dynamic_cast<_AbstractModel*>(ptr.get()); }
 };
 
 /*
@@ -371,9 +399,6 @@ class _Composite {
   Small classes implementing a simple easily explorable graph representation for TinyCompo component
   assemblies.
 ==================================================================================================*/
-template <class>
-class _AssemblyGraph;
-
 class _GraphAddress {
     std::string address;
     std::string port;
@@ -420,13 +445,6 @@ struct _Node {
         }
         os << '\n';
     }
-};
-
-struct _AbstractAssemblyGraph {
-    virtual void print(std::ostream&, int) = 0;
-    virtual bool is_composite(const std::string&) = 0;
-    virtual void to_dot(int, const std::string&, std::ostream& = std::cout) = 0;
-    virtual std::vector<std::string> all_component_names(int = 0, const std::string& = "") = 0;
 };
 
 template <class Key>
@@ -514,11 +532,6 @@ class _AssemblyGraph : public _AbstractAssemblyGraph {
 ====================================================================================================
   ~*~ Model ~*~
 ==================================================================================================*/
-struct _AbstractModel {
-    virtual void print_representation(std::ostream&, int) = 0;
-    virtual _AbstractAssemblyGraph& get_representation() = 0;
-};
-
 template <class Key = std::string>
 class Model : public _AbstractModel {
     template <class T, bool b>
@@ -580,9 +593,9 @@ class Model : public _AbstractModel {
     friend class _AssemblyGraph;  // to update composites
 
   protected:
-    std::map<Key, _Component> components;
+    std::map<Key, _ComponentBuilder> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, _Composite> composites;
+    std::map<Key, _CompositeBuilder> composites;
 
     _AssemblyGraph<Key> representation;
 
@@ -595,7 +608,7 @@ class Model : public _AbstractModel {
           operations(other_model.operations),
           composites(other_model.composites),
           representation(other_model.representation) {
-        representation.composites.clear();
+        representation.composites.clear();  // rebuild composite map in representation from scratch
         for (auto& c : composites) {
             representation.composites.emplace(
                 std::piecewise_construct, std::forward_as_tuple(c.first),

@@ -61,7 +61,7 @@ TEST_CASE("_Port tests.") {
     };
 
     MyCompo compo;
-    auto ptr = static_cast<_VirtualPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
+    auto ptr = static_cast<_AbstractPort*>(new _Port<int, int>{&compo, &MyCompo::setIJ});
     auto ptr2 = dynamic_cast<_Port<int, int>*>(ptr);
     REQUIRE(ptr2 != nullptr);
     ptr2->_set(3, 4);
@@ -98,11 +98,11 @@ TEST_CASE("Component without _debug") {
 
 /*
 ====================================================================================================
-  ~*~ _Component ~*~
+  ~*~ _ComponentBuilder ~*~
 ==================================================================================================*/
-TEST_CASE("_Component tests.") {
-    _Component compo(_Type<MyCompo>(), 3, 4);  // create _Component object
-    auto ptr = compo._constructor();           // instantiate actual object
+TEST_CASE("_ComponentBuilder tests.") {
+    _ComponentBuilder compo(_Type<MyCompo>(), 3, 4);  // create _ComponentBuilder object
+    auto ptr = compo._constructor();                  // instantiate actual object
     auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
     REQUIRE(ptr2 != nullptr);
     CHECK(ptr2->i == 3);
@@ -441,7 +441,7 @@ TEST_CASE("Use/provide test.") {
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
-TEST_CASE("Use/provide + Assembly: connection test") {
+TEST_CASE("Use + Assembly: connection test") {
     Model<> model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
@@ -450,7 +450,7 @@ TEST_CASE("Use/provide + Assembly: connection test") {
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
-TEST_CASE("UseProvide2 test.") {
+TEST_CASE("UseProvide test.") {
     struct GetInt {
         virtual int getInt() = 0;
     };
