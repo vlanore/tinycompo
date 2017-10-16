@@ -618,7 +618,7 @@ class Model : public _ModelInterface {
 
     // horrible enable_if to avoid ambiguous call with version below
     template <class T, class CallKey, class... Args,
-              typename std::enable_if<!std::is_base_of<_AbstractAddress, CallKey>::value, int>::type = 0>
+              class = typename std::enable_if<!std::is_base_of<_AbstractAddress, CallKey>::value>::type>
     void component(CallKey address, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
