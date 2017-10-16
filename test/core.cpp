@@ -311,25 +311,27 @@ TEST_CASE("Model test: copy and merge") {
     model2.connect<Use<IntInterface>>(PortAddress("ptr", "compo3"), Address("compo1"));
 
     Assembly<> assembly(model2);
+    CHECK(assembly.at<IntInterface>("compo3").get() == 12);  // proxies multiply by 2, expected result is thus 3*2*2=12
+
     Assembly<> assembly2(model1);
-    CHECK(assembly.at<IntInterface>("compo3").get() == 12);
-    TINYCOMPO_TEST_ERRORS { assembly2.at<IntInterface>("compo3"); }
+    TINYCOMPO_TEST_ERRORS { assembly2.at("compo3"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
 
-    // TODO check model copy
     Model<> model3(model2);
     model3.component<MyInt>("youpi", 17);
     model2.component<MyInt>("youpla", 19);
+
     Assembly<> assembly3(model3);
     CHECK(assembly3.at<MyInt>("youpi").get() == 17);
     TINYCOMPO_TEST_MORE_ERRORS { assembly3.at("youpla"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
+
     Assembly<> assembly4(model2);
     CHECK(assembly4.at<MyInt>("youpla").get() == 19);
     TINYCOMPO_TEST_MORE_ERRORS { assembly4.at("youpi"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
-    TINYCOMPO_TEST_MORE_ERRORS { assembly.at("youpi"); }
-    TINYCOMPO_THERE_WAS_AN_ERROR;
+    TINYCOMPO_TEST_MORE_ERRORS { assembly.at("youpi"); }  // checking that assembly (originally built from model2)
+    TINYCOMPO_THERE_WAS_AN_ERROR;                         // has not been modified (and has an actual copy)
     TINYCOMPO_TEST_MORE_ERRORS { assembly.at("youpla"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
 }

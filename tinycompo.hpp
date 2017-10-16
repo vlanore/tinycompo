@@ -587,9 +587,9 @@ class Model : public _AbstractModel {
     using KeyType = Key;
 
     Model() = default;
-    Model(const Model& other_model) { merge(other_model); }
+    Model(const Model& other_model) { merge(other_model); }  // FIXME make sure representation is deep-copied too!
 
-    void merge(const Model& new_data) {
+    void merge(const Model& new_data) {  // FIXME make sure representation is updated correctly as well!
         components.insert(new_data.components.begin(), new_data.components.end());
         operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
         composites.insert(new_data.composites.begin(), new_data.composites.end());
