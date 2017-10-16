@@ -51,6 +51,13 @@ license and that you accept its terms.*/
     CHECK(error_short.str() == short);         \
     CHECK(error_long.str() == long);
 
+#define TINYCOMPO_THERE_WAS_AN_ERROR       \
+    catch (TinycompoException & e) {       \
+        error_short << e.what();           \
+    }                                      \
+    TinycompoDebug::set_stream(std::cerr); \
+    CHECK(error_short.str() != "");
+
 class MyCompo : public Component {  // example of a user creating their own component
   public:                           // by inheriting from the Component class
     int i{1};
