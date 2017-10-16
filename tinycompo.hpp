@@ -587,11 +587,12 @@ class Model : public _AbstractModel {
     using KeyType = Key;
 
     Model() = default;
+    Model(const Model& other_model) { merge(other_model); }
 
     void merge(const Model& new_data) {
         components.insert(new_data.components.begin(), new_data.components.end());
         operations.insert(operations.end(), new_data.operations.begin(), new_data.operations.end());
-        composites.insert(composites.end(), new_data.composites.begin(), new_data.composites.end());
+        composites.insert(new_data.composites.begin(), new_data.composites.end());
     }
 
     // horrible enable_if to avoid ambiguous call with version below
@@ -666,9 +667,9 @@ class Model : public _AbstractModel {
 ==================================================================================================*/
 template <class Key = std::string>
 class Assembly : public Component {
-  protected:
+  protected:  // used in mpi example
     std::map<Key, std::unique_ptr<Component>> instances;
-    Model<Key>& internal_model;
+    Model<Key> internal_model;
 
   public:
     Assembly() = delete;
