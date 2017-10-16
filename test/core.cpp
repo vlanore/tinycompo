@@ -336,6 +336,17 @@ TEST_CASE("Model test: copy and merge") {
     TINYCOMPO_THERE_WAS_AN_ERROR;
 }
 
+TEST_CASE("Model test: representation copy and composites") {
+    struct CharComposite : public Composite<char> {};
+    Model<> model1;
+    model1.composite<CharComposite>("composite");
+    Model<> model2 = model1;  // copy
+    model1.component<MyInt>(Address("composite", 'r'), 17);
+    stringstream ss;
+    model2.print_representation(ss);  // should not contain composite_r
+    CHECK(ss.str() == "Composite composite {\n}\n");
+}
+
 /*
 ====================================================================================================
   ~*~ Assembly ~*~

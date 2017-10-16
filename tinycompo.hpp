@@ -576,6 +576,9 @@ class Model : public _AbstractModel {
     template <class>
     friend class Model;  // to call _route
 
+    template <class>
+    friend class _AssemblyGraph;  // to update composites
+
   protected:
     std::map<Key, _Component> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
@@ -587,7 +590,18 @@ class Model : public _AbstractModel {
     using KeyType = Key;
 
     Model() = default;
-    Model(const Model& other_model) { merge(other_model); }  // FIXME make sure representation is deep-copied too!
+    Model(const Model& other_model)
+        : components(other_model.components),
+          operations(other_model.operations),
+          composites(other_model.composites),
+          representation(other_model.representation) {
+        representation.composites.clear();
+        for (auto& c : composites) {
+            representation.composites.emplace(
+                std::piecewise_construct, std::forward_as_tuple(c.first),
+                std::forward_as_tuple(dynamic_cast<_AbstractModel*>(c.second.get())->get_representation()));
+        }
+    }
 
     void merge(const Model& new_data) {  // FIXME make sure representation is updated correctly as well!
         components.insert(new_data.components.begin(), new_data.components.end());
