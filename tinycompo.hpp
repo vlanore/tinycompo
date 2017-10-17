@@ -1,5 +1,4 @@
-/*
-Copyright or © or Copr. Centre National de la Recherche Scientifique (CNRS) (2017/05/03)
+/* Copyright or © or Copr. Centre National de la Recherche Scientifique (CNRS) (2017/05/03)
 Contributors:
 - Vincent Lanore <vincent.lanore@gmail.com>
 
@@ -20,8 +19,7 @@ modifying and/or developing or reproducing the software by the user in light of 
 of free software, that may mean that it is complicated to manipulate, and that also therefore means
 that it is reserved for developers and experienced professionals having in-depth computer knowledge.
 Users are therefore encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or globalModel to be ensured
-and,
+requirements in conditions enabling the security of their systems and/or data to be ensured and,
 more generally, to use and operate it in the same conditions as regards security.
 
 The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
@@ -182,13 +180,13 @@ class Component {
     virtual std::string _debug() const { return "Component"; };
 
     template <class C, class... Args>
-    void port(std::string name, void (C::*prop)(Args...)) {
+    void port(std::string name, void (C::*prop)(Args...)) {  // port is a setter member function
         _ports[name] = std::unique_ptr<_AbstractPort>(
             static_cast<_AbstractPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class C, class Arg>
-    void port(std::string name, Arg(C::*prop)) {
+    void port(std::string name, Arg(C::*prop)) {  // port is a data member
         _ports[name] =
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _Port<const Arg>(dynamic_cast<C*>(this), prop)));
     }
