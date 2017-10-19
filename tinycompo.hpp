@@ -551,7 +551,7 @@ class Model {
         _route<false, T>(address, std::forward<Args>(args)...);
     }
 
-    template <class T=Composite, class Key1, class... Args>
+    template <class T = Composite, class Key1, class... Args>
     void composite(Key1 key, Args&&... args) {
         std::string key_name = _Key<Key1>(key).to_string();
 
@@ -562,7 +562,7 @@ class Model {
                                           std::forward_as_tuple(composites.at(key_name).get_representation()));
     }
 
-    template <class T=Composite, class... Keys, class... Args>
+    template <class T = Composite, class... Keys, class... Args>
     void composite(_Address<Keys...> address, Args&&... args) {
         _route<true, T>(address, args...);
     }
@@ -752,7 +752,7 @@ struct UseProvide {
   ~*~ Array class ~*~
 ==================================================================================================*/
 template <class T>
-struct Array : public Composite{
+struct Array : public Composite {
     template <class... Args>
     static void contents(Model& model, int nb_elems, Args... args) {
         for (int i = 0; i < nb_elems; i++) {

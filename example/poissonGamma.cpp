@@ -32,15 +32,15 @@ using namespace std;
 template <class Interface>
 struct UseInComposite {
     template <class... Keys, class... Keys2, class Arg, class... Args>
-    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
+    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
                          Args... args) {
         using Key = typename _Key<Arg>::actual_type;
         vector<Key> keys{arg, args...};
-        auto& compositeRef = assembly.at<Assembly<Key>>(composite);
+        auto& compositeRef = assembly.at<Assembly>(composite);
         auto& userRef = assembly.at(user.address);
         for (auto k : keys) {
             auto& providerRef = compositeRef.at(k);
-            auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
+            auto providerArrayPtr = dynamic_cast<Assembly*>(&providerRef);
             if (providerArrayPtr != nullptr) {  // component is an array
                 for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
                     userRef.set(user.prop, &providerArrayPtr->at<Interface>(i));
@@ -60,7 +60,7 @@ bool isUnclamped(Component& ref) {
 
 // struct UseAllRandomNodes {
 //     template <class... Keys, class... Keys2>
-//     static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+//     static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
 //         auto& modelRef = assembly.at<Assembly<string>>(model);
 //         auto& userRef = assembly.at(user.address);
 //         for (auto k : modelRef.all_keys()) {
@@ -82,12 +82,12 @@ bool isUnclamped(Component& ref) {
 
 struct UseAllUnclampedNodes {
     template <class... Keys, class... Keys2>
-    static void _connect(Assembly<>& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
-        auto& modelRef = assembly.at<Assembly<string>>(model);
+    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+        auto& modelRef = assembly.at<Assembly>(model);
         auto& userRef = assembly.at(user.address);
         for (auto k : modelRef.all_keys()) {
             auto& providerRef = modelRef.at(k);
-            auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
+            auto providerArrayPtr = dynamic_cast<Assembly*>(&providerRef);
             if (providerArrayPtr != nullptr && isUnclamped(providerArrayPtr->at(0))) {
                 for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
                     userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
@@ -221,8 +221,7 @@ string arrayName(const string& s) {
     return m.size() == 2 ? m[1] : s;
 }
 
-template <class Key>
-void configMoves(Model<Key>& model, const string& modelName, const string& schedName, const string& spec) {
+void configMoves(Model& model, const string& modelName, const string& schedName, const string& spec) {
     regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
 
     for (sregex_iterator it{spec.begin(), spec.end(), e2}; it != sregex_iterator{}; it++) {
@@ -252,23 +251,23 @@ void configMoves(Model<Key>& model, const string& modelName, const string& sched
     }
 }
 
-struct PoissonGamma : public Composite<> {
-    explicit PoissonGamma(int size) {
-        component<Exponential>("Sigma");
-        connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
+struct PoissonGamma : public Composite {
+    static void contents(Model& model, int size) {
+        model.component<Exponential>("Sigma");
+        model.connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
 
-        component<Exponential>("Theta");
-        connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
+        model.component<Exponential>("Theta");
+        model.connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
 
-        composite<Array<Gamma>>("Omega", size);
-        connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
+        model.composite<Array<Gamma>>("Omega", size);
+        model.connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
 
-        composite<Array<Product>>("rate", size);
-        connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
-        connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
+        model.composite<Array<Product>>("rate", size);
+        model.connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
+        model.connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
 
-        composite<Array<Poisson>>("X", size);
-        connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
+        model.composite<Array<Poisson>>("X", size);
+        model.connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
     }
 };
 
@@ -280,7 +279,7 @@ struct PoissonGamma : public Composite<> {
 // };
 
 int main() {
-    Model<> model;
+    Model model;
 
     // graphical model part
     int size = 5;
@@ -325,11 +324,11 @@ int main() {
     model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
-    PoissonGamma(3).dot_to_file("tmp_pg.dot");
+    Model(_Type<PoissonGamma>(), 3).dot_to_file("tmp_pg.dot");
     model.dot_to_file();
 
     // instantiate everything!
-    Assembly<> assembly(model);
+    Assembly assembly(model);
 
     assembly.call("MCMC", "go");
     assembly.call("RS", "go");

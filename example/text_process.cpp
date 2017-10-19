@@ -97,7 +97,7 @@ class ProcessAndPrint : public Component {
 };
 
 int main() {
-    Model<> mymodel;
+    Model mymodel;
     mymodel.component<ConstantText>("MyText", "Hello, I'm a rabbit.\nI like carrots.\n");
     mymodel.component<ReplaceChar>("ReplaceAbyB", 'a', 'b');
     mymodel.component<ReplaceChar>("ReplaceBbyD", 'b', 'd');
@@ -106,7 +106,7 @@ int main() {
     mymodel.connect<Use<TextProcessor>>(PortAddress("effect", "Controller"), Address("ReplaceBbyD"));
     mymodel.connect<Use<TextSource>>(PortAddress("source", "Controller"), Address("MyText"));
 
-    Assembly<> myassembly(mymodel);
+    Assembly myassembly(mymodel);
     myassembly.call("Controller", "go");
 
     mymodel.dot_to_file();

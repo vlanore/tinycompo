@@ -69,18 +69,18 @@ double measure(std::function<void()> f) {
 int main() {
     srand(time(NULL));
 
-    Model<> model;
+    Model model;
     model.component<RandInt>("provider");
     model.component<User<RandInt>>("user");
     model.connect<Use<RandInt>>(PortAddress("ptr", "user"), Address("provider"));
 
-    Model<> model2;
+    Model model2;
     model2.component<RandInt>("provider");
     model2.component<User<GetInt>>("user");
     model2.connect<Use<GetInt>>(PortAddress("ptr", "user"), Address("provider"));
 
-    Assembly<> assembly(model);
-    Assembly<> assembly2(model2);
+    Assembly assembly(model);
+    Assembly assembly2(model2);
 
     // cache heating
     assembly.call("user", "go");

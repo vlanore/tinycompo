@@ -112,7 +112,7 @@ struct MPIComm {
     }
 };
 
-class MPIModel : public Model<> {
+class MPIModel : public Model {
     map<string, vector<int>> resources;
     MPICore core;
 
@@ -136,13 +136,13 @@ class MPIModel : public Model<> {
     }
 };
 
-Model<> emptymodel;
+Model emptymodel;
 
-class MPIAssembly : public Assembly<>, public MPICore {
+class MPIAssembly : public Assembly, public MPICore {
     MPIModel& internal_model;
 
   public:
-    explicit MPIAssembly(MPIModel& model) : Assembly<>(emptymodel), internal_model(model) {
+    explicit MPIAssembly(MPIModel& model) : Assembly(emptymodel), internal_model(model) {
         for (auto& c : model.components) {
             if (model.local(c.first)) {
                 instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
@@ -176,9 +176,9 @@ vector<int> interval(int start, int end) {
 struct MPIp2p {
     // allows multiple users but single provider!
     template <class Key>
-    static void _connect(Assembly<>& assembly, _PortAddress<Key> user, _PortAddress<Key> provider) {
+    static void _connect(Assembly& assembly, _PortAddress<Key> user, _PortAddress<Key> provider) {
         MPIAssembly& a = dynamic_cast<MPIAssembly&>(assembly);
-        string nuser = user.address.key.get(), nprov = provider.address.key.get();
+        string nuser = user.address.key.value, nprov = provider.address.key.value;
         string puser = user.prop, pprov = provider.prop;
         int rprov = a.resource(nprov)[0];
         if (a.local(nprov)) {
