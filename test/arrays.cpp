@@ -27,28 +27,28 @@ license and that you accept its terms.*/
 
 #include "test_utils.hpp"
 
-/*
-====================================================================================================
-  ~*~ Array ~*~
-==================================================================================================*/
-TEST_CASE("Array tests.") {
-    Array<MyCompo> myArray(3, 11, 12);
-    CHECK(myArray.size() == 3);
-    Assembly<int> array(myArray);
-    array.at<MyCompo>(2).i = 17;
-    CHECK(array.at<MyCompo>(2).i == 17);
-    CHECK(array.at<MyCompo>(0).i == 11);
-}
+// /*
+// ====================================================================================================
+//   ~*~ Array ~*~
+// ==================================================================================================*/
+// TEST_CASE("Array tests.") {
+//     Array<MyCompo> myArray(3, 11, 12);
+//     CHECK(myArray.size() == 3);
+//     Assembly array(myArray);
+//     array.at<MyCompo>(2).i = 17;
+//     CHECK(array.at<MyCompo>(2).i == 17);
+//     CHECK(array.at<MyCompo>(0).i == 11);
+// }
 
 /*
 ====================================================================================================
   ~*~ ArraySet ~*~
 ==================================================================================================*/
 TEST_CASE("ArraySet tests.") {
-    Model<> model;
+    Model model;
     model.composite<Array<MyInt>>("array", 5, 2);
     model.connect<ArraySet>(PortAddress("set", "array"), std::vector<int>{5, 4, 3, 2, 1});
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<MyInt>(Address("array", 0)).i == 5);
     CHECK(assembly.at<MyInt>(Address("array", 1)).i == 4);
     CHECK(assembly.at<MyInt>(Address("array", 2)).i == 3);
@@ -61,26 +61,26 @@ TEST_CASE("ArraySet tests.") {
 ~*~ ArrayOneToOne ~*~
 ==================================================================================================*/
 TEST_CASE("Array connector tests.") {
-    Model<> model;
+    Model model;
     model.composite<Array<MyInt>>("intArray", 5, 12);
     model.composite<Array<MyIntProxy>>("proxyArray", 5);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
-    CHECK(assembly.at<Assembly<int>>("intArray").size() == 5);
+    CHECK(assembly.at<Assembly>("intArray").size() == 5);
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));
     CHECK(refElement1.get() == 12);
     refElement1.i = 23;
     CHECK(refElement1.get() == 23);
-    CHECK(assembly.at<Assembly<int>>("proxyArray").size() == 5);
+    CHECK(assembly.at<Assembly>("proxyArray").size() == 5);
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 1)).get() == 46);
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 4)).get() == 24);
 }
 
 TEST_CASE("Array connector error test.") {
-    Model<> model;
+    Model model;
     model.composite<Array<MyInt>>("intArray", 5, 12);
     model.composite<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
     }
@@ -94,10 +94,10 @@ TEST_CASE("Array connector error test.") {
   ~*~ Multiuse ~*~
 ==================================================================================================*/
 TEST_CASE("MultiUse tests.") {
-    Model<> model;
+    Model model;
     model.composite<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("reducer");
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     std::stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
@@ -115,10 +115,10 @@ TEST_CASE("MultiUse tests.") {
   ~*~ Multiprovide ~*~
 ==================================================================================================*/
 TEST_CASE("MultiProvide connector tests.") {
-    Model<> model;
+    Model model;
     model.component<MyInt>("superInt", 17);  // random number
     model.composite<Array<MyIntProxy>>("proxyArray", 5);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     MultiProvide<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("superInt"));
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);
     TINYCOMPO_TEST_ERRORS {

@@ -108,36 +108,6 @@ TEST_CASE("_ComponentBuilder tests.") {
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
 }
-
-/*
-====================================================================================================
-  ~*~ _Operation ~*~
-==================================================================================================*/
-TEST_CASE("_Operation tests.") {
-    class MyAssembly {
-      public:
-        MyCompo compo1{14, 15};
-        MyCompo compo2{18, 19};
-        Component& at(int) { return compo1; }
-    };
-
-    class MyConnector {
-      public:
-        static void _connect(MyAssembly& a, int i, int i2) {
-            a.compo1.i = i;
-            a.compo2.i = i2;
-        }
-    };
-
-    MyAssembly myAssembly;
-    _Operation<MyAssembly, int> myConnection{_Type<MyConnector>(), 22, 23};
-    myConnection._connect(myAssembly);
-    CHECK(myAssembly.compo1.i == 22);
-    CHECK(myAssembly.compo1.j == 15);
-    CHECK(myAssembly.compo2.i == 23);
-    CHECK(myAssembly.compo2.j == 19);
-}
-
 /*
 ====================================================================================================
   ~*~ Address ~*~
@@ -182,13 +152,12 @@ TEST_CASE("_Key basic tests.") {
   ~*~ Graph representation ~*~
 ==================================================================================================*/
 TEST_CASE("_AssemblyGraph test: all_component_names") {
-    class CharComposite : public Composite<char> {};
-    Model<int> model;
+    Model model;
     model.component<MyInt>(0, 17);
     model.component<MyInt>(2, 31);
-    model.composite<CharComposite>(1);
+    model.composite(1);
     model.component<MyInt>(Address(1, 'r'), 21);
-    model.composite<CharComposite>(Address(1, 't'));
+    model.composite(Address(1, 't'));
     model.component<MyInt>(Address(1, 't', 'l'), 23);
 
     auto& representation = dynamic_cast<const _AssemblyGraph&>(model.get_representation());
@@ -206,33 +175,25 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
   ~*~ Model ~*~
 ==================================================================================================*/
 TEST_CASE("model test: components in composites") {
-    class MyComposite : public Composite<int> {};
-    Model<> model;
-    model.composite<MyComposite>("compo0");
+    Model model;
+    model.composite("compo0");
     model.component<MyInt>(Address("compo0", 1), 5);
-    model.composite<MyComposite>(Address("compo0", 2));
+    model.composite(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
     CHECK(model.size() == 1);  // top level contains only one component which is a composite
-    auto& compo0 = model.get_composite<MyComposite>("compo0");
-    // auto& compo0 = dynamic_cast<Model<int>&>(*model.composites.find("compo0")->second.get());
+    auto& compo0 = model.get_composite("compo0");
     CHECK(compo0.size() == 2);
-    // auto& compo0_2 = dynamic_cast<Model<int>&>(*compo0.composites.find(2)->second.get());
-    auto& compo0_2 = compo0.get_composite<MyComposite>(2);
+    auto& compo0_2 = compo0.get_composite(2);
     CHECK(compo0_2.size() == 1);
     TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
     TINYCOMPO_TEST_ERRORS_END("composite does not exist",
                               "-- Error: composite does not exist. Assembly contains no composite "
                               "at address badAddress.\n");
-    TINYCOMPO_TEST_MORE_ERRORS { model.component<MyInt>(Address("compo0", 1.0), 2); }
-    TINYCOMPO_TEST_ERRORS_END("key type does not match composite key type",
-                              "-- Error: key type does not match composite key type. Key has type "
-                              "double while composite compo0 seems to have another key type.\n");
 }
 
 TEST_CASE("model test: model copy") {
-    class MyComposite : public Composite<int> {};
-    Model<> model;
-    model.composite<MyComposite>("compo0");
+    Model model;
+    model.composite("compo0");
     auto model2 = model;
     model2.component<MyInt>(Address("compo0", 1), 19);
     model2.component<MyInt>("compo1", 17);
@@ -240,27 +201,24 @@ TEST_CASE("model test: model copy") {
     CHECK(model2.size() == 2);
 }
 
-TEST_CASE("model test: composite/component inheritance mismatch") {
-    class MyClass : public Composite<int> {};
-    Model<> model;
-    TINYCOMPO_TEST_ERRORS { model.component<MyClass>("hello"); }
-    TINYCOMPO_TEST_ERRORS_END("trying to declare a component that does not inherit from Component",
-                              "-- Error: trying to declare a component that does not inherit from Component\n");
-}
+// TEST_CASE("model test: composite/component inheritance mismatch") {
+//     class MyClass : public Composite {};
+//     Model model;
+//     TINYCOMPO_TEST_ERRORS { model.component<MyClass>("hello"); }
+//     TINYCOMPO_TEST_ERRORS_END("trying to declare a component that does not inherit from Component",
+//                               "-- Error: trying to declare a component that does not inherit from Component\n");
+// }
 
 TEST_CASE("model test: composite referencees") {
-    class MyComposite : public Composite<int> {};
-
-    Model<> model;
-    model.composite<MyComposite>("compo0");
-    auto& compo0ref = model.get_composite<MyComposite>("compo0");
+    Model model;
+    model.composite("compo0");
+    auto& compo0ref = model.get_composite("compo0");
     compo0ref.component<MyCompo>(1, 17, 18);
     compo0ref.component<MyCompo>(2, 21, 22);
     CHECK(model.size() == 1);
-    CHECK(model.get_composite<MyComposite>("compo0").size() == 2);
+    CHECK(model.get_composite("compo0").size() == 2);
 }
 
-struct MyComposite : public Composite<int> {};
 struct MyBasicCompo : public Component {
     MyBasicCompo* buddy{nullptr};
     MyBasicCompo() { port("buddy", &MyBasicCompo::setBuddy); }
@@ -268,9 +226,9 @@ struct MyBasicCompo : public Component {
 };
 
 TEST_CASE("Model test: dot output and representation print") {
-    Model<> model;
+    Model model;
     model.component<MyBasicCompo>("mycompo");
-    model.composite<MyComposite>("composite");
+    model.composite("composite");
     model.component<MyBasicCompo>(Address("composite", 2));
     model.connect<Use<MyBasicCompo>>(PortAddress("buddy", "mycompo"), Address("composite", 2));
 
@@ -290,7 +248,7 @@ TEST_CASE("Model test: dot output and representation print") {
 }
 
 TEST_CASE("Model test: temporary keys") {
-    Model<> model;
+    Model model;
     for (int i = 0; i < 5; i++) {
         stringstream ss;
         ss << "compo" << i;
@@ -300,21 +258,21 @@ TEST_CASE("Model test: temporary keys") {
 }
 
 TEST_CASE("Model test: copy") {
-    Model<> model2;
+    Model model2;
     model2.component<MyIntProxy>("compo3");
 
-    Assembly<> assembly(model2);
+    Assembly assembly(model2);
 
-    Model<> model3 = model2;  // copy
+    Model model3 = model2;  // copy
     model3.component<MyInt>("youpi", 17);
     model2.component<MyInt>("youpla", 19);
 
-    Assembly<> assembly3(model3);
+    Assembly assembly3(model3);
     CHECK(assembly3.at<MyInt>("youpi").get() == 17);
     TINYCOMPO_TEST_ERRORS { assembly3.at("youpla"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
 
-    Assembly<> assembly4(model2);
+    Assembly assembly4(model2);
     CHECK(assembly4.at<MyInt>("youpla").get() == 19);
     TINYCOMPO_TEST_MORE_ERRORS { assembly4.at("youpi"); }
     TINYCOMPO_THERE_WAS_AN_ERROR;
@@ -325,10 +283,9 @@ TEST_CASE("Model test: copy") {
 }
 
 TEST_CASE("Model test: representation copy and composites") {
-    struct CharComposite : public Composite<char> {};
-    Model<> model1;
-    model1.composite<CharComposite>("composite");
-    Model<> model2 = model1;  // copy
+    Model model1;
+    model1.composite("composite");
+    Model model2 = model1;  // copy
     model1.component<MyInt>(Address("composite", 'r'), 17);
     stringstream ss;
     model2.print_representation(ss);  // should not contain composite_r
@@ -340,11 +297,11 @@ TEST_CASE("Model test: representation copy and composites") {
   ~*~ Assembly ~*~
 ==================================================================================================*/
 TEST_CASE("Assembly test: instances and call.") {
-    Model<> a;
+    Model a;
     a.component<MyCompo>("Compo1", 13, 14);
     a.component<MyCompo>("Compo2", 15, 16);
     CHECK(a.size() == 2);
-    Assembly<> b(a);
+    Assembly b(a);
     auto& ref = b.at<MyCompo&>("Compo1");
     auto& ref2 = b.at<MyCompo&>("Compo2");
     CHECK(ref.j == 14);
@@ -358,34 +315,31 @@ TEST_CASE("Assembly test: instances and call.") {
 }
 
 TEST_CASE("Assembly test: instantiating composites.") {
-    class MyComposite : public Composite<int> {};
-    Model<> model;
-    model.composite<MyComposite>("composite");
+    Model model;
+    model.composite("composite");
     model.component<MyInt>(Address("composite", 0), 12);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
 
     stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "composite: Composite {\n0: MyInt\n}\n");
-    auto& refComposite = assembly.at<Assembly<int>>("composite");
+    auto& refComposite = assembly.at<Assembly>("composite");
     CHECK(refComposite.size() == 1);
     CHECK(refComposite.at<MyInt>(0).get() == 12);
 }
 
 TEST_CASE("Assembly test: sub-addressing tests.") {
-    class MyComposite : public Composite<int> {};
-    class MyOtherComposite : public Composite<> {};
-    Model<> model;
-    model.composite<MyComposite>("Array");
+    Model model;
+    model.composite("Array");
     model.component<MyCompo>(Address("Array", 0), 12, 13);
     model.component<MyCompo>(Address("Array", 1), 15, 19);
-    model.composite<MyOtherComposite>(Address("Array", 2));
+    model.composite(Address("Array", 2));
     model.component<MyCompo>(Address("Array", 2, "youpi"), 7, 9);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
 
-    auto& arrayRef = assembly.at<Assembly<int>>("Array");
+    auto& arrayRef = assembly.at<Assembly>("Array");
     CHECK(arrayRef.size() == 3);
-    auto& subArrayRef = assembly.at<Assembly<>>(Address("Array", 2));
+    auto& subArrayRef = assembly.at<Assembly>(Address("Array", 2));
     CHECK(subArrayRef.size() == 1);
     auto& subRef = assembly.at<MyCompo>(Address("Array", 1));
     auto& subSubRef = assembly.at<MyCompo>(Address("Array", 2, "youpi"));
@@ -394,10 +348,10 @@ TEST_CASE("Assembly test: sub-addressing tests.") {
 }
 
 TEST_CASE("Assembly test: incorrect address.") {
-    Model<> model;
+    Model model;
     model.component<MyCompo>("compo0");
     model.component<MyCompo>("compo1");
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     TINYCOMPO_TEST_ERRORS { assembly.at<MyCompo>("compo"); }
     TINYCOMPO_TEST_ERRORS_END("<Assembly::at> Trying to access incorrect address",
                               "-- Error: <Assembly::at> Trying to access incorrect address. Address compo does not exist. "
@@ -405,23 +359,22 @@ TEST_CASE("Assembly test: incorrect address.") {
 }
 
 TEST_CASE("Assembly test: component names.") {
-    struct MyComposite : public Composite<int> {};
-    Model<> model;
+    Model model;
     model.component<MyCompo>("compoYoupi");
     model.component<MyCompo>("compoYoupla");
-    model.composite<MyComposite>("composite");
+    model.composite("composite");
     model.component<MyCompo>(Address("composite", 3));
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<MyCompo>("compoYoupi").get_name() == "compoYoupi");
     CHECK(assembly.at<MyCompo>("compoYoupla").get_name() == "compoYoupla");
     CHECK(assembly.at<MyCompo>(Address("composite", 3)).get_name() == "composite_3");
 }
 
 TEST_CASE("Assembly test: all_keys.") {
-    Model<> model;
+    Model model;
     model.component<MyCompo>("compoYoupi");
     model.component<MyCompo>("compoYoupla");
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.all_keys() == (set<string>{"compoYoupi", "compoYoupla"}));
 }
 
@@ -430,10 +383,10 @@ TEST_CASE("Assembly test: all_keys.") {
   ~*~ Ports ~*~
 ==================================================================================================*/
 TEST_CASE("Use/provide test.") {
-    Model<> model;
+    Model model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     stringstream ss;
     assembly.print_all(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
@@ -442,11 +395,11 @@ TEST_CASE("Use/provide test.") {
 }
 
 TEST_CASE("Use + Assembly: connection test") {
-    Model<> model;
+    Model model;
     model.component<MyInt>("Compo1", 4);
     model.component<MyIntProxy>("Compo2");
     model.connect<Use<IntInterface>>(PortAddress("ptr", "Compo2"), Address("Compo1"));
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
 }
 
@@ -467,36 +420,35 @@ TEST_CASE("UseProvide test.") {
         GetInt* providePtr() { return &two; }
         Provider() { provide("int", &Provider::providePtr); }
     };
-    Model<> model;
+    Model model;
     model.component<User>("user");
     model.component<Provider>("provider");
     model.connect<UseProvide<GetInt>>(PortAddress("ptr", "user"), PortAddress("int", "provider"));
 
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<User>("user").ptr->getInt() == 2);
 }
 
 TEST_CASE("Set test") {
-    Model<> model;
+    Model model;
     model.component<MyCompo>("compo", 2, 3);
     model.connect<Set>(PortAddress("myPort", "compo"), 5, 7);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<MyCompo>("compo").i == 5);
     CHECK(assembly.at<MyCompo>("compo").j == 7);
 }
 
 TEST_CASE("ListUse test") {
-    struct MyComposite : public Composite<int> {};
-    Model<> model;
+    Model model;
     model.component<IntReducer>("user");
-    model.composite<MyComposite>("array");
+    model.composite("array");
     model.component<MyInt>(Address("array", 0), 1);
     model.component<MyInt>(Address("array", 1), 4);
     model.component<MyInt>(Address("array", 2), 12);
     model.component<MyInt>(Address("array", 3), 7);
     model.connect<ListUse<IntInterface>>(PortAddress("ptr", "user"), Address("array", 0), Address("array", 1),
                                          Address("array", 3));
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("user").get() == 12);
 }
 
@@ -505,9 +457,9 @@ TEST_CASE("Attribute port declaration.") {
         int data{0};
         MyUltraBasicCompo() { port("data", &MyUltraBasicCompo::data); }
     };
-    Model<> model;
+    Model model;
     model.component<MyUltraBasicCompo>("compo");
     model.connect<Set>(PortAddress("data", "compo"), 14);
-    Assembly<> assembly(model);
+    Assembly assembly(model);
     CHECK(assembly.at<MyUltraBasicCompo>("compo").data == 14);
 }
