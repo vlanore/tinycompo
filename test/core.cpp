@@ -108,43 +108,17 @@ TEST_CASE("_ComponentBuilder tests.") {
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
 }
+
 /*
 ====================================================================================================
   ~*~ Address ~*~
 ==================================================================================================*/
 TEST_CASE("address tests.") {
     auto a = Address("a", 2, 3, "b");
-    CHECK(a.key.value == "a");
-    CHECK(a.rest.key.value == 2);
-    CHECK(a.rest.rest.key.value == 3);
-    CHECK(a.rest.rest.rest.key.value == "b");
-    CHECK(a.final == false);
-    CHECK(a.rest.rest.rest.final == true);
-}
-
-TEST_CASE("_Key basic tests.") {
-    // actual_type for const char*
-    CHECK((is_same<std::string, typename _Key<const char*>::actual_type>::value));
-
-    // get/set
-    _Key<string> key1("hello");
-    _Key<double> key2(0.23);
-    CHECK(key1.value == "hello");
-    CHECK(key2.value == 0.23);
-    key1.set("hi");
-    key2.set(0.5);
-    CHECK(key1.value == "hi");
-    CHECK(key2.value == 0.5);
-
-    // from_string
-    _Key<const char*> key3(string("hi"));
-    _Key<int> key4("17");
-    CHECK(key3.value == "hi");
-    CHECK(key4.value == 17);
-
-    // to_string
-    CHECK(key4.to_string() == "17");
-    CHECK(key2.to_string() == "0.5");
+    CHECK(a.first() == "a");
+    CHECK(a.rest().first() == "2");
+    CHECK(a.rest().rest().first() == "3");
+    CHECK(a.rest().rest().rest().first() == "b");
 }
 
 /*
@@ -185,10 +159,10 @@ TEST_CASE("model test: components in composites") {
     CHECK(compo0.size() == 2);
     auto& compo0_2 = compo0.get_composite(2);
     CHECK(compo0_2.size() == 1);
-    TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
-    TINYCOMPO_TEST_ERRORS_END("composite does not exist",
-                              "-- Error: composite does not exist. Assembly contains no composite "
-                              "at address badAddress.\n");
+    // TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
+    // TINYCOMPO_TEST_ERRORS_END("composite does not exist",
+    //                           "-- Error: composite does not exist. Assembly contains no composite "
+    //                           "at address badAddress.\n");
 }
 
 TEST_CASE("model test: model copy") {

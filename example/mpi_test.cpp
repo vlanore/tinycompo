@@ -175,10 +175,9 @@ vector<int> interval(int start, int end) {
 
 struct MPIp2p {
     // allows multiple users but single provider!
-    template <class Key>
-    static void _connect(Assembly& assembly, _PortAddress<Key> user, _PortAddress<Key> provider) {
+    static void _connect(Assembly& assembly, PortAddress user, PortAddress provider) {
         MPIAssembly& a = dynamic_cast<MPIAssembly&>(assembly);
-        string nuser = user.address.key.value, nprov = provider.address.key.value;
+        string nuser = user.address.first(), nprov = provider.address.first();
         string puser = user.prop, pprov = provider.prop;
         int rprov = a.resource(nprov)[0];
         if (a.local(nprov)) {

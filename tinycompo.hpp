@@ -223,95 +223,71 @@ struct _ComponentBuilder {
 
 /*
 ====================================================================================================
-  ~*~ _Key ~*~
+  ~*~ key_to_string ~*~
 ==================================================================================================*/
-template <class Type>
-struct _Key {
-    Type value;
-
-    using actual_type = Type;
-    explicit _Key(Type value) : value(value) {}
-    explicit _Key(const std::string& s) {
-        std::stringstream ss(s);
-        ss >> value;
-    }
-    void set(Type new_value) { value = new_value; }
-    std::string to_string() const {
-        std::stringstream ss;
-        ss << value;
-        return ss.str();
-    }
-};
-
-template <>
-struct _Key<std::string> {  // simpler than general case
-    std::string value;
-
-    using actual_type = std::string;
-    explicit _Key(const std::string& value) : value(value) {}
-    void set(std::string new_value) { value = new_value; }
-    std::string to_string() const { return value; }
-};
-
-template <>
-struct _Key<const char*> {  // special case: type needs to actually be string
-    std::string value;
-
-    using actual_type = std::string;
-    explicit _Key(const std::string& value) : value(value) {}
-    void set(std::string new_value) { value = new_value; }
-    std::string to_string() const { return value; }
-};
+template <class Key>
+std::string key_to_string(Key key) {
+    std::stringstream ss;
+    ss << key;
+    return ss.str();
+}
 
 /*
 ====================================================================================================
   ~*~ Addresses ~*~
 ==================================================================================================*/
-template <class Key, class... Keys>
-struct _Address : public _AbstractAddress {
-    std::string to_string() const {
-        std::stringstream ss;
-        ss << key.to_string() << "_" << rest.to_string();
-        return ss.str();
+class Address {
+    std::vector<std::string> keys;
+
+    template <class Arg>
+    void register_keys(Arg arg) {
+        keys.push_back(key_to_string(arg));
     }
 
-    const _Key<Key> key;
-    const bool final{false};
-    const _Address<Keys...> rest;
-
-    _Address(Key key, Keys... keys) : key(key), rest(keys...) {}
-};
-
-template <class Key>
-struct _Address<Key> : public _AbstractAddress {
-    std::string to_string() const {
-        std::stringstream ss;
-        ss << key.to_string();
-        return ss.str();
+    template <class Arg, class... Args>
+    void register_keys(Arg arg, Args... args) {
+        register_keys(arg);
+        register_keys(std::forward<Args>(args)...);
     }
 
-    const _Key<Key> key;
-    const bool final{true};
+  public:
+    template <class... Keys>
+    explicit Address(Keys... keys) {
+        register_keys(std::forward<Keys>(keys)...);
+    }
 
-    explicit _Address(Key key) : key(key) {}
+    explicit Address(const std::vector<std::string>& v) : keys(v) {}
+
+    template <class Key>
+    Address(const Address& address, Key key) : keys(address.keys) {
+        keys.push_back(key_to_string(key));
+    }
+
+    std::string first() const { return keys.front(); }
+
+    Address rest() const {
+        std::vector<std::string> acc;
+        for (unsigned int i = 1; i < keys.size(); i++) {
+            acc.push_back(keys.at(i));
+        }
+        return Address(acc);
+    }
+
+    bool is_composite() const { return keys.size() > 1; }
+
+    std::string to_string() const {
+        return std::accumulate(keys.begin(), keys.end(), std::string(""),
+                               [this](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
+    }
 };
 
-template <class... Keys>
-_Address<Keys...> Address(Keys... keys) {
-    return _Address<Keys...>(keys...);
-}
-
-template <class... Keys>
-struct _PortAddress {
+struct PortAddress {
     std::string prop;
-    _Address<Keys...> address;
-    _PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(Address(std::forward<Keys>(keys)...)) {}
-};
+    Address address;
 
-template <class... Keys>
-_PortAddress<Keys...> PortAddress(std::string prop, Keys... keys) {
-    return _PortAddress<Keys...>(prop, std::forward<Keys>(keys)...);
-}
+    template <class... Keys>
+    PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(std::forward<Keys>(keys)...) {}
+};
 
 /*
 ====================================================================================================
@@ -363,14 +339,14 @@ struct _Node {
         neighbors_from_args(args...);
     }
 
-    template <class... Keys, class... Args>
-    void neighbors_from_args(_Address<Keys...> arg, Args... args) {
+    template <class... Args>
+    void neighbors_from_args(const Address& arg, Args... args) {
         neighbors.push_back(_GraphAddress(arg.to_string()));
         neighbors_from_args(args...);
     }
 
-    template <class... Keys, class... Args>
-    void neighbors_from_args(_PortAddress<Keys...> arg, Args... args) {
+    template <class... Args>
+    void neighbors_from_args(PortAddress arg, Args... args) {
         neighbors.push_back(_GraphAddress(arg.address.to_string(), arg.prop));
         neighbors_from_args(args...);
     }
@@ -468,39 +444,6 @@ class _AssemblyGraph {
   ~*~ Model ~*~
 ==================================================================================================*/
 class Model {
-    template <class T, bool b>
-    struct _Helper {
-        template <class... Args>
-        static void declare(Model& model, Args&&... args) {
-            model.component<T>(std::forward<Args>(args)...);
-        }
-    };
-
-    template <class T>
-    struct _Helper<T, true> {
-        template <class... Args>
-        static void declare(Model& model, Args&&... args) {
-            model.composite<T>(std::forward<Args>(args)...);
-        }
-    };
-
-    template <bool is_composite, class T, class Key1, class... Args>
-    void _route(_Address<Key1> address, Args&&... args) {
-        _Helper<T, is_composite>::declare(*this, address.key.to_string(), std::forward<Args>(args)...);
-    }
-
-    template <bool is_composite, class T, class Key1, class Key2, class... Keys, class... Args>
-    void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        auto compositeIt = composites.find(address.key.to_string());
-        if (compositeIt != composites.end()) {
-            (*compositeIt).second.template _route<is_composite, T>(address.rest, std::forward<Args>(args)...);
-        } else {
-            TinycompoDebug e("composite does not exist");
-            e << "Assembly contains no composite at address " << address.key.to_string() << '.';
-            e.fail();
-        }
-    }
-
     friend class Assembly;  // to access internal data
 
   protected:
@@ -530,30 +473,46 @@ class Model {
         }
     }
 
+    template <class T, class... Args>
+    void component(const Address& address, Args&&... args) {
+        if (!address.is_composite()) {
+            component<T>(address.first(), std::forward<Args>(args)...);
+        } else {
+            get_composite(address.first()).component<T>(address.rest(), std::forward<Args>(args)...);
+        }
+    }
+
     // horrible enable_if to avoid ambiguous call with version below
-    template <class T, class CallKey, class... Args,
-              class = typename std::enable_if<!std::is_base_of<_AbstractAddress, CallKey>::value>::type>
-    void component(CallKey address, Args&&... args) {
+    template <class T, class CallKey, class... Args>
+    // typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type
+    // >
+    void component(CallKey key, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
         }
-        _Key<CallKey> key(address);
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(key.to_string()),
+        std::string key_name = key_to_string(key);
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
 
         representation.components.push_back(_Node());
-        representation.components.back().name = key.to_string();
+        representation.components.back().name = key_name;
         representation.components.back().type = TinycompoDebug::type<T>();
     }
 
-    template <class T, class Key1, class Key2, class... Keys, class... Args>
-    void component(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        _route<false, T>(address, std::forward<Args>(args)...);
+    template <class T = Composite, class... Args>
+    void composite(const Address& address, Args&&... args) {
+        if (!address.is_composite()) {
+            composite<T>(address.first(), std::forward<Args>(args)...);
+        } else {
+            get_composite(address.first()).composite<T>(address.rest(), std::forward<Args...>(args)...);
+        }
     }
 
-    template <class T = Composite, class Key1, class... Args>
-    void composite(Key1 key, Args&&... args) {
-        std::string key_name = _Key<Key1>(key).to_string();
+    template <class T = Composite, class CallKey, class... Args>
+    // typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type
+    // >
+    void composite(CallKey key, Args&&... args) {
+        std::string key_name = key_to_string(key);
 
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
@@ -562,14 +521,9 @@ class Model {
                                           std::forward_as_tuple(composites.at(key_name).get_representation()));
     }
 
-    template <class T = Composite, class... Keys, class... Args>
-    void composite(_Address<Keys...> address, Args&&... args) {
-        _route<true, T>(address, args...);
-    }
-
-    template <class Key1>
-    Model& get_composite(const Key1& address) {
-        std::string key_name = _Key<Key1>(address).to_string();
+    template <class Key>
+    Model& get_composite(const Key& key) {
+        std::string key_name = key_to_string(key);
         auto compositeIt = composites.find(key_name);
         return dynamic_cast<Model&>(compositeIt->second);
     }
@@ -638,9 +592,9 @@ class Assembly : public Component {
 
     std::size_t size() const { return instances.size(); }
 
-    template <class T = Component, class Key1>
-    T& at(Key1 address) const {
-        std::string key_name = _Key<Key1>(address).to_string();
+    template <class T = Component, class Key>
+    T& at(Key key) const {
+        std::string key_name = key_to_string(key);
         try {
             return dynamic_cast<T&>(*(instances.at(key_name).get()));
         } catch (std::out_of_range) {
@@ -653,14 +607,13 @@ class Assembly : public Component {
         }
     }
 
-    template <class T = Component, class Key1>
-    T& at(const _Address<Key1>& address) const {
-        return at<T>(address.key.to_string());
-    }
-
-    template <class T = Component, class Key1, class Key2, class... Keys>
-    T& at(const _Address<Key1, Key2, Keys...>& address) const {
-        return at<Assembly>(address.key.value).template at<T>(address.rest);
+    template <class T = Component>
+    T& at(const Address& address) const {
+        if (!address.is_composite()) {
+            return at<T>(address.first());
+        } else {
+            return at<Assembly>(address.first()).template at<T>(address.rest());
+        }
     }
 
     const Model& model() const { return internal_model; }
@@ -690,8 +643,8 @@ class Assembly : public Component {
   ~*~ Set class ~*~
 ==================================================================================================*/
 struct Set {
-    template <class... Keys, class... Args>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> component, Args... args) {
+    template <class... Args>
+    static void _connect(Assembly& assembly, PortAddress component, Args... args) {
         assembly.at(component.address).set(component.prop, std::forward<Args>(args)...);
     }
 };
@@ -706,8 +659,7 @@ struct Set {
 ==================================================================================================*/
 template <class Interface>
 struct Use {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> provider) {
+    static void _connect(Assembly& assembly, PortAddress user, Address provider) {
         auto& ref_user = assembly.at(user.address);
         auto& ref_provider = assembly.template at<Interface>(provider);
         ref_user.set(user.prop, &ref_provider);
@@ -719,7 +671,7 @@ struct Use {
   ~*~ ListUse class ~*~
 ==================================================================================================*/
 template <class Interface>
-struct ListUse {
+struct ListUse {  // TODO de-templatify
     template <class UserAddress, class ProviderAddress>
     static void _connect(Assembly& assembly, UserAddress user, ProviderAddress provider) {
         Use<Interface>::_connect(assembly, user, provider);
@@ -739,8 +691,7 @@ struct ListUse {
 ==================================================================================================*/
 template <class Interface>
 struct UseProvide {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _PortAddress<Keys2...> provider) {
+    static void _connect(Assembly& assembly, PortAddress user, PortAddress provider) {
         auto& ref_user = assembly.at(user.address);
         auto& ref_provider = assembly.at(provider.address);
         ref_user.set(user.prop, ref_provider.template get<Interface>(provider.prop));
@@ -767,7 +718,7 @@ struct Array : public Composite {
 ==================================================================================================*/
 struct ArraySet {
     template <class... Keys, class Data>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> array, const std::vector<Data>& data) {
+    static void _connect(Assembly& assembly, PortAddress array, const std::vector<Data>& data) {
         auto& arrayRef = assembly.template at<Assembly>(array.address);
         for (int i = 0; i < static_cast<int>(arrayRef.size()); i++) {
             arrayRef.at(i).set(array.prop, data.at(i));
@@ -784,8 +735,7 @@ struct ArraySet {
 ==================================================================================================*/
 template <class Interface>
 struct ArrayOneToOne {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& a, _PortAddress<Keys...> array1, _Address<Keys2...> array2) {
+    static void _connect(Assembly& a, PortAddress array1, Address array2) {
         auto& ref1 = a.at<Assembly>(array1.address);
         auto& ref2 = a.at<Assembly>(array2);
         if (ref1.size() == ref2.size()) {
@@ -812,8 +762,7 @@ parameter for Assembly::connect.
 ==================================================================================================*/
 template <class Interface>
 struct MultiUse {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& a, _PortAddress<Keys...> reducer, _Address<Keys2...> array) {
+    static void _connect(Assembly& a, PortAddress reducer, Address array) {
         auto& ref1 = a.at<Component>(reducer.address);
         auto& ref2 = a.at<Assembly>(array);
         for (int i = 0; i < static_cast<int>(ref2.size()); i++) {
@@ -829,8 +778,7 @@ struct MultiUse {
 ==================================================================================================*/
 template <class Interface>
 struct MultiProvide {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& a, _PortAddress<Keys...> array, _Address<Keys2...> mapper) {
+    static void _connect(Assembly& a, PortAddress array, Address mapper) {
         try {
             for (int i = 0; i < static_cast<int>(a.at<Assembly>(array.address).size()); i++) {
                 a.at(Address(array.address, i)).set(array.prop, &a.at<Interface>(mapper));

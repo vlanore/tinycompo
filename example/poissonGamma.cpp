@@ -31,11 +31,9 @@ using namespace std;
 
 template <class Interface>
 struct UseInComposite {
-    template <class... Keys, class... Keys2, class Arg, class... Args>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> composite, Arg arg,
-                         Args... args) {
-        using Key = typename _Key<Arg>::actual_type;
-        vector<Key> keys{arg, args...};
+    template <class... Args>
+    static void _connect(Assembly& assembly, PortAddress user, Address composite, const std::string& arg, Args... args) {
+        vector<std::string> keys{arg, args...};
         auto& compositeRef = assembly.at<Assembly>(composite);
         auto& userRef = assembly.at(user.address);
         for (auto k : keys) {
@@ -60,7 +58,7 @@ bool isUnclamped(Component& ref) {
 
 // struct UseAllRandomNodes {
 //     template <class... Keys, class... Keys2>
-//     static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+//     static void _connect(Assembly& assembly, PortAddress user, Address model) {
 //         auto& modelRef = assembly.at<Assembly<string>>(model);
 //         auto& userRef = assembly.at(user.address);
 //         for (auto k : modelRef.all_keys()) {
@@ -81,8 +79,7 @@ bool isUnclamped(Component& ref) {
 // };
 
 struct UseAllUnclampedNodes {
-    template <class... Keys, class... Keys2>
-    static void _connect(Assembly& assembly, _PortAddress<Keys...> user, _Address<Keys2...> model) {
+    static void _connect(Assembly& assembly, PortAddress user, Address model) {
         auto& modelRef = assembly.at<Assembly>(model);
         auto& userRef = assembly.at(user.address);
         for (auto k : modelRef.all_keys()) {
