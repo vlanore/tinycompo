@@ -483,9 +483,8 @@ class Model {
     }
 
     // horrible enable_if to avoid ambiguous call with version below
-    template <class T, class CallKey, class... Args>
-    // typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type
-    // >
+    template <class T, class CallKey, class... Args,
+              typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     void component(CallKey key, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
@@ -508,9 +507,8 @@ class Model {
         }
     }
 
-    template <class T = Composite, class CallKey, class... Args>
-    // typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type
-    // >
+    template <class T = Composite, class CallKey, class... Args,
+              typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     void composite(CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
 
