@@ -248,17 +248,15 @@ struct _ComponentBuilder {
   ~*~ _Key ~*~
 ==================================================================================================*/
 template <class Type>
-class _Key {
+struct _Key {
     Type value;
 
-  public:
     using actual_type = Type;
     explicit _Key(Type value) : value(value) {}
     explicit _Key(const std::string& s) {
         std::stringstream ss(s);
         ss >> value;
     }
-    Type get() const { return value; }
     void set(Type new_value) { value = new_value; }
     std::string to_string() const {
         std::stringstream ss;
@@ -268,27 +266,23 @@ class _Key {
 };
 
 template <>
-class _Key<std::string> {  // simpler than general case
+struct _Key<std::string> {  // simpler than general case
     std::string value;
 
-  public:
     using actual_type = std::string;
     explicit _Key(const std::string& value) : value(value) {}
-    std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
-    std::string to_string() const { return get(); }
+    std::string to_string() const { return value; }
 };
 
 template <>
-class _Key<const char*> {  // special case: type needs to actually be string
+struct _Key<const char*> {  // special case: type needs to actually be string
     std::string value;
 
-  public:
     using actual_type = std::string;
     explicit _Key(const std::string& value) : value(value) {}
-    std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
-    std::string to_string() const { return get(); }
+    std::string to_string() const { return value; }
 };
 
 /*
@@ -299,7 +293,7 @@ template <class Key, class... Keys>
 struct _Address : public _AbstractAddress {
     std::string to_string() const {
         std::stringstream ss;
-        ss << key.get() << "_" << rest.to_string();
+        ss << key.to_string() << "_" << rest.to_string();
         return ss.str();
     }
 
@@ -314,7 +308,7 @@ template <class Key>
 struct _Address<Key> : public _AbstractAddress {
     std::string to_string() const {
         std::stringstream ss;
-        ss << key.get();
+        ss << key.to_string();
         return ss.str();
     }
 
@@ -546,7 +540,7 @@ class Model : public _ModelInterface {
 
     template <bool is_composite, class T, class Key1, class... Args>
     void _route(_Address<Key1> address, Args&&... args) {
-        _Helper<T, is_composite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
+        _Helper<T, is_composite>::declare(*this, address.key.to_string(), std::forward<Args>(args)...);
     }
 
     template <bool is_composite, class T, class Key1, class Key2, class... Keys, class... Args>
@@ -557,13 +551,13 @@ class Model : public _ModelInterface {
             if (ptr == nullptr) {
                 TinycompoDebug e("key type does not match composite key type");
                 e << "Key has type " << TinycompoDebug::type<typename _Key<Key2>::actual_type>() << " while composite "
-                  << address.key.get() << " seems to have another key type.";
+                  << address.key.to_string() << " seems to have another key type.";
                 e.fail();
             }
             ptr->template _route<is_composite, T>(address.rest, std::forward<Args>(args)...);
         } else {
             TinycompoDebug e("composite does not exist");
-            e << "Assembly contains no composite at address " << address.key.get() << '.';
+            e << "Assembly contains no composite at address " << address.key.to_string() << '.';
             e.fail();
         }
     }
@@ -619,9 +613,9 @@ class Model : public _ModelInterface {
         _route<false, T>(address, std::forward<Args>(args)...);
     }
 
-    template <class T, class... Args>
-    void composite(Key key, Args&&... args) {
-        std::string key_name = _Key<Key>(key).to_string();
+    template <class T, class Key1, class... Args>
+    void composite(Key1 key, Args&&... args) {
+        std::string key_name = _Key<Key1>(key).to_string();
 
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
@@ -636,9 +630,9 @@ class Model : public _ModelInterface {
         _route<true, T>(address, args...);
     }
 
-    template <class CompositeType>
-    CompositeType& get_composite(const Key& address) {
-        std::string key_name = _Key<Key>(address).to_string();
+    template <class CompositeType, class Key1>
+    CompositeType& get_composite(const Key1& address) {
+        std::string key_name = _Key<Key1>(address).to_string();
         auto compositeIt = composites.find(key_name);
         return dynamic_cast<CompositeType&>(*compositeIt->second.get());
     }
@@ -711,9 +705,9 @@ class Assembly : public Component {
 
     std::size_t size() const { return instances.size(); }
 
-    template <class T = Component>
-    T& at(Key address) const {
-        std::string key_name = _Key<Key>(address).to_string();
+    template <class T = Component, class Key1>
+    T& at(Key1 address) const {
+        std::string key_name = _Key<Key1>(address).to_string();
         try {
             return dynamic_cast<T&>(*(instances.at(key_name).get()));
         } catch (std::out_of_range) {
@@ -728,12 +722,12 @@ class Assembly : public Component {
 
     template <class T = Component, class Key1>
     T& at(const _Address<Key1>& address) const {
-        return at<T>(address.key.get());
+        return at<T>(address.key.to_string());
     }
 
     template <class T = Component, class Key1, class Key2, class... Keys>
     T& at(const _Address<Key1, Key2, Keys...>& address) const {
-        return at<Assembly<typename _Key<Key2>::actual_type>>(address.key.get()).template at<T>(address.rest);
+        return at<Assembly<typename _Key<Key2>::actual_type>>(address.key.value).template at<T>(address.rest);
     }
 
     Model<Key>& model() const { return internal_model; }
@@ -744,8 +738,8 @@ class Assembly : public Component {
         }
     }
 
-    std::set<Key> all_keys() const {
-        std::set<Key> result;
+    std::set<std::string> all_keys() const {
+        std::set<std::string> result;
         for (auto& c : instances) {
             result.insert(c.first);
         }

@@ -144,10 +144,10 @@ TEST_CASE("_Operation tests.") {
 ==================================================================================================*/
 TEST_CASE("address tests.") {
     auto a = Address("a", 2, 3, "b");
-    CHECK(a.key.get() == "a");
-    CHECK(a.rest.key.get() == 2);
-    CHECK(a.rest.rest.key.get() == 3);
-    CHECK(a.rest.rest.rest.key.get() == "b");
+    CHECK(a.key.value == "a");
+    CHECK(a.rest.key.value == 2);
+    CHECK(a.rest.rest.key.value == 3);
+    CHECK(a.rest.rest.rest.key.value == "b");
     CHECK(a.final == false);
     CHECK(a.rest.rest.rest.final == true);
 }
@@ -159,18 +159,18 @@ TEST_CASE("_Key basic tests.") {
     // get/set
     _Key<string> key1("hello");
     _Key<double> key2(0.23);
-    CHECK(key1.get() == "hello");
-    CHECK(key2.get() == 0.23);
+    CHECK(key1.value == "hello");
+    CHECK(key2.value == 0.23);
     key1.set("hi");
     key2.set(0.5);
-    CHECK(key1.get() == "hi");
-    CHECK(key2.get() == 0.5);
+    CHECK(key1.value == "hi");
+    CHECK(key2.value == 0.5);
 
     // from_string
     _Key<const char*> key3(string("hi"));
     _Key<int> key4("17");
-    CHECK(key3.get() == "hi");
-    CHECK(key4.get() == 17);
+    CHECK(key3.value == "hi");
+    CHECK(key4.value == 17);
 
     // to_string
     CHECK(key4.to_string() == "17");
