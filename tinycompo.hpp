@@ -51,7 +51,6 @@ license and that you accept its terms.*/
 template <class Key>
 class Model;
 
-template <class>
 class _AssemblyGraph;
 
 template <class>
@@ -402,7 +401,6 @@ class _GraphAddress {
     std::string address;
     std::string port;
 
-    template <class>
     friend class _AssemblyGraph;
 
   public:
@@ -446,11 +444,10 @@ struct _Node {
     }
 };
 
-template <class Key>
 class _AssemblyGraph : public _AssemblyGraphInterface {
-    std::vector<_Node<Key>> components;
-    std::vector<_Node<Key>> connectors;
-    std::map<Key, _AssemblyGraphInterface&> composites;
+    std::vector<_Node<std::string>> components;
+    std::vector<_Node<std::string>> connectors;
+    std::map<std::string, _AssemblyGraphInterface&> composites;
 
     template <class>
     friend class Model;
@@ -462,9 +459,8 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
 
     bool is_composite(const std::string& address) const override {
         return std::accumulate(composites.begin(), composites.end(), false,
-                               [this, address](bool acc, std::pair<Key, _AssemblyGraphInterface&> ref) {
-                                   return acc || ref.second.is_composite(strip(address)) ||
-                                          (_Key<Key>(ref.first).to_string() == address);
+                               [this, address](bool acc, std::pair<std::string, _AssemblyGraphInterface&> ref) {
+                                   return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
                                });
     }
 
@@ -492,7 +488,7 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
             i++;
         }
         for (auto& c : composites) {
-            c.second.to_dot(tabs + 1, prefix + _Key<Key>(c.first).to_string(), os);
+            c.second.to_dot(tabs + 1, prefix + c.first, os);
         }
         os << std::string(tabs, '\t') << "}\n";
     }
@@ -519,7 +515,7 @@ class _AssemblyGraph : public _AssemblyGraphInterface {
         }
         if (depth > 0) {
             for (auto& c : composites) {  // names from composites until a certain depth
-                auto subresult = c.second.all_component_names(depth - 1, prefix + _Key<Key>(c.first).to_string());
+                auto subresult = c.second.all_component_names(depth - 1, prefix + c.first);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
@@ -584,7 +580,7 @@ class Model : public _ModelInterface {
     std::vector<_Operation<Assembly<Key>, Key>> operations;
     std::map<std::string, _CompositeBuilder> composites;
 
-    _AssemblyGraph<std::string> representation;
+    _AssemblyGraph representation;
 
   public:
     using KeyType = Key;
@@ -652,7 +648,7 @@ class Model : public _ModelInterface {
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
 
-        representation.connectors.push_back(_Node<Key>());
+        representation.connectors.push_back(_Node<std::string>());
         representation.connectors.back().type = TinycompoDebug::type<C>();
         representation.connectors.back().neighbors_from_args(args...);
     }
