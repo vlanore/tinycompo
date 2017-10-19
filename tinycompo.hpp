@@ -409,7 +409,6 @@ class _GraphAddress {
     void print(std::ostream& os = std::cout) const { os << "->" << address << ((port == "") ? "" : ("." + port)); }
 };
 
-template <class Key>
 struct _Node {
     std::string name;
     std::string type;
@@ -445,8 +444,8 @@ struct _Node {
 };
 
 class _AssemblyGraph : public _AssemblyGraphInterface {
-    std::vector<_Node<std::string>> components;
-    std::vector<_Node<std::string>> connectors;
+    std::vector<_Node> components;
+    std::vector<_Node> connectors;
     std::map<std::string, _AssemblyGraphInterface&> composites;
 
     template <class>
@@ -610,7 +609,7 @@ class Model : public _ModelInterface {
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key.to_string()),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
 
-        representation.components.push_back(_Node<std::string>());
+        representation.components.push_back(_Node());
         representation.components.back().name = key.to_string();
         representation.components.back().type = TinycompoDebug::type<T>();
     }
@@ -648,7 +647,7 @@ class Model : public _ModelInterface {
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
 
-        representation.connectors.push_back(_Node<std::string>());
+        representation.connectors.push_back(_Node());
         representation.connectors.back().type = TinycompoDebug::type<C>();
         representation.connectors.back().neighbors_from_args(args...);
     }
