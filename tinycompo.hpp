@@ -261,7 +261,7 @@ class _Key {
     }
     Type get() const { return value; }
     void set(Type new_value) { value = new_value; }
-    std::string to_string() {
+    std::string to_string() const {
         std::stringstream ss;
         ss << value;
         return ss.str();
@@ -277,7 +277,7 @@ class _Key<std::string> {  // simpler than general case
     explicit _Key(const std::string& value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
-    std::string to_string() { return get(); }
+    std::string to_string() const { return get(); }
 };
 
 template <>
@@ -289,7 +289,7 @@ class _Key<const char*> {  // special case: type needs to actually be string
     explicit _Key(const std::string& value) : value(value) {}
     std::string get() const { return value; }
     void set(std::string new_value) { value = new_value; }
-    std::string to_string() { return get(); }
+    std::string to_string() const { return get(); }
 };
 
 /*
@@ -549,15 +549,6 @@ class Model : public _ModelInterface {
         }
     };
 
-    std::string replace_string(std::string subject, const std::string& search, const std::string& replace) {
-        size_t pos = 0;
-        while ((pos = subject.find(search, pos)) != std::string::npos) {
-            subject.replace(pos, search.length(), replace);
-            pos += replace.length();
-        }
-        return subject;
-    }
-
     template <bool is_composite, class T, class Key1, class... Args>
     void _route(_Address<Key1> address, Args&&... args) {
         _Helper<T, is_composite>::declare(*this, address.key.get(), std::forward<Args>(args)...);
@@ -565,7 +556,7 @@ class Model : public _ModelInterface {
 
     template <bool is_composite, class T, class Key1, class Key2, class... Keys, class... Args>
     void _route(_Address<Key1, Key2, Keys...> address, Args&&... args) {
-        auto compositeIt = composites.find(address.key.get());
+        auto compositeIt = composites.find(address.key.to_string());
         if (compositeIt != composites.end()) {
             auto ptr = dynamic_cast<Model<typename _Key<Key2>::actual_type>*>(compositeIt->second.get());
             if (ptr == nullptr) {
@@ -589,11 +580,11 @@ class Model : public _ModelInterface {
     friend class Model;  // to call _route
 
   protected:
-    std::map<Key, _ComponentBuilder> components;
+    std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation<Assembly<Key>, Key>> operations;
-    std::map<Key, _CompositeBuilder> composites;
+    std::map<std::string, _CompositeBuilder> composites;
 
-    _AssemblyGraph<Key> representation;
+    _AssemblyGraph<std::string> representation;
 
   public:
     using KeyType = Key;
@@ -620,10 +611,10 @@ class Model : public _ModelInterface {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
         }
         _Key<CallKey> key(address);
-        components.emplace(std::piecewise_construct, std::forward_as_tuple(key.get()),
+        components.emplace(std::piecewise_construct, std::forward_as_tuple(key.to_string()),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
 
-        representation.components.push_back(_Node<Key>());
+        representation.components.push_back(_Node<std::string>());
         representation.components.back().name = key.to_string();
         representation.components.back().type = TinycompoDebug::type<T>();
     }
@@ -635,12 +626,14 @@ class Model : public _ModelInterface {
 
     template <class T, class... Args>
     void composite(Key key, Args&&... args) {
-        composites.emplace(std::piecewise_construct, std::forward_as_tuple(key),
+        std::string key_name = _Key<Key>(key).to_string();
+
+        composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
 
         representation.composites.emplace(
-            std::piecewise_construct, std::forward_as_tuple(key),
-            std::forward_as_tuple(dynamic_cast<_ModelInterface*>(composites.at(key).get())->get_representation()));
+            std::piecewise_construct, std::forward_as_tuple(key_name),
+            std::forward_as_tuple(dynamic_cast<_ModelInterface*>(composites.at(key_name).get())->get_representation()));
     }
 
     template <class T, class... Keys, class... Args>
@@ -650,7 +643,8 @@ class Model : public _ModelInterface {
 
     template <class CompositeType>
     CompositeType& get_composite(const Key& address) {
-        auto compositeIt = composites.find(address);
+        std::string key_name = _Key<Key>(address).to_string();
+        auto compositeIt = composites.find(key_name);
         return dynamic_cast<CompositeType&>(*compositeIt->second.get());
     }
 
@@ -689,7 +683,7 @@ class Model : public _ModelInterface {
 template <class Key = std::string>
 class Assembly : public Component {
   protected:  // used in mpi example
-    std::map<Key, std::unique_ptr<Component>> instances;
+    std::map<std::string, std::unique_ptr<Component>> instances;
     Model<Key> internal_model;
 
   public:
@@ -724,11 +718,12 @@ class Assembly : public Component {
 
     template <class T = Component>
     T& at(Key address) const {
+        std::string key_name = _Key<Key>(address).to_string();
         try {
-            return dynamic_cast<T&>(*(instances.at(address).get()));
+            return dynamic_cast<T&>(*(instances.at(key_name).get()));
         } catch (std::out_of_range) {
             TinycompoDebug e{"<Assembly::at> Trying to access incorrect address"};
-            e << "Address " << address << " does not exist. Existing addresses are:\n";
+            e << "Address " << key_name << " does not exist. Existing addresses are:\n";
             for (auto& key : instances) {
                 e << "  * " << key.first << "\n";
             }

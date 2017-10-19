@@ -8,14 +8,14 @@ all: test_bin example/text_process_bin example/myarray_bin example/poissonGamma_
 mpi: example/mpi_test_mpibin
 
 test_bin: test.cpp tinycompo.hpp $(TEST_FILES)
-	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) -Wall -Wextra
+	$(CXX) $< -o $@ --std=gnu++11 $(TINYCOMPO_FLAGS) -Wall -Wextra -Wfatal-errors
 
 test: test_bin
 	rm -f *.profraw *.gcov *.gcda
 	./$<
 
 %_bin: %.cpp tinycompo.hpp
-	$(CXX) $< -o $@ -I. --std=gnu++11 -Wall -Wextra
+	$(CXX) $< -o $@ -I. --std=gnu++11 -Wall -Wextra -Wfatal-errors
 
 %_mpibin: %.cpp tinycompo.hpp
 	mpic++ $< -o $@ -I. --std=gnu++11 -Wall -Wextra
