@@ -32,19 +32,15 @@ using namespace std;
 template <class Interface>
 struct UseInComposite {
     template <class... Args>
-    static void _connect(Assembly& assembly, PortAddress user, Address composite, const std::string& arg, Args... args) {
-        vector<std::string> keys{arg, args...};
-        auto& compositeRef = assembly.at<Assembly>(composite);
-        auto& userRef = assembly.at(user.address);
-        for (auto k : keys) {
-            auto& providerRef = compositeRef.at(k);
-            auto providerArrayPtr = dynamic_cast<Assembly*>(&providerRef);
-            if (providerArrayPtr != nullptr) {  // component is an array
-                for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
-                    userRef.set(user.prop, &providerArrayPtr->at<Interface>(i));
+    static void _connect(Assembly& assembly, PortAddress user, Address composite, Args... args) {
+        for (auto k : vector<string>{args...}) {
+            Address provider(composite, k);
+            if (assembly.is_composite(provider)) {
+                for (unsigned i = 0; i < assembly.at<Assembly>(provider).size(); i++) {
+                    assembly.at(user.address).set(user.prop, &assembly.at<Interface>(Address(provider, i)));
                 }
             } else {
-                userRef.set(user.prop, dynamic_cast<Interface*>(&providerRef));
+                assembly.at(user.address).set(user.prop, &assembly.at<Interface>(provider));
             }
         }
     }
@@ -55,28 +51,6 @@ bool isUnclamped(Component& ref) {
     auto refRandom = dynamic_cast<RandomNode*>(&ref);
     return (refRandom != nullptr) && (!refRandom->is_clamped);
 }
-
-// struct UseAllRandomNodes {
-//     template <class... Keys, class... Keys2>
-//     static void _connect(Assembly& assembly, PortAddress user, Address model) {
-//         auto& modelRef = assembly.at<Assembly<string>>(model);
-//         auto& userRef = assembly.at(user.address);
-//         for (auto k : modelRef.all_keys()) {
-//             cerr << "AllRandom : " << k << '\n';
-//             auto& providerRef = modelRef.at(k);
-//             auto providerArrayPtr = dynamic_cast<Assembly<int>*>(&providerRef);
-//             if (providerArrayPtr != nullptr && isRandomNode(providerArrayPtr->at(0))) {
-//                 cerr << "array\n";
-//                 for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
-//                     userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
-//                 }
-//             } else if (isRandomNode(providerRef)){
-//                 userRef.set(user.prop, dynamic_cast<RandomNode*>(&providerRef));
-//             }
-//             cerr << "Done.\n";
-//         }
-//     }
-// };
 
 struct UseAllUnclampedNodes {
     static void _connect(Assembly& assembly, PortAddress user, Address model) {
@@ -323,6 +297,7 @@ int main() {
 
     Model(_Type<PoissonGamma>(), 3).dot_to_file("tmp_pg.dot");
     model.dot_to_file();
+    model.print_representation();
 
     // instantiate everything!
     Assembly assembly(model);

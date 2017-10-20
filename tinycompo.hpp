@@ -590,6 +590,11 @@ class Assembly : public Component {
 
     std::size_t size() const { return instances.size(); }
 
+    bool is_composite(const Address& address) const {
+        auto ptr = dynamic_cast<Assembly*>(&at(address));
+        return ptr != nullptr;
+    }
+
     template <class T = Component, class Key>
     T& at(Key key) const {
         std::string key_name = key_to_string(key);
