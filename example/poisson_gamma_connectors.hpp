@@ -34,41 +34,43 @@ license and that you accept its terms.*/
 using namespace std;
 
 template <class Interface>
-struct UseInComposite {
-    template <class... Args>
-    static void _connect(Assembly& assembly, PortAddress user, Address composite, Args... args) {
-        for (auto k : vector<string>{args...}) {
-            Address provider(composite, k);
-            if (assembly.is_composite(provider)) {
-                for (unsigned i = 0; i < assembly.at<Assembly>(provider).size(); i++) {
-                    assembly.at(user.address).set(user.prop, &assembly.at<Interface>(Address(provider, i)));
-                }
-            } else {
-                assembly.at(user.address).set(user.prop, &assembly.at<Interface>(provider));
-            }
-        }
+struct AdaptiveUse {
+    static void _connect(Assembly& assembly, PortAddress user, Address provider) {
+        bool user_is_array = assembly.is_composite(user.address);
+        bool provider_is_array = assembly.is_composite(provider);
+        if (!user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
+            Use<Interface>::_connect(assembly, user, provider);
+        } else if (!user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
+            MultiUse<Interface>::_connect(assembly, user, provider);
+        } else if (user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
+            MultiProvide<Interface>::_connect(assembly, user, provider);
+        } else if (user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
+            ArrayOneToOne<Interface>::_connect(assembly, user, provider);
+        }  // else do nothing (TODO: maybe add a warning?)
     }
 };
 
-bool isRandomNode(Component& ref) { return dynamic_cast<RandomNode*>(&ref) != nullptr; }
-bool isUnclamped(Component& ref) {
-    auto refRandom = dynamic_cast<RandomNode*>(&ref);
-    return (refRandom != nullptr) && (!refRandom->is_clamped);
-}
+// template <class Interface>
+// struct UseInComposite {
+//     template <class... Args>
+//     static void _connect(Assembly& assembly, PortAddress user, Address composite, Args... args) {
+//         for (auto k : vector<string>{args...}) {
+//             Address provider(composite, k);
+//             AdaptiveUse<Interface>::_connect(assembly, user, provider);
+//         }
+//     }
+// };
 
 struct UseAllUnclampedNodes {
     static void _connect(Assembly& assembly, PortAddress user, Address model) {
-        auto& modelRef = assembly.at<Assembly>(model);
-        auto& userRef = assembly.at(user.address);
-        for (auto k : modelRef.all_keys()) {
-            auto& providerRef = modelRef.at(k);
-            auto providerArrayPtr = dynamic_cast<Assembly*>(&providerRef);
-            if (providerArrayPtr != nullptr && isUnclamped(providerArrayPtr->at(0))) {
-                for (unsigned int i = 0; i < providerArrayPtr->size(); i++) {
-                    userRef.set(user.prop, &providerArrayPtr->at<RandomNode>(i));
-                }
-            } else if (isUnclamped(providerRef)) {
-                userRef.set(user.prop, dynamic_cast<RandomNode*>(&providerRef));
+        for (auto n : assembly.at<Assembly>(model).get_model().get_representation().all_component_names(1)) {
+            Address provider(model, n);
+            bool is_random_node = assembly.derives_from<RandomNode>(provider);
+            bool is_not_clamped = is_random_node and !assembly.at<RandomNode>(provider).is_clamped;
+            cout << n << " " << is_random_node << " " << is_not_clamped << endl;
+            if (is_not_clamped) {
+                cout << n << " is not clamped\n";
+                AdaptiveUse<RandomNode>::_connect(assembly, user, provider);
             }
         }
     }
@@ -117,23 +119,6 @@ void configMoves(Model& model, const string& modelName, const string& schedName,
         }
     }
 }
-
-template <class Interface>
-struct AdaptiveUse {
-    static void _connect(Assembly& assembly, PortAddress user, Address provider) {
-        bool user_is_array = assembly.derives_from<Assembly>(user.address);
-        bool provider_is_array = assembly.derives_from<Assembly>(provider);
-        if (!user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
-            Use<Interface>::_connect(assembly, user, provider);
-        } else if (!user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
-            MultiUse<Interface>::_connect(assembly, user, provider);
-        } else if (user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
-            MultiProvide<Interface>::_connect(assembly, user, provider);
-        } else if (user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
-            ArrayOneToOne<Interface>::_connect(assembly, user, provider);
-        }
-    }
-};
 
 template <class Interface>
 struct UseTopoSortInComposite {

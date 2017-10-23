@@ -121,6 +121,13 @@ TEST_CASE("address tests.") {
     CHECK(a.rest().rest().rest().first() == "b");
 }
 
+TEST_CASE("Address: builder from string") {
+    Address a = address_from_composite_string("Omega_3_1");
+    CHECK(a.first() == "Omega");
+    CHECK(a.rest().first() == "3");
+    CHECK(a.rest().rest().first() == "1");
+}
+
 /*
 ====================================================================================================
   ~*~ Graph representation ~*~
