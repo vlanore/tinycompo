@@ -25,11 +25,16 @@ more generally, to use and operate it in the same conditions as regards security
 The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
 license and that you accept its terms.*/
 
+#ifndef GRAPHICAL_MODEL
+#define GRAPHICAL_MODEL
+
 #include <algorithm>
 #include <fstream>
 #include <functional>
 #include <random>
 #include "tinycompo.hpp"
+
+using namespace std;
 
 int factorial(int n) {
     if (n < 2) {
@@ -266,39 +271,8 @@ using Product = BinaryOperation<std::multiplies<double>>;
 
 /*
 ===================================================================================================
-  Moves and MCMC-related things
+  Sampling and RS
 =================================================================================================*/
-class SimpleMove : public Go {
-    RandomNode *target{nullptr};
-
-  public:
-    SimpleMove() { port("target", &SimpleMove::target); }
-
-    std::string _debug() const override { return "SimpleMove"; }
-    void go() override { target->sample(); }
-};
-
-class Scheduler : public Go {
-    std::vector<SimpleMove *> moves;
-    void registerMove(SimpleMove *ptr) { moves.push_back(ptr); }
-
-  public:
-    Scheduler() { port("register", &Scheduler::registerMove); }
-
-    void go() override {
-        std::cout << "\n-- Scheduler started!\n"
-                  << "-- Sampling everything!\n";
-        std::for_each(moves.begin(), moves.end(), [](SimpleMove *m) { m->go(); });
-        std::cout << "-- Done.\n\n";
-    }
-
-    std::string _debug() const override {
-        std::stringstream ss;
-        ss << "Scheduler[" << moves.size() << "]";
-        return ss.str();
-    }
-};
-
 class MultiSample : public Sampler {
     std::vector<RandomNode *> nodes;
     void registerNode(RandomNode *ptr) { nodes.push_back(ptr); }
@@ -357,3 +331,117 @@ class RejectionSampling : public Go {
         std::cout << "-- Done. Accepted " << accepted << " points.\n\n";
     }
 };
+
+/*
+===================================================================================================
+  MCMC-related things
+=================================================================================================*/
+struct Uniform {
+    static double move(RandomNode *v, double = 1.0) {
+        v->setValue(uniform(generator));
+        return 0.;
+    }
+};
+
+struct Scaling {
+    static double move(RandomNode *v, double tuning = 1.0) {
+        auto multiplier = tuning * (uniform(generator) - 0.5);
+        // cout << multiplier << '\n';
+        v->setValue(v->getValue() * exp(multiplier));
+        return multiplier;
+    }
+};
+
+template <class Move>
+class MHMove : public Go {
+    double tuning;
+    int ntot{0}, nacc{0}, nrep{0};
+    RandomNode *node{nullptr};
+    vector<RandomNode *> downward;
+    void addDownward(RandomNode *ptr) { downward.push_back(ptr); }
+
+  public:
+    explicit MHMove(double tuning = 1.0, int nrep = 1) : tuning(tuning), nrep(nrep) {
+        port("node", &MHMove::node);
+        port("downward", &MHMove::addDownward);
+    }
+
+    void go() override {
+        for (int i = 0; i < nrep; i++) {
+            double backup = node->getValue();
+
+            auto gather = [](const vector<RandomNode *> &v) {
+                return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode *b) { return acc + b->log_density(); });
+            };
+            double logprob_before = gather(downward) + node->log_density();
+            double hastings_ratio = Move::move(node, tuning);
+            double logprob_after = gather(downward) + node->log_density();
+
+            bool accepted = exp(logprob_after - logprob_before + hastings_ratio) > uniform(generator);
+            if (!accepted) {
+                node->setValue(backup);
+            } else {
+                nacc++;
+            }
+            ntot++;
+        }
+    }
+
+    string _debug() const override { return sf("MHMove[%.1f\%]", nacc * 100. / ntot); }
+};
+
+class MoveScheduler : public Component {
+    vector<Go *> move{};
+    void addMove(Go *ptr) { move.push_back(ptr); }
+
+  public:
+    MoveScheduler() {
+        port("go", &MoveScheduler::go);
+        port("move", &MoveScheduler::addMove);
+    }
+
+    void go() {
+        for (auto ptr : move) {
+            ptr->go();
+        }
+    }
+};
+
+class MCMCEngine : public Go {
+    MoveScheduler *scheduler{nullptr};
+    Sampler *sampler{nullptr};
+    DataStream *output{nullptr};
+    int iterations;
+
+    vector<Real *> variables_of_interest{};
+    void addVarOfInterest(Real *val) { variables_of_interest.push_back(val); }
+
+  public:
+    explicit MCMCEngine(int iterations = 10) : iterations(iterations) {
+        port("variables", &MCMCEngine::addVarOfInterest);
+        port("scheduler", &MCMCEngine::scheduler);
+        port("sampler", &MCMCEngine::sampler);
+        port("iterations", &MCMCEngine::iterations);
+        port("output", &MCMCEngine::output);
+    }
+
+    void go() {
+        cout << "-- Starting MCMC chain!\n";
+        sampler->go();
+        sampler->go();
+        string header = accumulate(variables_of_interest.begin(), variables_of_interest.end(), string("#"),
+                                   [](string acc, Real *v) { return acc + v->get_name() + "\t"; });
+        output->header(header);
+        for (int i = 0; i < iterations; i++) {
+            scheduler->go();
+            vector<double> vect;
+            for (auto v : variables_of_interest) {
+                vect.push_back(v->getValue());
+            }
+            output->dataLine(vect);
+        }
+        cout << "-- Done. Wrote " << iterations << " lines in trace file.\n";
+    }
+};
+
+#endif
