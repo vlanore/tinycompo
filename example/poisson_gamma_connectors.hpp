@@ -118,4 +118,73 @@ void configMoves(Model& model, const string& modelName, const string& schedName,
     }
 }
 
+template <class Interface>
+struct AdaptiveUse {
+    static void _connect(Assembly& assembly, PortAddress user, Address provider) {
+        bool user_is_array = assembly.derives_from<Assembly>(user.address);
+        bool provider_is_array = assembly.derives_from<Assembly>(provider);
+        if (!user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
+            Use<Interface>::_connect(assembly, user, provider);
+        } else if (!user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
+            MultiUse<Interface>::_connect(assembly, user, provider);
+        } else if (user_is_array and !provider_is_array and assembly.derives_from<Interface>(provider)) {
+            MultiProvide<Interface>::_connect(assembly, user, provider);
+        } else if (user_is_array and provider_is_array and assembly.derives_from<Interface>(Address(provider, 0))) {
+            ArrayOneToOne<Interface>::_connect(assembly, user, provider);
+        }
+    }
+};
+
+template <class Interface>
+struct UseTopoSortInComposite {
+    static void _connect(Assembly& assembly, PortAddress user, Address composite) {
+        // get graphical representation object
+        const _AssemblyGraph graph = assembly.at<Assembly>(composite).get_model().get_representation();
+
+        // gather edges and node names
+        set<string> nodes;
+        multimap<string, string> edges;
+        for (auto c : graph.connectors) {
+            // if connector is of the form (PortAddress, Address)
+            if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
+                edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
+                nodes.insert(c.neighbors[0].address);
+                nodes.insert(c.neighbors[1].address);
+            }
+        }
+
+        // gather nodes without predecessors
+        set<string> starting_nodes;
+        auto gather_nodes = [&]() {
+            for (auto n : nodes)
+                if (edges.count(n) == 0) starting_nodes.insert(n);
+        };
+        gather_nodes();
+
+        // do the topological sorting!
+        auto erase_edges_from = [&](string name) {
+            for (auto it = edges.begin(); it != edges.end();) {
+                if ((*it).second == name)
+                    it = edges.erase(it);
+                else
+                    ++it;
+            }
+        };
+        vector<string> sorted;
+        while (starting_nodes.size() != 0) {
+            string node = *starting_nodes.begin();
+            sorted.push_back(node);
+            starting_nodes.erase(node);
+            nodes.erase(node);
+            erase_edges_from(node);
+            gather_nodes();
+        }
+
+        // connect!
+        for (auto n : sorted) {
+            AdaptiveUse<Interface>::_connect(assembly, user, Address(composite, n));
+        }
+    }
+};
+
 #endif

@@ -315,13 +315,12 @@ struct Composite {
   Small classes implementing a simple easily explorable graph representation for TinyCompo component
   assemblies.
 ==================================================================================================*/
-class _GraphAddress {
+struct _GraphAddress {
     std::string address;
     std::string port;
 
     friend class _AssemblyGraph;
 
-  public:
     _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
 
     void print(std::ostream& os = std::cout) const { os << "->" << address << ((port == "") ? "" : ("." + port)); }
@@ -362,6 +361,7 @@ struct _Node {
 };
 
 class _AssemblyGraph {
+  public:  // FIXME should be private
     std::vector<_Node> components;
     std::vector<_Node> connectors;
     std::map<std::string, _AssemblyGraph&> composites;
@@ -590,10 +590,13 @@ class Assembly : public Component {
 
     std::size_t size() const { return instances.size(); }
 
-    bool is_composite(const Address& address) const {
-        auto ptr = dynamic_cast<Assembly*>(&at(address));
+    template <class C>
+    bool derives_from(const Address& address) const {
+        auto ptr = dynamic_cast<C*>(&at(address));
         return ptr != nullptr;
     }
+
+    bool is_composite(const Address& address) const { return derives_from<Assembly>(address); }
 
     template <class T = Component, class Key>
     T& at(Key key) const {
@@ -619,7 +622,7 @@ class Assembly : public Component {
         }
     }
 
-    const Model& model() const { return internal_model; }
+    const Model& get_model() const { return internal_model; }  // TODO write a test that uses it
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {

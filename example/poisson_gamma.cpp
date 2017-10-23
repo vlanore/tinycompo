@@ -94,15 +94,18 @@ int main() {
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
     model.component<MultiSample>("Sampler2");
-    model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Sigma", "Theta", "Omega",
-                                              "X");
+    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"));
+
+    // model.connect<UseInComposite<RandomNode>>(PortAddress("register", "Sampler2"), Address("PG"), "Sigma", "Theta",
+    // "Omega",
+    //                                           "X");
 
     model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
 
     Model(_Type<PoissonGamma>(), 3).dot_to_file("tmp_pg.dot");
     model.dot_to_file();
-    model.print_representation();
+    // model.print_representation();
 
     // instantiate everything!
     Assembly assembly(model);
@@ -110,5 +113,5 @@ int main() {
     assembly.call("MCMC", "go");
     assembly.call("RS", "go");
 
-    assembly.print_all();
+    // assembly.print_all();
 }
