@@ -64,12 +64,10 @@ struct AdaptiveUse {
 struct UseAllUnclampedNodes {
     static void _connect(Assembly& assembly, PortAddress user, Address model) {
         for (auto n : assembly.at<Assembly>(model).get_model().get_representation().all_component_names(1)) {
-            Address provider(model, n);
+            Address provider(model, address_from_composite_string(n));
             bool is_random_node = assembly.derives_from<RandomNode>(provider);
             bool is_not_clamped = is_random_node and !assembly.at<RandomNode>(provider).is_clamped;
-            cout << n << " " << is_random_node << " " << is_not_clamped << endl;
             if (is_not_clamped) {
-                cout << n << " is not clamped\n";
                 AdaptiveUse<RandomNode>::_connect(assembly, user, provider);
             }
         }

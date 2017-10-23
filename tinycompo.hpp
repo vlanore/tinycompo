@@ -258,6 +258,10 @@ class Address {
 
     explicit Address(const std::vector<std::string>& v) : keys(v) {}
 
+    Address(const Address& a1, const Address& a2) : keys(a1.keys) {
+        keys.insert(keys.end(), a2.keys.begin(), a2.keys.end());
+    }
+
     template <class Key>
     Address(const Address& address, Key key) : keys(address.keys) {
         keys.push_back(key_to_string(key));
