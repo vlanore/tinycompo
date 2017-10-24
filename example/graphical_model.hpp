@@ -328,7 +328,7 @@ class RejectionSampling : public Go {
                 output->dataLine(sampler->getSample());
             }
         }
-        std::cout << "-- Done. Accepted " << accepted << " points.\n\n";
+        std::cout << "-- Done. Accepted " << accepted << " points.\n";
     }
 };
 

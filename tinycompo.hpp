@@ -509,18 +509,19 @@ class Model {
     }
 
     template <class T, class... Args>
-    void component(const Address& address, Args&&... args) {
+    Address component(const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             component<T>(address.first(), std::forward<Args>(args)...);
         } else {
             get_composite(address.first()).component<T>(address.rest(), std::forward<Args>(args)...);
         }
+        return address;
     }
 
     // horrible enable_if to avoid ambiguous call with version below
     template <class T, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    void component(CallKey key, Args&&... args) {
+    Address component(CallKey key, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
             TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
         }
@@ -531,20 +532,22 @@ class Model {
         representation.components.push_back(_Node());
         representation.components.back().name = key_name;
         representation.components.back().type = TinycompoDebug::type<T>();
+        return Address(key);
     }
 
     template <class T = Composite, class... Args>
-    void composite(const Address& address, Args&&... args) {
+    Address composite(const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             composite<T>(address.first(), std::forward<Args>(args)...);
         } else {
             get_composite(address.first()).composite<T>(address.rest(), std::forward<Args...>(args)...);
         }
+        return address;
     }
 
     template <class T = Composite, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    void composite(CallKey key, Args&&... args) {
+    Address composite(CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
 
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
@@ -552,6 +555,7 @@ class Model {
 
         representation.composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                                           std::forward_as_tuple(composites.at(key_name).get_representation()));
+        return Address(key);
     }
 
     template <class Key>
@@ -674,8 +678,13 @@ class Assembly : public Component {
     }
 
     template <class... Args>
-    void call(const std::string& compo, const std::string& prop, Args... args) const {
-        at(compo).set(prop, std::forward<Args>(args)...);
+    void call(const PortAddress& port, Args... args) const {
+        at(port.address).set(port.prop, std::forward<Args>(args)...);
+    }
+
+    template <class Key, class... Args>
+    void call(const Key& key, const std::string& prop, Args... args) const {
+        at(key).set(prop, std::forward<Args>(args)...);
     }
 };
 

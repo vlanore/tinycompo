@@ -74,50 +74,6 @@ struct UseAllUnclampedNodes {
     }
 };
 
-bool isArray(const string& s) {
-    regex e("array\\s([a-zA-Z0-9]+)");
-    smatch m;
-    regex_match(s, m, e);
-    return m.size() == 2;
-}
-
-string arrayName(const string& s) {
-    regex e("array\\s([a-zA-Z0-9]+)");
-    smatch m;
-    regex_match(s, m, e);
-    return m.size() == 2 ? m[1] : s;
-}
-
-void configMoves(Model& model, const string& modelName, const string& schedName, const string& spec) {
-    regex e2("([a-zA-Z0-9]+)\\(([a-zA-Z0-9]+),\\s*([0-9]+\\.?[0-9]*),\\s*([0-9]+),\\s*([a-zA-Z0-9\\s]+)\\)");
-
-    for (sregex_iterator it{spec.begin(), spec.end(), e2}; it != sregex_iterator{}; it++) {
-        int nrep = stoi((*it)[4]);
-        double tuning = stof((*it)[3]);
-        string node = (*it)[2];
-        string moveName = sf("%sMove", node.c_str());
-
-        if ((*it)[1] == "Scaling") {
-            model.template component<MHMove<Scaling>>(moveName, tuning, nrep);
-        } else if ((*it)[1] == "Uniform") {
-            model.template component<MHMove<Uniform>>(moveName, tuning, nrep);
-        } else {
-            cerr << "Unknown move " << (*it)[1] << "!\n";
-            exit(1);
-        }
-        model.template connect<Use<RandomNode>>(PortAddress("node", moveName), Address(modelName, node));
-        model.template connect<Use<Go>>(PortAddress("move", schedName), Address(moveName));
-        string downwardString = (*it)[5];
-        string downwardName = arrayName(downwardString);
-        if (isArray(downwardString)) {
-            model.template connect<MultiUse<RandomNode>>(PortAddress("downward", moveName),
-                                                         Address(modelName, downwardName));
-        } else {
-            model.template connect<Use<RandomNode>>(PortAddress("downward", moveName), Address(modelName, downwardName));
-        }
-    }
-}
-
 template <class Interface>
 struct UseTopoSortInComposite {
     static void _connect(Assembly& assembly, PortAddress user, Address composite) {
@@ -184,23 +140,18 @@ struct MarkovBlanket {  // assumes nodes have access to their parents (thus, bla
             }
         }
 
-        cout << "Considering move " << user.address.to_string() << endl;
-
         vector<string> blanket;
         std::function<void(const string&)> find_blanket = [&](const string name) {
             for (auto e : edges) {
                 if (e.second == name) {
-                    cout << "-- found edge " << e.first << " -> " << e.second;
                     // if child is RandomNode then add it to blanket
                     Address origin = Address(model, e.first);
                     bool origin_is_random = assembly.is_composite(origin)
                                                 ? assembly.derives_from<RandomNode>(Address(origin, 0))
                                                 : assembly.derives_from<RandomNode>(origin);
                     if (origin_is_random) {
-                        cout << " (edge comes from a RandomNode)\n";
                         blanket.push_back(e.first);
                     } else {  // else, keep going
-                        cout << "(edge comes from something else)\n";
                         find_blanket(e.first);
                     }
                 }
@@ -209,7 +160,6 @@ struct MarkovBlanket {  // assumes nodes have access to their parents (thus, bla
         find_blanket(target);
 
         for (auto n : blanket) {
-            cout << "-- Connecting " << user.address.to_string() << " to " << n << endl;
             AdaptiveUse<RandomNode>::_connect(assembly, user, Address(model, n));
         }
     }
