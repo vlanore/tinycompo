@@ -184,15 +184,32 @@ struct MarkovBlanket {  // assumes nodes have access to their parents (thus, bla
             }
         }
 
+        cout << "Considering move " << user.address.to_string() << endl;
+
         vector<string> blanket;
-        for (auto e : edges) {
-            if (e.second == target) {
-                blanket.push_back(e.first);
+        std::function<void(const string&)> find_blanket = [&](const string name) {
+            for (auto e : edges) {
+                if (e.second == name) {
+                    cout << "-- found edge " << e.first << " -> " << e.second;
+                    // if child is RandomNode then add it to blanket
+                    Address origin = Address(model, e.first);
+                    bool origin_is_random = assembly.is_composite(origin)
+                                                ? assembly.derives_from<RandomNode>(Address(origin, 0))
+                                                : assembly.derives_from<RandomNode>(origin);
+                    if (origin_is_random) {
+                        cout << " (edge comes from a RandomNode)\n";
+                        blanket.push_back(e.first);
+                    } else {  // else, keep going
+                        cout << "(edge comes from something else)\n";
+                        find_blanket(e.first);
+                    }
+                }
             }
-        }
+        };
+        find_blanket(target);
 
         for (auto n : blanket) {
-            cout << "Connecting " << user.address.to_string() << " to " << n << endl;
+            cout << "-- Connecting " << user.address.to_string() << " to " << n << endl;
             AdaptiveUse<RandomNode>::_connect(assembly, user, Address(model, n));
         }
     }
@@ -208,7 +225,8 @@ struct ConnectMove {
 
 struct ConnectAllMoves {
     static void _connect(Assembly& assembly, Address move_composite, Address model, Address scheduler) {
-        vector<string> moves = assembly.at<Assembly>(move_composite).get_model().get_representation().all_component_names();
+        vector<string> moves =
+            assembly.at<Assembly>(move_composite).get_model().get_representation().all_component_names(0, true);
         for (auto m : moves) {
             ConnectMove::_connect(assembly, Address(move_composite, m), model, m, scheduler);
         }

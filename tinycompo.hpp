@@ -452,15 +452,21 @@ class _AssemblyGraph {
         }
     }
 
-    std::vector<std::string> all_component_names(int depth = 0, const std::string& name = "") const {
+    std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
+                                                 const std::string& name = "") const {
         std::string prefix = name + (name == "" ? "" : "_");
         std::vector<std::string> result;
         for (auto& c : components) {            // local components
             result.push_back(prefix + c.name);  // stringified name
         }
+        if (include_composites) {
+            for (auto& c : composites) {
+                result.push_back(prefix + c.first);
+            }
+        }
         if (depth > 0) {
             for (auto& c : composites) {  // names from composites until a certain depth
-                auto subresult = c.second.all_component_names(depth - 1, prefix + c.first);
+                auto subresult = c.second.all_component_names(depth - 1, include_composites, prefix + c.first);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
