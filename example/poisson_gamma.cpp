@@ -47,12 +47,13 @@ struct PoissonGamma : public Composite {
     }
 };
 
-// struct Moves : public Composite<> {
-//     Moves() {
-//         component<MHMove<Scaling>>("MoveSigma", 3, 10);
-//         component<MHMove<Scaling>>("Theta", 3, 10);
-//     }
-// };
+struct Moves : public Composite {
+    static void contents(Model& model, int size) {
+        model.component<MHMove<Scaling>>("Sigma", 3, 10);
+        model.component<MHMove<Scaling>>("Theta", 3, 10);
+        model.composite<Array<MHMove<Scaling>>>("Omega", size, 3, 10);
+    }
+};
 
 int main() {
     Model model;
@@ -80,13 +81,15 @@ int main() {
 
     // moves
     model.component<MoveScheduler>("Scheduler");
+    model.composite<Moves>("Moves", size);
+    model.connect<ConnectAllMoves>(Address("Moves"), Address("PG"), Address("Scheduler"));
 
-    configMoves(model, "PG", "Scheduler", "Scaling(Theta, 3, 10, array Omega), Scaling(Sigma, 3, 10, array X)");
+    // configMoves(model, "PG", "Scheduler", "Scaling(Theta, 3, 10, array Omega), Scaling(Sigma, 3, 10, array X)");
 
-    model.composite<Array<MHMove<Scaling>>>("OmegaMove", 5, 3, 10);
-    model.connect<ArrayOneToOne<RandomNode>>(PortAddress("node", "OmegaMove"), Address("PG", "Omega"));
-    model.connect<ArrayOneToOne<RandomNode>>(PortAddress("downward", "OmegaMove"), Address("PG", "X"));
-    model.connect<MultiUse<Go>>(PortAddress("move", "Scheduler"), Address("OmegaMove"));
+    // model.composite<Array<MHMove<Scaling>>>("OmegaMove", 5, 3, 10);
+    // model.connect<ArrayOneToOne<RandomNode>>(PortAddress("node", "OmegaMove"), Address("PG", "Omega"));
+    // model.connect<ArrayOneToOne<RandomNode>>(PortAddress("downward", "OmegaMove"), Address("PG", "X"));
+    // model.connect<MultiUse<Go>>(PortAddress("move", "Scheduler"), Address("OmegaMove"));
 
     // RS infrastructure
     model.component<RejectionSampling>("RS", 500000);

@@ -170,4 +170,49 @@ struct UseTopoSortInComposite {
     }
 };
 
+struct MarkovBlanket {  // assumes nodes have access to their parents (thus, blanket is just children of target)
+    static void _connect(Assembly& assembly, PortAddress user, Address model, const string& target) {
+        const _AssemblyGraph graph = assembly.at<Assembly>(model).get_model().get_representation();
+        set<string> nodes;
+        multimap<string, string> edges;
+        for (auto c : graph.connectors) {
+            // if connector is of the form (PortAddress, Address)
+            if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
+                edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
+                nodes.insert(c.neighbors[0].address);
+                nodes.insert(c.neighbors[1].address);
+            }
+        }
+
+        vector<string> blanket;
+        for (auto e : edges) {
+            if (e.second == target) {
+                blanket.push_back(e.first);
+            }
+        }
+
+        for (auto n : blanket) {
+            cout << "Connecting " << user.address.to_string() << " to " << n << endl;
+            AdaptiveUse<RandomNode>::_connect(assembly, user, Address(model, n));
+        }
+    }
+};
+
+struct ConnectMove {
+    static void _connect(Assembly& assembly, Address move, Address model, const string& target, Address scheduler) {
+        AdaptiveUse<Go>::_connect(assembly, PortAddress("move", scheduler), move);  // connect scheduler to move
+        AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("node", move), Address(model, target));
+        MarkovBlanket::_connect(assembly, PortAddress("downward", move), model, target);
+    }
+};
+
+struct ConnectAllMoves {
+    static void _connect(Assembly& assembly, Address move_composite, Address model, Address scheduler) {
+        vector<string> moves = assembly.at<Assembly>(move_composite).get_model().get_representation().all_component_names();
+        for (auto m : moves) {
+            ConnectMove::_connect(assembly, Address(move_composite, m), model, m, scheduler);
+        }
+    }
+};
+
 #endif

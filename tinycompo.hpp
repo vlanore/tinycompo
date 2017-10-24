@@ -315,6 +315,7 @@ struct PortAddress {
 
     template <class... Keys>
     PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(std::forward<Keys>(keys)...) {}
+    PortAddress(const std::string& prop, const Address& address) : prop(prop), address(address) {}
 };
 
 /*
