@@ -27,32 +27,39 @@ license and that you accept its terms.*/
 
 #include "poisson_gamma_connectors.hpp"
 
-class GammaSuffStat : public RandomNode {
-    double sum_xi{0}, sum_log_xi{0};
+class GammaSuffStat : public SuffStats, public Component {
+    mutable double sum_xi{0}, sum_log_xi{0};
+    mutable bool valid{false};
     vector<RandomNode*> targets;
     void add_target(RandomNode* target) { targets.push_back(target); }
     RandomNode* parent;
+
+    void gather() const {
+        sum_xi = 0;
+        sum_log_xi = 0;
+        for (auto t : targets) {
+            sum_xi += t->getValue();
+            sum_log_xi += log(t->getValue());
+        }
+        valid = true;
+    }
 
   public:
     GammaSuffStat() {
         port("target", &GammaSuffStat::add_target);
         port("parent", &GammaSuffStat::parent);
     }
-    void sample() override {}
-    double getValue() const override { return 1.0; }
-    void setValue(double) override {}
 
-    double log_density() override {
-        sum_xi = 0;
-        sum_log_xi = 0;
+    double log_density() const final {
+        if (!valid) {
+            gather();
+        }
         double p = parent->getValue();
         int n = targets.size();
-        for (auto t : targets) {
-            sum_xi += t->getValue();
-            sum_log_xi += log(t->getValue());
-        }
         return -n * (log(tgamma(p)) + p * log(p)) + (p - 1) * sum_log_xi - (1 / p) * sum_xi;
     }
+
+    void corrupt() const final { valid = false; }
 };
 
 struct PoissonGamma : public Composite {
@@ -109,10 +116,11 @@ int main() {
     auto move_theta = model.component<MHMove<Scaling>>("MoveTheta", 3, 10);
     auto suff_stats = model.component<GammaSuffStat>("gamma_suff_stats");
     model.connect<Use<RandomNode>>(PortAddress("node", move_theta), Address(pg, "Theta"));
-    model.connect<Use<RandomNode>>(PortAddress("downward", move_theta), suff_stats);
+    model.connect<Use<LogDensity>>(PortAddress("downward", move_theta), suff_stats);
     model.connect<Use<Go>>(PortAddress("move", scheduler), move_theta);
     model.connect<MultiUse<RandomNode>>(PortAddress("target", suff_stats), Address(pg, "Omega"));
     model.connect<Use<RandomNode>>(PortAddress("parent", suff_stats), Address(pg, "Theta"));
+    model.connect<MultiProvide<SuffStats>>(PortAddress("corrupt", Address(moves, "Omega")), suff_stats);
 
     auto tracefile = model.component<FileOutput>("traceFile", "tmp_mcmc.trace");
     model.connect<Use<DataStream>>(PortAddress("output", mcmc_engine), tracefile);

@@ -60,25 +60,30 @@ std::uniform_real_distribution<double> uniform{0.0, 1.0};
 ===================================================================================================
   INTERFACES
 =================================================================================================*/
-class Go : public Component {
-  public:
+struct Go : public Component {
     Go() { port("go", &Go::go); }
     virtual void go() = 0;
 };
 
-class Sampler : public Go {
-  public:
+struct Sampler : public Go {
     virtual std::vector<double> getSample() const = 0;
     virtual std::string getVarList() const = 0;
 };
 
-class Real : public Component {
-  public:
+struct Real : public Component {
     virtual double getValue() const = 0;
     virtual void setValue(double value) = 0;
 };
 
-class RandomNode : public Real {
+struct LogDensity {
+    virtual double log_density() const = 0;
+};
+
+struct SuffStats : public LogDensity {
+    virtual void corrupt() const = 0;
+};
+
+class RandomNode : public Real, public LogDensity {
     double clampedVal{0.0};
 
   public:
@@ -90,7 +95,6 @@ class RandomNode : public Real {
     }
     double clamped_value() const { return clampedVal; }
     virtual bool is_consistent() const { return clampedVal == getValue(); }
-    virtual double log_density() = 0;
 
     bool is_clamped{false};
 };
@@ -196,7 +200,7 @@ class Exponential : public UnaryReal {
         setValue(d(generator));
     }
 
-    double log_density() final {
+    double log_density() const final {
         auto lambda = param.getValue();
         auto x = getValue();
         return log(lambda) - x * lambda;
@@ -212,7 +216,7 @@ class Gamma : public UnaryReal {
         setValue(d(generator));
     }
 
-    double log_density() final {
+    double log_density() const final {
         auto alpha = param.getValue();
         auto beta = alpha;
         auto x = getValue();
@@ -229,7 +233,7 @@ class Poisson : public UnaryReal {
         setValue(d(generator));
     }
 
-    double log_density() final {
+    double log_density() const final {
         double k = getValue(), lambda = param.getValue();
         return k * log(lambda) - lambda - log(factorial(k));
     }
@@ -357,21 +361,31 @@ class MHMove : public Go {
     double tuning;
     int ntot{0}, nacc{0}, nrep{0};
     RandomNode *node{nullptr};
-    vector<RandomNode *> downward;
-    void addDownward(RandomNode *ptr) { downward.push_back(ptr); }
+    vector<LogDensity *> downward;
+    void addDownward(LogDensity *ptr) { downward.push_back(ptr); }
+
+    // suff stats corruption
+    vector<SuffStats *> corrupted_suff_stats;
+    void add_corrupted_suff_stats(SuffStats *ss) { corrupted_suff_stats.push_back(ss); }
+    void corrupt() const {
+        for (auto ss : corrupted_suff_stats) {
+            ss->corrupt();
+        }
+    }
 
   public:
     explicit MHMove(double tuning = 1.0, int nrep = 1) : tuning(tuning), nrep(nrep) {
         port("node", &MHMove::node);
         port("downward", &MHMove::addDownward);
+        port("corrupt", &MHMove::add_corrupted_suff_stats);
     }
 
     void go() override {
         for (int i = 0; i < nrep; i++) {
             double backup = node->getValue();
 
-            auto gather = [](const vector<RandomNode *> &v) {
-                return accumulate(v.begin(), v.end(), 0., [](double acc, RandomNode *b) { return acc + b->log_density(); });
+            auto gather = [](const vector<LogDensity *> &v) {
+                return accumulate(v.begin(), v.end(), 0., [](double acc, LogDensity *b) { return acc + b->log_density(); });
             };
             double logprob_before = gather(downward) + node->log_density();
             double hastings_ratio = Move::move(node, tuning);
@@ -381,6 +395,7 @@ class MHMove : public Go {
             if (!accepted) {
                 node->setValue(backup);
             } else {
+                corrupt();  // corrupt suff stats only of move accepted
                 nacc++;
             }
             ntot++;

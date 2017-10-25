@@ -160,7 +160,7 @@ struct MarkovBlanket {  // assumes nodes have access to their parents (thus, bla
         find_blanket(target);
 
         for (auto n : blanket) {
-            AdaptiveUse<RandomNode>::_connect(assembly, user, Address(model, n));
+            AdaptiveUse<LogDensity>::_connect(assembly, user, Address(model, n));
         }
     }
 };
