@@ -107,12 +107,26 @@ TEST_CASE("_ComponentBuilder tests.") {
     CHECK(ptr2->i == 3);
     CHECK(ptr2->j == 4);
     CHECK(ptr->_debug() == "MyCompo");
+    CHECK(compo._class_name == "MyCompo");  // technically compiler-dependant, but should work with gcc/clang
 }
 
 /*
 ====================================================================================================
   ~*~ Address ~*~
 ==================================================================================================*/
+struct MyKey {
+    int i;
+};
+
+ostream& operator<<(ostream& os, MyKey const& m) { return os << m.i; }
+
+TEST_CASE("key_to_string test.") {
+    CHECK(key_to_string(3) == "3");
+    CHECK(key_to_string("yolo") == "yolo");
+    MyKey key = {3};
+    CHECK(key_to_string(key) == "3");
+}
+
 TEST_CASE("address tests.") {
     auto a = Address("a", 2, 3, "b");
     CHECK(a.first() == "a");
@@ -183,9 +197,9 @@ TEST_CASE("model test: model copy") {
 }
 
 // TEST_CASE("model test: composite/component inheritance mismatch") {
-//     class MyClass : public Composite {};
+//     class MyKey : public Composite {};
 //     Model model;
-//     TINYCOMPO_TEST_ERRORS { model.component<MyClass>("hello"); }
+//     TINYCOMPO_TEST_ERRORS { model.component<MyKey>("hello"); }
 //     TINYCOMPO_TEST_ERRORS_END("trying to declare a component that does not inherit from Component",
 //                               "-- Error: trying to declare a component that does not inherit from Component\n");
 // }
