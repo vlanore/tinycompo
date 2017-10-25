@@ -662,7 +662,7 @@ class Assembly : public Component {
         }
     }
 
-    const Model& get_model() const { return internal_model; }  // TODO write a test that uses it
+    const Model& get_model() const { return internal_model; }
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
@@ -714,14 +714,13 @@ struct Use {
   ~*~ ListUse class ~*~
 ==================================================================================================*/
 template <class Interface>
-struct ListUse {  // TODO de-templatify
-    template <class UserAddress, class ProviderAddress>
-    static void _connect(Assembly& assembly, UserAddress user, ProviderAddress provider) {
+struct ListUse {
+    static void _connect(Assembly& assembly, const PortAddress& user, const Address& provider) {
         Use<Interface>::_connect(assembly, user, provider);
     }
 
-    template <class UserAddress, class ProviderAddress, class... OtherProviderAddresses>
-    static void _connect(Assembly& assembly, UserAddress user, ProviderAddress provider,
+    template <class... OtherProviderAddresses>
+    static void _connect(Assembly& assembly, const PortAddress& user, const Address& provider,
                          OtherProviderAddresses... other_providers) {
         _connect(assembly, user, provider);
         _connect(assembly, user, std::forward<OtherProviderAddresses>(other_providers)...);
