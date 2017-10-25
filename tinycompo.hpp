@@ -670,14 +670,6 @@ class Assembly : public Component {
         }
     }
 
-    std::set<std::string> all_keys() const {
-        std::set<std::string> result;
-        for (auto& c : instances) {
-            result.insert(c.first);
-        }
-        return result;
-    }
-
     template <class... Args>
     void call(const PortAddress& port, Args... args) const {
         at(port.address).set(port.prop, std::forward<Args>(args)...);

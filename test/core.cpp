@@ -133,6 +133,12 @@ TEST_CASE("address tests.") {
     CHECK(a.rest().first() == "2");
     CHECK(a.rest().rest().first() == "3");
     CHECK(a.rest().rest().rest().first() == "b");
+
+    CHECK(a.is_composite() == true);
+    CHECK(Address("youpi").is_composite() == false);
+
+    CHECK(a.to_string() == "a_2_3_b");
+    CHECK(Address(a, 17).to_string() == "a_2_3_b_17");
 }
 
 TEST_CASE("Address: builder from string") {
@@ -365,12 +371,17 @@ TEST_CASE("Assembly test: component names.") {
     CHECK(assembly.at<MyCompo>(Address("composite", 3)).get_name() == "composite_3");
 }
 
-TEST_CASE("Assembly test: all_keys.") {
+TEST_CASE("Assembly test: get_model.") {
     Model model;
-    model.component<MyCompo>("compoYoupi");
-    model.component<MyCompo>("compoYoupla");
+    model.component<MyCompo>("youpi");
     Assembly assembly(model);
-    CHECK(assembly.all_keys() == (set<string>{"compoYoupi", "compoYoupla"}));
+    Model model2 = assembly.get_model();
+    model.component<MyCompo>("youpla");
+    CHECK(model2.size() == 1);
+    CHECK(model.size() == 2);
+    stringstream ss;
+    model2.print_representation(ss);
+    CHECK(ss.str() == "Component \"youpi\" (MyCompo) \n");  // technically compiler-dependant
 }
 
 /*
