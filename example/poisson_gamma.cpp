@@ -27,6 +27,34 @@ license and that you accept its terms.*/
 
 #include "poisson_gamma_connectors.hpp"
 
+class GammaSuffStat : public RandomNode {
+    double sum_xi{0}, sum_log_xi{0};
+    vector<RandomNode*> targets;
+    void add_target(RandomNode* target) { targets.push_back(target); }
+    RandomNode* parent;
+
+  public:
+    GammaSuffStat() {
+        port("target", &GammaSuffStat::add_target);
+        port("parent", &GammaSuffStat::parent);
+    }
+    void sample() override {}
+    double getValue() const override { return 1.0; }
+    void setValue(double) override {}
+
+    double log_density() override {
+        sum_xi = 0;
+        sum_log_xi = 0;
+        double p = parent->getValue();
+        int n = targets.size();
+        for (auto t : targets) {
+            sum_xi += t->getValue();
+            sum_log_xi += log(t->getValue());
+        }
+        return -n * (log(tgamma(p)) + p * log(p)) + (p - 1) * sum_log_xi - (1 / p) * sum_xi;
+    }
+};
+
 struct PoissonGamma : public Composite {
     static void contents(Model& model, int size) {
         model.component<Exponential>("Sigma");
@@ -50,7 +78,7 @@ struct PoissonGamma : public Composite {
 struct Moves : public Composite {
     static void contents(Model& model, int size) {
         model.component<MHMove<Scaling>>("Sigma", 3, 10);
-        model.component<MHMove<Scaling>>("Theta", 3, 10);
+        // model.component<MHMove<Scaling>>("Theta", 3, 10);
         model.composite<Array<MHMove<Scaling>>>("Omega", size, 3, 10);
     }
 };
@@ -66,10 +94,10 @@ int main() {
     model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // MCMC infrastructure
-    auto sampler = model.component<MultiSample>("Sampler");
+    auto sampler = model.component<MultiSample>("sampler");
     model.connect<UseAllUnclampedNodes>(PortAddress("register", sampler), pg);
 
-    auto scheduler = model.component<MoveScheduler>("Scheduler");
+    auto scheduler = model.component<MoveScheduler>("scheduler");
     auto moves = model.composite<Moves>("Moves", size);
     model.connect<ConnectAllMoves>(moves, pg, scheduler);
 
@@ -78,19 +106,27 @@ int main() {
     model.connect<Use<MoveScheduler>>(PortAddress("scheduler", mcmc_engine), scheduler);
     model.connect<ListUse<Real>>(PortAddress("variables", mcmc_engine), Address(pg, "Theta"), Address(pg, "Sigma"));
 
-    auto tracefile = model.component<FileOutput>("TraceFile", "tmp_mcmc.trace");
+    auto move_theta = model.component<MHMove<Scaling>>("MoveTheta", 3, 10);
+    auto suff_stats = model.component<GammaSuffStat>("gamma_suff_stats");
+    model.connect<Use<RandomNode>>(PortAddress("node", move_theta), Address(pg, "Theta"));
+    model.connect<Use<RandomNode>>(PortAddress("downward", move_theta), suff_stats);
+    model.connect<Use<Go>>(PortAddress("move", scheduler), move_theta);
+    model.connect<MultiUse<RandomNode>>(PortAddress("target", suff_stats), Address(pg, "Omega"));
+    model.connect<Use<RandomNode>>(PortAddress("parent", suff_stats), Address(pg, "Theta"));
+
+    auto tracefile = model.component<FileOutput>("traceFile", "tmp_mcmc.trace");
     model.connect<Use<DataStream>>(PortAddress("output", mcmc_engine), tracefile);
 
     // RS infrastructure
     model.component<RejectionSampling>("RS", 500000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("Sampler2"));
+    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("sampler2"));
     model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
 
-    model.component<MultiSample>("Sampler2");
-    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "Sampler2"), pg);
+    model.component<MultiSample>("sampler2");
+    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "sampler2"), pg);
 
-    model.component<FileOutput>("TraceFile2", "tmp_rs.trace");
-    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("TraceFile2"));
+    model.component<FileOutput>("traceFile2", "tmp_rs.trace");
+    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("traceFile2"));
 
     // instantiate and call everything!
     Assembly assembly(model);
