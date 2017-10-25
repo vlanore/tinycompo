@@ -174,11 +174,33 @@ struct ConnectMove {
 };
 
 struct ConnectAllMoves {
+    static string strip(string s) {
+        auto it = s.find('_');
+        return s.substr(++it);
+    }
+
     static void _connect(Assembly& assembly, Address move_composite, Address model, Address scheduler) {
-        vector<string> moves =
+        vector<string> moves_and_suffstats =
             assembly.at<Assembly>(move_composite).get_model().get_representation().all_component_names(0, true);
-        for (auto m : moves) {
-            ConnectMove::_connect(assembly, Address(move_composite, m), model, m, scheduler);
+        for (auto m : moves_and_suffstats) {
+            Address m_address = Address(move_composite, m);
+            Address m_target = Address(model, strip(m));
+            bool is_move = assembly.is_composite(m_address) ? assembly.derives_from<Move>(Address(m_address, 0))
+                                                            : assembly.derives_from<Move>(m_address);
+            if (assembly.derives_from<SuffStats>(m_address)) {  // sufftstats
+                // searching for parent (assuming single) of target (FIXME temporary)
+                Address m_parent("invalid");  // no default constructor
+                auto graph = assembly.at<Assembly>(model).get_model().get_representation();
+                for (auto c : graph.connectors) {
+                    if (c.neighbors.size() == 2 and c.neighbors[0].address == strip(m)) {
+                        m_parent = Address(model, c.neighbors[1].address);
+                    }
+                }
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), m_parent);
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target);
+            } else if (is_move) {  // moves
+                ConnectMove::_connect(assembly, m_address, model, strip(m), scheduler);
+            }
         }
     }
 };

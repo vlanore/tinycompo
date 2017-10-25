@@ -27,41 +27,6 @@ license and that you accept its terms.*/
 
 #include "poisson_gamma_connectors.hpp"
 
-class GammaSuffStat : public SuffStats, public Component {
-    mutable double sum_xi{0}, sum_log_xi{0};
-    mutable bool valid{false};
-    vector<RandomNode*> targets;
-    void add_target(RandomNode* target) { targets.push_back(target); }
-    RandomNode* parent;
-
-    void gather() const {
-        sum_xi = 0;
-        sum_log_xi = 0;
-        for (auto t : targets) {
-            sum_xi += t->getValue();
-            sum_log_xi += log(t->getValue());
-        }
-        valid = true;
-    }
-
-  public:
-    GammaSuffStat() {
-        port("target", &GammaSuffStat::add_target);
-        port("parent", &GammaSuffStat::parent);
-    }
-
-    double log_density() const final {
-        if (!valid) {
-            gather();
-        }
-        double p = parent->getValue();
-        int n = targets.size();
-        return -n * (log(tgamma(p)) + p * log(p)) + (p - 1) * sum_log_xi - (1 / p) * sum_xi;
-    }
-
-    void corrupt() const final { valid = false; }
-};
-
 struct PoissonGamma : public Composite {
     static void contents(Model& model, int size) {
         model.component<Exponential>("Sigma");
@@ -84,9 +49,12 @@ struct PoissonGamma : public Composite {
 
 struct Moves : public Composite {
     static void contents(Model& model, int size) {
-        model.component<MHMove<Scaling>>("Sigma", 3, 10);
-        // model.component<MHMove<Scaling>>("Theta", 3, 10);
-        model.composite<Array<MHMove<Scaling>>>("Omega", size, 3, 10);
+        model.component<MHMove<Scaling>>("Move_Sigma", 3, 10);
+        model.component<MHMove<Scaling>>("Move_Theta", 3, 10);
+        model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10);
+
+        auto suff_stats = model.component<GammaSuffStat>("SS_Omega");
+        model.connect<MultiProvide<SuffStats>>(PortAddress("corrupt", Address("Move_Omega")), suff_stats);
     }
 };
 
@@ -112,15 +80,6 @@ int main() {
     model.connect<Use<Sampler>>(PortAddress("sampler", mcmc_engine), sampler);
     model.connect<Use<MoveScheduler>>(PortAddress("scheduler", mcmc_engine), scheduler);
     model.connect<ListUse<Real>>(PortAddress("variables", mcmc_engine), Address(pg, "Theta"), Address(pg, "Sigma"));
-
-    auto move_theta = model.component<MHMove<Scaling>>("MoveTheta", 3, 10);
-    auto suff_stats = model.component<GammaSuffStat>("gamma_suff_stats");
-    model.connect<Use<RandomNode>>(PortAddress("node", move_theta), Address(pg, "Theta"));
-    model.connect<Use<LogDensity>>(PortAddress("downward", move_theta), suff_stats);
-    model.connect<Use<Go>>(PortAddress("move", scheduler), move_theta);
-    model.connect<MultiUse<RandomNode>>(PortAddress("target", suff_stats), Address(pg, "Omega"));
-    model.connect<Use<RandomNode>>(PortAddress("parent", suff_stats), Address(pg, "Theta"));
-    model.connect<MultiProvide<SuffStats>>(PortAddress("corrupt", Address(moves, "Omega")), suff_stats);
 
     auto tracefile = model.component<FileOutput>("traceFile", "tmp_mcmc.trace");
     model.connect<Use<DataStream>>(PortAddress("output", mcmc_engine), tracefile);

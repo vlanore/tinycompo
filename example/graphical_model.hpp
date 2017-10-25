@@ -65,6 +65,8 @@ struct Go : public Component {
     virtual void go() = 0;
 };
 
+struct Move : public Go {};  // for typing purposes only
+
 struct Sampler : public Go {
     virtual std::vector<double> getSample() const = 0;
     virtual std::string getVarList() const = 0;
@@ -356,8 +358,8 @@ struct Scaling {
     }
 };
 
-template <class Move>
-class MHMove : public Go {
+template <class MoveFunctor>
+class MHMove : public Move {
     double tuning;
     int ntot{0}, nacc{0}, nrep{0};
     RandomNode *node{nullptr};
@@ -388,7 +390,7 @@ class MHMove : public Go {
                 return accumulate(v.begin(), v.end(), 0., [](double acc, LogDensity *b) { return acc + b->log_density(); });
             };
             double logprob_before = gather(downward) + node->log_density();
-            double hastings_ratio = Move::move(node, tuning);
+            double hastings_ratio = MoveFunctor::move(node, tuning);
             double logprob_after = gather(downward) + node->log_density();
 
             bool accepted = exp(logprob_after - logprob_before + hastings_ratio) > uniform(generator);
@@ -457,6 +459,41 @@ class MCMCEngine : public Go {
         }
         cout << "-- Done. Wrote " << iterations << " lines in trace file.\n";
     }
+};
+
+class GammaSuffStat : public SuffStats, public Component {
+    mutable double sum_xi{0}, sum_log_xi{0};
+    mutable bool valid{false};
+    vector<RandomNode *> targets;
+    void add_target(RandomNode *target) { targets.push_back(target); }
+    RandomNode *parent;
+
+    void gather() const {
+        sum_xi = 0;
+        sum_log_xi = 0;
+        for (auto t : targets) {
+            sum_xi += t->getValue();
+            sum_log_xi += log(t->getValue());
+        }
+        valid = true;
+    }
+
+  public:
+    GammaSuffStat() {
+        port("target", &GammaSuffStat::add_target);
+        port("parent", &GammaSuffStat::parent);
+    }
+
+    double log_density() const final {
+        if (!valid) {
+            gather();
+        }
+        double p = parent->getValue();
+        int n = targets.size();
+        return -n * (log(tgamma(p)) + p * log(p)) + (p - 1) * sum_log_xi - (1 / p) * sum_xi;
+    }
+
+    void corrupt() const final { valid = false; }
 };
 
 #endif
