@@ -2,28 +2,26 @@
 Contributors:
 - Vincent Lanore <vincent.lanore@gmail.com>
 
-This software is a computer program whose purpose is to provide the necessary classes to write
-ligntweight component-based c++ applications.
+This software is a computer program whose purpose is to provide the necessary classes to write ligntweight component-based
+c++ applications.
 
-This software is governed by the CeCILL-B license under French law and abiding by the rules of
-distribution of free software. You can use, modify and/ or redistribute the software under the terms
-of the CeCILL-B license as circulated by CEA, CNRS and INRIA at the following URL
-"http://www.cecill.info".
+This software is governed by the CeCILL-B license under French law and abiding by the rules of distribution of free software.
+You can use, modify and/ or redistribute the software under the terms of the CeCILL-B license as circulated by CEA, CNRS and
+INRIA at the following URL "http://www.cecill.info".
 
-As a counterpart to the access to the source code and rights to copy, modify and redistribute
-granted by the license, users are provided only with a limited warranty and the software's author,
-the holder of the economic rights, and the successive licensors have only limited liability.
+As a counterpart to the access to the source code and rights to copy, modify and redistribute granted by the license, users
+are provided only with a limited warranty and the software's author, the holder of the economic rights, and the successive
+licensors have only limited liability.
 
-In this respect, the user's attention is drawn to the risks associated with loading, using,
-modifying and/or developing or reproducing the software by the user in light of its specific status
-of free software, that may mean that it is complicated to manipulate, and that also therefore means
-that it is reserved for developers and experienced professionals having in-depth computer knowledge.
-Users are therefore encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or data to be ensured and,
-more generally, to use and operate it in the same conditions as regards security.
+In this respect, the user's attention is drawn to the risks associated with loading, using, modifying and/or developing or
+reproducing the software by the user in light of its specific status of free software, that may mean that it is complicated
+to manipulate, and that also therefore means that it is reserved for developers and experienced professionals having in-depth
+computer knowledge. Users are therefore encouraged to load and test the software's suitability as regards their requirements
+in conditions enabling the security of their systems and/or data to be ensured and, more generally, to use and operate it in
+the same conditions as regards security.
 
-The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
-license and that you accept its terms.*/
+The fact that you are presently reading this means that you have had knowledge of the CeCILL-B license and that you accept
+its terms.*/
 
 #ifndef TINYCOMPO_HPP
 #define TINYCOMPO_HPP
@@ -45,9 +43,9 @@ license and that you accept its terms.*/
 #include <vector>
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Various forward-declarations and abstract interfaces ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 class Model;
 class Assembly;
 class _AssemblyGraph;
@@ -62,10 +60,10 @@ struct _AbstractPort {
 struct _AbstractAddress {};  // for identification of _Address types encountered in the wild
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Debug ~*~
   A few classes related to debug messages.
-==================================================================================================*/
+===========================================================================================================================*/
 #ifdef __GNUG__
 std::string demangle(const char* name) {
     int status{0};
@@ -109,12 +107,11 @@ class TinycompoDebug : public std::stringstream {
 std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ _Port class ~*~
-  _Port<Args...> derives from _AbstractPort which allows the storage of pointers to _Port by
-  converting them to _AbstractPort*. These classes are for internal use by tinycompo and should not
-  be seen by the user (as denoted by the underscore prefixes).
-==================================================================================================*/
+_Port<Args...> derives from _AbstractPort which allows the storage of pointers to _Port by converting them to _AbstractPort*.
+These classes are for internal use by tinycompo and should not be seen by the user (as denoted by the underscore prefixes).
+===========================================================================================================================*/
 template <class... Args>
 struct _Port : public _AbstractPort {
     std::function<void(Args...)> _set;
@@ -140,12 +137,11 @@ struct _ProvidePort : public _AbstractPort {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Component class ~*~
-  tinycompo components should always inherit from this class. It is mostly used as a base to be able
-  to store pointers to child class instances but also provides basic debugging methods and the
-  infrastructure required to declare ports.
-==================================================================================================*/
+tinycompo components should always inherit from this class. It is mostly used as a base to be able to store pointers to child
+class instances but also provides basic debugging methods and the infrastructure required to declare ports.
+===========================================================================================================================*/
 class Component {
     std::map<std::string, std::unique_ptr<_AbstractPort>> _ports;
     std::string name{""};
@@ -205,13 +201,12 @@ class Component {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ _ComponentBuilder class ~*~
-  A small class that is capable of storing a constructor call for any Component child class and
-  execute said call later on demand. The class itself is not templated (allowing direct storage)
-  but the constructor call is. This is an internal tinycompo class that should never be seen by
-  the user (as denoted by the underscore prefix).
-==================================================================================================*/
+A small class that is capable of storing a constructor call for any Component child class and execute said call later on
+demand. The class itself is not templated (allowing direct storage) but the constructor call is. This is an internal
+tinycompo class that should never be seen by the user (as denoted by the underscore prefix).
+===========================================================================================================================*/
 struct _ComponentBuilder {
     template <class T, class... Args>
     _ComponentBuilder(_Type<T>, Args... args)
@@ -223,9 +218,9 @@ struct _ComponentBuilder {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ key_to_string ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 template <class Key>
 std::string key_to_string(Key key) {
     std::stringstream ss;
@@ -234,9 +229,9 @@ std::string key_to_string(Key key) {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Addresses ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 class Address {
     std::vector<std::string> keys;
 
@@ -320,9 +315,9 @@ struct PortAddress {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ _Operation class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args... args)
@@ -332,19 +327,18 @@ struct _Operation {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Composite ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 struct Composite {
     static void contents(Model&) {}
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Graph representation classes ~*~
-  Small classes implementing a simple easily explorable graph representation for TinyCompo component
-  assemblies.
-==================================================================================================*/
+  Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
+===========================================================================================================================*/
 struct _GraphAddress {
     std::string address;
     std::string port;
@@ -476,9 +470,9 @@ class _AssemblyGraph {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Model ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 class Model {
     friend class Assembly;  // to access internal data
 
@@ -592,9 +586,9 @@ class Model {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Assembly class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 class Assembly : public Component {
   protected:  // used in mpi example
     std::map<std::string, std::unique_ptr<Component>> instances;
@@ -682,9 +676,9 @@ class Assembly : public Component {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Set class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 struct Set {
     template <class... Args>
     static void _connect(Assembly& assembly, PortAddress component, Args... args) {
@@ -693,13 +687,12 @@ struct Set {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Use class ~*~
-  UseProvide is a "connector class", ie a functor that can be passed as template parameter to
-  Assembly::connect. This particular connector implements the "use/provide" connection, ie setting a
-  port of one component (the user) to a pointer to an interface of another (the provider). This
-  class should be used as-is to declare assembly connections.
-==================================================================================================*/
+UseProvide is a "connector class", ie a functor that can be passed as template parameter to Assembly::connect. This
+particular connector implements the "use/provide" connection, ie setting a port of one component (the user) to a pointer to
+an interface of another (the provider). This class should be used as-is to declare assembly connections.
+===========================================================================================================================*/
 template <class Interface>
 struct Use {
     static void _connect(Assembly& assembly, PortAddress user, Address provider) {
@@ -710,9 +703,9 @@ struct Use {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ ListUse class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 template <class Interface>
 struct ListUse {
     static void _connect(Assembly& assembly, const PortAddress& user, const Address& provider) {
@@ -728,9 +721,9 @@ struct ListUse {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ UseProvide class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 template <class Interface>
 struct UseProvide {
     static void _connect(Assembly& assembly, PortAddress user, PortAddress provider) {
@@ -741,9 +734,9 @@ struct UseProvide {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Array class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 template <class T>
 struct Array : public Composite {
     template <class... Args>
@@ -755,9 +748,9 @@ struct Array : public Composite {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ ArraySet class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 struct ArraySet {
     template <class... Keys, class Data>
     static void _connect(Assembly& assembly, PortAddress array, const std::vector<Data>& data) {
@@ -768,13 +761,12 @@ struct ArraySet {
     }
 };
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ ArrayOneToOne class ~*~
-  This is a connector that takes two arrays with identical sizes and connects (as if using the
-  UseProvide connector) every i-th element in array1 to its corresponding element in array2 (ie,
-  the i-th element in array2). This class should be used as a template parameter for
-  Assembly::connect.
-==================================================================================================*/
+This is a connector that takes two arrays with identical sizes and connects (as if using the UseProvide connector) every i-th
+element in array1 to its corresponding element in array2 (ie, the i-th element in array2). This class should be used as a
+template parameter for Assembly::connect.
+===========================================================================================================================*/
 template <class Interface>
 struct ArrayOneToOne {
     static void _connect(Assembly& a, PortAddress array1, Address array2) {
@@ -795,13 +787,12 @@ struct ArrayOneToOne {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ MultiUse class ~*~
-The MultiUse class is a connector that connects (as if using the UseProvide connector) one port
-of one component to every component in an array. This can be seen as a "multiple use" connector (the
-reducer is the user in multiple use/provide connections). This class should be used as a template
-parameter for Assembly::connect.
-==================================================================================================*/
+The MultiUse class is a connector that connects (as if using the Use connector) one port of one component to every component
+in an array. This can be seen as a "multiple use" connector (the reducer is the user in multiple use/provide connections).
+This class should be used as a template parameter for Assembly::connect.
+===========================================================================================================================*/
 template <class Interface>
 struct MultiUse {
     static void _connect(Assembly& a, PortAddress reducer, Address array) {
@@ -815,9 +806,9 @@ struct MultiUse {
 };
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ MultiProvide class ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 template <class Interface>
 struct MultiProvide {
     static void _connect(Assembly& a, PortAddress array, Address mapper) {

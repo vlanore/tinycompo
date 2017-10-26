@@ -2,28 +2,26 @@
 Contributors:
 - Vincent Lanore <vincent.lanore@gmail.com>
 
-This software is a computer program whose purpose is to provide the necessary classes to write
-ligntweight component-based c++ applications.
+This software is a computer program whose purpose is to provide the necessary classes to write ligntweight component-based
+c++ applications.
 
-This software is governed by the CeCILL-B license under French law and abiding by the rules of
-distribution of free software. You can use, modify and/ or redistribute the software under the terms
-of the CeCILL-B license as circulated by CEA, CNRS and INRIA at the following URL
-"http://www.cecill.info".
+This software is governed by the CeCILL-B license under French law and abiding by the rules of distribution of free software.
+You can use, modify and/ or redistribute the software under the terms of the CeCILL-B license as circulated by CEA, CNRS and
+INRIA at the following URL "http://www.cecill.info".
 
-As a counterpart to the access to the source code and rights to copy, modify and redistribute
-granted by the license, users are provided only with a limited warranty and the software's author,
-the holder of the economic rights, and the successive licensors have only limited liability.
+As a counterpart to the access to the source code and rights to copy, modify and redistribute granted by the license, users
+are provided only with a limited warranty and the software's author, the holder of the economic rights, and the successive
+licensors have only limited liability.
 
-In this respect, the user's attention is drawn to the risks associated with loading, using,
-modifying and/or developing or reproducing the software by the user in light of its specific status
-of free software, that may mean that it is complicated to manipulate, and that also therefore means
-that it is reserved for developers and experienced professionals having in-depth computer knowledge.
-Users are therefore encouraged to load and test the software's suitability as regards their
-requirements in conditions enabling the security of their systems and/or data to be ensured and,
-more generally, to use and operate it in the same conditions as regards security.
+In this respect, the user's attention is drawn to the risks associated with loading, using, modifying and/or developing or
+reproducing the software by the user in light of its specific status of free software, that may mean that it is complicated
+to manipulate, and that also therefore means that it is reserved for developers and experienced professionals having in-depth
+computer knowledge. Users are therefore encouraged to load and test the software's suitability as regards their requirements
+in conditions enabling the security of their systems and/or data to be ensured and, more generally, to use and operate it in
+the same conditions as regards security.
 
-The fact that you are presently reading this means that you have had knowledge of the CeCILL-B
-license and that you accept its terms.*/
+The fact that you are presently reading this means that you have had knowledge of the CeCILL-B license and that you accept
+its terms.*/
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
@@ -31,9 +29,9 @@ license and that you accept its terms.*/
 using namespace std;
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Debug ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("Exception tests") {
     TINYCOMPO_TEST_ERRORS {
         TinycompoDebug e{"my error"};
@@ -45,9 +43,9 @@ TEST_CASE("Exception tests") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ _Port ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("_Port tests.") {
     class MyCompo {
       public:
@@ -70,9 +68,9 @@ TEST_CASE("_Port tests.") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Component ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("Component tests.") {
     MyCompo compo{};
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
@@ -96,9 +94,9 @@ TEST_CASE("Component without _debug") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ _ComponentBuilder ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("_ComponentBuilder tests.") {
     _ComponentBuilder compo(_Type<MyCompo>(), 3, 4);  // create _ComponentBuilder object
     auto ptr = compo._constructor();                  // instantiate actual object
@@ -111,9 +109,9 @@ TEST_CASE("_ComponentBuilder tests.") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Address ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 struct MyKey {
     int i;
 };
@@ -149,9 +147,9 @@ TEST_CASE("Address: builder from string") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Graph representation ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("_AssemblyGraph test: all_component_names") {
     Model model;
     model.component<MyInt>(0, 17);
@@ -172,9 +170,9 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Model ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("model test: components in composites") {
     Model model;
     model.composite("compo0");
@@ -294,9 +292,9 @@ TEST_CASE("Model test: representation copy and composites") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Assembly ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("Assembly test: instances and call.") {
     Model a;
     a.component<MyCompo>("Compo1", 13, 14);
@@ -385,9 +383,9 @@ TEST_CASE("Assembly test: get_model.") {
 }
 
 /*
-====================================================================================================
+=============================================================================================================================
   ~*~ Ports ~*~
-==================================================================================================*/
+===========================================================================================================================*/
 TEST_CASE("Use/provide test.") {
     Model model;
     model.component<MyInt>("Compo1", 4);
