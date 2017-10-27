@@ -503,7 +503,7 @@ struct _ComponentBuilder {
 
     // representation-related stuff
     std::string type;
-    std::string name;
+    std::string name;  // should it be removed (not very useful as its stored in a map by name)
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
         os << std::string(tabs, '\t') << "Component \"" << name << "\""
@@ -615,7 +615,7 @@ class Model {
 
     std::size_t size() const { return components.size() + composites.size(); }
 
-    void dot(std::ostream& stream = std::cout) const { representation.to_dot(0, "", stream); }
+    void dot(std::ostream& stream = std::cout) const { to_dot(0, "", stream); }
 
     void dot_to_file(const std::string& fileName = "tmp.dot") const {
         std::ofstream file;
@@ -642,33 +642,33 @@ class Model {
     }
 
   public:
-    // void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
-    //     std::string prefix = name + (name == "" ? "" : "_");
-    //     if (name == "") {  // toplevel
-    //         os << std::string(tabs, '\t') << "graph g {\n";
-    //     } else {
-    //         os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
-    //     }
-    //     for (auto& c : components) {
-    //         os << std::string(tabs + 1, '\t') << prefix << c.name << " [label=\"" << c.name << "\\n(" << c.type
-    //            << ")\" shape=component margin=0.15];\n";
-    //     }
-    //     int i = 0;
-    //     for (auto& c : connectors) {
-    //         std::string cname = "connect_" + prefix + std::to_string(i);
-    //         os << std::string(tabs + 1, '\t') << cname << " [xlabel=\"" << c.type << "\" shape=point];\n";
-    //         for (auto& n : c.neighbors) {
-    //             os << std::string(tabs + 1, '\t') << cname << " -- "
-    //                << (is_composite(n.address) ? "cluster_" + prefix + n.address : prefix + n.address)
-    //                << (n.port == "" ? "" : "[xlabel=\"" + n.port + "\"]") << ";\n";
-    //         }
-    //         i++;
-    //     }
-    //     for (auto& c : composites) {
-    //         c.second.to_dot(tabs + 1, prefix + c.first, os);
-    //     }
-    //     os << std::string(tabs, '\t') << "}\n";
-    // }
+    void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
+        std::string prefix = name + (name == "" ? "" : "_");
+        if (name == "") {  // toplevel
+            os << std::string(tabs, '\t') << "graph g {\n";
+        } else {
+            os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
+        }
+        for (auto& c : components) {
+            os << std::string(tabs + 1, '\t') << prefix << c.first << " [label=\"" << c.first << "\\n(" << c.second.type
+               << ")\" shape=component margin=0.15];\n";
+        }
+        int i = 0;
+        for (auto& c : operations) {
+            std::string cname = "connect_" + prefix + std::to_string(i);
+            os << std::string(tabs + 1, '\t') << cname << " [xlabel=\"" << c.type << "\" shape=point];\n";
+            for (auto& n : c.neighbors) {
+                os << std::string(tabs + 1, '\t') << cname << " -- "
+                   << (is_composite(n.address) ? "cluster_" + prefix + n.address : prefix + n.address)
+                   << (n.port == "" ? "" : "[xlabel=\"" + n.port + "\"]") << ";\n";
+            }
+            i++;
+        }
+        for (auto& c : composites) {
+            c.second.to_dot(tabs + 1, prefix + c.first, os);
+        }
+        os << std::string(tabs, '\t') << "}\n";
+    }
 
     void print_representation(std::ostream& os = std::cout, int tabs = 0) const {
         for (auto& c : components) {
@@ -684,26 +684,26 @@ class Model {
         }
     }
 
-    // std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
-    //                                              const std::string& name = "") const {
-    //     std::string prefix = name + (name == "" ? "" : "_");
-    //     std::vector<std::string> result;
-    //     for (auto& c : components) {            // local components
-    //         result.push_back(prefix + c.name);  // stringified name
-    //     }
-    //     if (include_composites) {
-    //         for (auto& c : composites) {
-    //             result.push_back(prefix + c.first);
-    //         }
-    //     }
-    //     if (depth > 0) {
-    //         for (auto& c : composites) {  // names from composites until a certain depth
-    //             auto subresult = c.second.all_component_names(depth - 1, include_composites, prefix + c.first);
-    //             result.insert(result.end(), subresult.begin(), subresult.end());
-    //         }
-    //     }
-    //     return result;
-    // }
+    std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
+                                                 const std::string& name = "") const {
+        std::string prefix = name + (name == "" ? "" : "_");
+        std::vector<std::string> result;
+        for (auto& c : components) {             // local components
+            result.push_back(prefix + c.first);  // stringified name
+        }
+        if (include_composites) {
+            for (auto& c : composites) {
+                result.push_back(prefix + c.first);
+            }
+        }
+        if (depth > 0) {
+            for (auto& c : composites) {  // names from composites until a certain depth
+                auto subresult = c.second.all_component_names(depth - 1, include_composites, prefix + c.first);
+                result.insert(result.end(), subresult.begin(), subresult.end());
+            }
+        }
+        return result;
+    }
 };
 
 /*
