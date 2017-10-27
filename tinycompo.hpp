@@ -48,7 +48,8 @@ its terms.*/
 ===========================================================================================================================*/
 class Model;
 class Assembly;
-class _AssemblyGraph;
+class Address;
+class PortAddress;
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
@@ -123,7 +124,7 @@ struct _Port : public _AbstractPort {
         : _set([=](const Args... args) { (ref->*prop)(std::forward<const Args>(args)...); }) {}
 
     template <class C, class Type>
-    explicit _Port(C* ref, Type(C::*prop)) : _set([=](const Type arg) { ref->*prop = arg; }) {}
+    explicit _Port(C* ref, Type(C::*prop)) : _set([ref, prop](const Type arg) { ref->*prop = arg; }) {}
 };
 
 template <class Interface>
@@ -134,6 +135,9 @@ struct _ProvidePort : public _AbstractPort {
 
     template <class C>
     explicit _ProvidePort(C* ref, Interface* (C::*prop)()) : _get([=]() { return (ref->*prop)(); }) {}
+
+    _ProvidePort(Assembly& assembly, Address address);   // composite port, direct
+    _ProvidePort(Assembly& assembly, PortAddress port);  // composite port, provide
 };
 
 /*
@@ -143,6 +147,7 @@ tinycompo components should always inherit from this class. It is mostly used as
 class instances but also provides basic debugging methods and the infrastructure required to declare ports.
 ===========================================================================================================================*/
 class Component {
+  protected:
     std::map<std::string, std::unique_ptr<_AbstractPort>> _ports;
     std::string name{""};
 
@@ -303,6 +308,7 @@ struct PortAddress {
 ===========================================================================================================================*/
 struct Composite {
     static void contents(Model&) {}
+    static void ports(Assembly&) {}
 };
 
 /*
@@ -310,7 +316,7 @@ struct Composite {
   ~*~ Graph representation classes ~*~
   Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
 ===========================================================================================================================*/
-struct _GraphAddress {  // TODO MARKED FOR DESTRUCTION
+struct _GraphAddress {
     std::string address;
     std::string port;
 
@@ -399,6 +405,8 @@ struct _ComponentBuilder {
 class Model {
     friend class Assembly;  // to access internal data
 
+    std::function<void(Assembly&)> declare_ports{[](Assembly&) {}};
+
   protected:
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
@@ -415,6 +423,7 @@ class Model {
     template <class T, class... Args>
     Model(_Type<T>, Args... args) {
         T::contents(*this, std::forward<Args>(args)...);
+        declare_ports = [](Assembly& assembly) { T::ports(assembly); };
     }
 
     Model(const Model& other_model)
@@ -582,6 +591,7 @@ class Assembly : public Component {
   public:
     Assembly() = delete;
     explicit Assembly(Model& model, const std::string& name = "") : internal_model(model) {
+        model.declare_ports(*this);  // declaring Assembly ports
         set_name(name);
         for (auto& c : model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
@@ -658,7 +668,28 @@ class Assembly : public Component {
     void call(const Key& key, const std::string& prop, Args... args) const {
         at(key).set(prop, std::forward<Args>(args)...);
     }
+
+    template <class Interface>
+    void provide(const std::string& prop_name, const Address& address) {
+        _ports[prop_name] =
+            std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
+    }
+
+    template <class Interface>
+    void provide(const std::string prop_name, const PortAddress& address) {
+        _ports[prop_name] =
+            std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
+    }
 };
+
+// implementation of _ProvidePort methods that depended on Assembly interface
+template <class Interface>
+_ProvidePort<Interface>::_ProvidePort(Assembly& assembly, Address address)
+    : _get([&assembly, address]() { return &assembly.at<Interface>(address); }) {}
+
+template <class Interface>
+_ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress port)
+    : _get([&assembly, port]() { return assembly.at<Component>(port.address).get<Interface>(port.prop); }) {}
 
 /*
 =============================================================================================================================

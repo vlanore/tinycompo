@@ -396,6 +396,51 @@ TEST_CASE("Assembly test: get_model.") {
     CHECK(ss.str() == "Component \"youpi\" (MyCompo)\n");  // technically compiler-dependant
 }
 
+TEST_CASE("Assembly test: composite ports.") {
+    struct GetInt {
+        virtual int getInt() = 0;
+    };
+    struct User : public Component {
+        GetInt* ptr{nullptr};
+        void setPtr(GetInt* ptrin) { ptr = ptrin; }
+        User() { port("ptr", &User::setPtr); }
+    };
+    struct Two : public GetInt {
+        int getInt() override { return 2; }
+    };
+    struct Provider : public Component {
+        Two two;
+        GetInt* providePtr() { return &two; }
+        Provider() { provide("int", &Provider::providePtr); }
+    };
+
+    struct MyFancyComposite : public Composite {
+        static void contents(Model& model) {
+            auto a = model.component<MyInt>("a", 7);
+            model.component<MyIntProxy>("b");
+            model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), a);
+            model.component<Provider>("p");
+        }
+
+        static void ports(Assembly& assembly) {
+            assembly.provide<IntInterface>("int", Address("a"));
+            assembly.provide<IntInterface>("proxy", Address("b"));
+            assembly.provide<GetInt>("prov", PortAddress("int", "p"));
+        }
+    };
+
+    Model model;
+    model.composite<MyFancyComposite>("composite");
+    model.component<MyIntProxy>("my_proxy");
+    model.connect<UseProvide<IntInterface>>(PortAddress("ptr", "my_proxy"), PortAddress("int", "composite"));
+    model.component<User>("u");
+    model.connect<UseProvide<GetInt>>(PortAddress("ptr", "u"), PortAddress("prov", "composite"));
+
+    Assembly assembly(model);
+    CHECK(assembly.at<IntInterface>("my_proxy").get() == 14);
+    CHECK(assembly.at<User>("u").ptr->getInt() == 2);
+}
+
 /*
 =============================================================================================================================
   ~*~ Ports ~*~
