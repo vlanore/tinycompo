@@ -407,7 +407,6 @@ class Model {
 
     std::function<void(Assembly&)> declare_ports{[](Assembly&) {}};
 
-  protected:
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
