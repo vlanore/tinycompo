@@ -61,7 +61,7 @@ struct AdaptiveUse {
 
 struct UseAllUnclampedNodes {
     static void _connect(Assembly& assembly, PortAddress user, Address model) {
-        for (auto n : assembly.at<Assembly>(model).get_model().get_representation().all_component_names(1)) {
+        for (auto n : assembly.at<Assembly>(model).get_model().all_component_names(1)) {
             Address provider(model, address_from_composite_string(n));
             bool is_random_node = assembly.derives_from<RandomNode>(provider);
             bool is_not_clamped = is_random_node and !assembly.at<RandomNode>(provider).is_clamped;
@@ -76,12 +76,12 @@ template <class Interface>
 struct UseTopoSortInComposite {
     static void _connect(Assembly& assembly, PortAddress user, Address composite) {
         // get graphical representation object
-        const _AssemblyGraph graph = assembly.at<Assembly>(composite).get_model().get_representation();
+        const Model& graph = assembly.at<Assembly>(composite).get_model();
 
         // gather edges and node names
         set<string> nodes;
         multimap<string, string> edges;
-        for (auto c : graph.connectors) {
+        for (auto c : graph.operations) {
             // if connector is of the form (PortAddress, Address)
             if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
                 edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
@@ -126,10 +126,10 @@ struct UseTopoSortInComposite {
 
 struct MarkovBlanket {  // assumes nodes have access to their parents (thus, blanket is just children of target)
     static void _connect(Assembly& assembly, PortAddress user, Address model, const string& target) {
-        const _AssemblyGraph graph = assembly.at<Assembly>(model).get_model().get_representation();
+        const Model& graph = assembly.at<Assembly>(model).get_model();
         set<string> nodes;
         multimap<string, string> edges;
-        for (auto c : graph.connectors) {
+        for (auto c : graph.operations) {
             // if connector is of the form (PortAddress, Address)
             if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
                 edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
@@ -178,8 +178,7 @@ struct ConnectAllMoves {
     }
 
     static void _connect(Assembly& assembly, Address move_composite, Address model, Address scheduler) {
-        vector<string> moves_and_suffstats =
-            assembly.at<Assembly>(move_composite).get_model().get_representation().all_component_names(0, true);
+        vector<string> moves_and_suffstats = assembly.at<Assembly>(move_composite).get_model().all_component_names(0, true);
         for (auto m : moves_and_suffstats) {
             Address m_address = Address(move_composite, m);
             Address m_target = Address(model, strip(m));
@@ -188,8 +187,8 @@ struct ConnectAllMoves {
             if (assembly.derives_from<SuffStats>(m_address)) {  // sufftstats
                 // searching for parent (assuming single) of target (FIXME temporary)
                 Address m_parent("invalid");  // no default constructor
-                auto graph = assembly.at<Assembly>(model).get_model().get_representation();
-                for (auto c : graph.connectors) {
+                auto graph = assembly.at<Assembly>(model).get_model();
+                for (auto c : graph.operations) {
                     if (c.neighbors.size() == 2 and c.neighbors[0].address == strip(m)) {
                         m_parent = Address(model, c.neighbors[1].address);
                     }
