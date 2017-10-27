@@ -279,7 +279,7 @@ TEST_CASE("Model test: copy") {
     TINYCOMPO_THERE_WAS_AN_ERROR;
 }
 
-TEST_CASE("Model test: representation copy and composites") {
+TEST_CASE("Model test: copy and composites") {
     Model model1;
     model1.composite("composite");
     Model model2 = model1;  // copy
@@ -287,6 +287,24 @@ TEST_CASE("Model test: representation copy and composites") {
     stringstream ss;
     model2.print(ss);  // should not contain composite_r
     CHECK(ss.str() == "Composite composite {\n}\n");
+}
+
+TEST_CASE("Model test: digraph export") {
+    Model model;
+    auto d = model.component<MyInt>("d", 3);
+    auto e = model.component<MyInt>("e", 5);
+    auto c = model.component<IntReducer>("c");
+    model.connect<Use<IntInterface>>(PortAddress("ptr", c), d);
+    model.connect<Use<IntInterface>>(PortAddress("ptr", c), e);
+    auto a = model.component<MyIntProxy>("a");
+    auto b = model.component<MyIntProxy>("b");
+    model.connect<Use<IntInterface>>(PortAddress("ptr", a), c);
+    model.connect<Use<IntInterface>>(PortAddress("ptr", b), c);
+
+    auto graph = model.get_digraph();
+    CHECK((graph.first == set<string>{"a", "b", "c", "d", "e"}));
+    CHECK((graph.second ==
+           multimap<string, string>{make_pair("a", "c"), make_pair("b", "c"), make_pair("c", "d"), make_pair("c", "e")}));
 }
 
 /*
