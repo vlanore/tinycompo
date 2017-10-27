@@ -11,7 +11,7 @@ mpi: example/mpi_test_mpibin
 test_bin: test.cpp tinycompo.hpp $(TEST_FILES)
 	$(CXX) $< -o $@ $(FLAGS) $(TINYCOMPO_FLAGS)
 
-example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_connectors.hpp example/graphical_model.hpp
+example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_connectors.hpp example/graphical_model.hpp tinycompo.hpp
 	$(CXX) $< -o $@ -I. $(FLAGS)
 
 %_bin: %.cpp tinycompo.hpp
