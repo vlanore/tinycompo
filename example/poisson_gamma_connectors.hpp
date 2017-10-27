@@ -76,19 +76,9 @@ template <class Interface>
 struct UseTopoSortInComposite {
     static void _connect(Assembly& assembly, PortAddress user, Address composite) {
         // get graphical representation object
-        const Model& graph = assembly.at<Assembly>(composite).get_model();
-
-        // gather edges and node names
-        set<string> nodes;
-        multimap<string, string> edges;
-        for (auto c : graph.operations) {
-            // if connector is of the form (PortAddress, Address)
-            if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
-                edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
-                nodes.insert(c.neighbors[0].address);
-                nodes.insert(c.neighbors[1].address);
-            }
-        }
+        auto graph = assembly.at<Assembly>(composite).get_model().get_digraph();
+        auto nodes = graph.first;
+        auto edges = graph.second;
 
         // gather nodes without predecessors
         set<string> starting_nodes;
@@ -126,21 +116,11 @@ struct UseTopoSortInComposite {
 
 struct MarkovBlanket {  // assumes nodes have access to their parents (thus, blanket is just children of target)
     static void _connect(Assembly& assembly, PortAddress user, Address model, const string& target) {
-        const Model& graph = assembly.at<Assembly>(model).get_model();
-        set<string> nodes;
-        multimap<string, string> edges;
-        for (auto c : graph.operations) {
-            // if connector is of the form (PortAddress, Address)
-            if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
-                edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
-                nodes.insert(c.neighbors[0].address);
-                nodes.insert(c.neighbors[1].address);
-            }
-        }
+        auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
 
         vector<string> blanket;
         std::function<void(const string&)> find_blanket = [&](const string name) {
-            for (auto e : edges) {
+            for (auto e : graph.second) {  // graph.second is edges
                 if (e.second == name) {
                     // if child is RandomNode then add it to blanket
                     Address origin = Address(model, e.first);
@@ -187,10 +167,10 @@ struct ConnectAllMoves {
             if (assembly.derives_from<SuffStats>(m_address)) {  // sufftstats
                 // searching for parent (assuming single) of target (FIXME temporary)
                 Address m_parent("invalid");  // no default constructor
-                auto graph = assembly.at<Assembly>(model).get_model();
-                for (auto c : graph.operations) {
-                    if (c.neighbors.size() == 2 and c.neighbors[0].address == strip(m)) {
-                        m_parent = Address(model, c.neighbors[1].address);
+                auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
+                for (auto e : graph.second) {
+                    if (e.first == strip(m)) {
+                        m_parent = Address(model, e.second);
                     }
                 }
                 AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), m_parent);

@@ -399,10 +399,15 @@ struct _ComponentBuilder {
 class Model {
     friend class Assembly;  // to access internal data
 
-  public:  // FIXME temporary FIXME FIXME
+  protected:
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
+
+    std::string strip(std::string s) const {
+        auto it = s.find('_');
+        return s.substr(++it);
+    }
 
   public:
     Model() = default;
@@ -465,6 +470,13 @@ class Model {
         return dynamic_cast<Model&>(compositeIt->second);
     }
 
+    bool is_composite(const std::string& address) const {
+        return std::accumulate(composites.begin(), composites.end(), false,
+                               [this, address](bool acc, std::pair<std::string, Model> ref) {
+                                   return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
+                               });
+    }
+
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
@@ -480,20 +492,20 @@ class Model {
         dot(file);
     }
 
-  private:
-    std::string strip(std::string s) const {
-        auto it = s.find('_');
-        return s.substr(++it);
+    std::pair<std::set<std::string>, std::multimap<std::string, std::string>> get_digraph() const {
+        std::set<std::string> nodes;
+        std::multimap<std::string, std::string> edges;
+        for (auto c : operations) {
+            // if connector is of the form (PortAddress, Address)
+            if ((c.neighbors.size() == 2) and (c.neighbors[0].port != "") and (c.neighbors[1].port == "")) {
+                edges.insert(make_pair(c.neighbors[0].address, c.neighbors[1].address));
+                nodes.insert(c.neighbors[0].address);
+                nodes.insert(c.neighbors[1].address);
+            }
+        }
+        return make_pair(nodes, edges);
     }
 
-    bool is_composite(const std::string& address) const {
-        return std::accumulate(composites.begin(), composites.end(), false,
-                               [this, address](bool acc, std::pair<std::string, Model> ref) {
-                                   return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
-                               });
-    }
-
-  public:
     void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
         std::string prefix = name + (name == "" ? "" : "_");
         if (name == "") {  // toplevel
