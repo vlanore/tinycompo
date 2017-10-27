@@ -148,27 +148,6 @@ TEST_CASE("Address: builder from string") {
 
 /*
 =============================================================================================================================
-  ~*~ Graph representation ~*~
-===========================================================================================================================*/
-TEST_CASE("_AssemblyGraph test: all_component_names") {
-    Model model;
-    model.component<MyInt>(0, 17);
-    model.component<MyInt>(2, 31);
-    model.composite(1);
-    model.component<MyInt>(Address(1, 'r'), 21);
-    model.composite(Address(1, 't'));
-    model.component<MyInt>(Address(1, 't', 'l'), 23);
-
-    vector<string> vec0 = model.all_component_names();
-    vector<string> vec1 = model.all_component_names(1);
-    vector<string> vec2 = model.all_component_names(2);
-    CHECK((set<string>(vec0.begin(), vec0.end())) == (set<string>{"0", "2"}));
-    CHECK((set<string>(vec1.begin(), vec1.end())) == (set<string>{"0", "2", "1_r"}));
-    CHECK((set<string>(vec2.begin(), vec2.end())) == (set<string>{"0", "2", "1_r", "1_t_l"}));
-}
-
-/*
-=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 TEST_CASE("model test: components in composites") {
@@ -305,6 +284,25 @@ TEST_CASE("Model test: digraph export") {
     CHECK((graph.first == set<string>{"a", "b", "c", "d", "e"}));
     CHECK((graph.second ==
            multimap<string, string>{make_pair("a", "c"), make_pair("b", "c"), make_pair("c", "d"), make_pair("c", "e")}));
+}
+
+TEST_CASE("_AssemblyGraph test: all_component_names") {
+    Model model;
+    model.component<MyInt>(0, 17);
+    model.component<MyInt>(2, 31);
+    model.composite(1);
+    model.component<MyInt>(Address(1, 'r'), 21);
+    model.composite(Address(1, 't'));
+    model.component<MyInt>(Address(1, 't', 'l'), 23);
+
+    vector<string> vec0 = model.all_component_names();
+    vector<string> vec1 = model.all_component_names(1);
+    vector<string> vec2 = model.all_component_names(2);
+    vector<string> vec3 = model.all_component_names(2, true);
+    CHECK((set<string>(vec0.begin(), vec0.end())) == (set<string>{"0", "2"}));
+    CHECK((set<string>(vec1.begin(), vec1.end())) == (set<string>{"0", "2", "1_r"}));
+    CHECK((set<string>(vec2.begin(), vec2.end())) == (set<string>{"0", "2", "1_r", "1_t_l"}));
+    CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1_t", "2", "1_r", "1_t_l"}));
 }
 
 /*
