@@ -445,7 +445,10 @@ class _AssemblyGraph {
 struct _Operation {
     template <class Connector, class... Args>
     _Operation(_Type<Connector>, Args... args)
-        : _connect([=](Assembly& assembly) { Connector::_connect(assembly, args...); }) {}
+        : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
+          type(TinycompoDebug::type<Connector>()) {
+        neighbors_from_args(args...);
+    }
 
     std::function<void(Assembly&)> _connect;
 
@@ -603,7 +606,6 @@ class Model {
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
-        operations.back().neighbors_from_args(args...);
 
         // FIXME MARKED FOR DESTRUCTION
         representation.connectors.push_back(_Node());
@@ -621,10 +623,87 @@ class Model {
         dot(file);
     }
 
-    void print_representation(std::ostream& os = std::cout, int tabs = 0) const { representation.print(os, tabs); }
+    // void print_representation(std::ostream& os = std::cout, int tabs = 0) const { representation.print(os, tabs); }
 
     const _AssemblyGraph& get_representation() const { return representation; }
     _AssemblyGraph& get_representation() { return representation; }
+
+  private:
+    std::string strip(std::string s) const {
+        auto it = s.find('_');
+        return s.substr(++it);
+    }
+
+    bool is_composite(const std::string& address) const {
+        return std::accumulate(composites.begin(), composites.end(), false,
+                               [this, address](bool acc, std::pair<std::string, Model> ref) {
+                                   return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
+                               });
+    }
+
+  public:
+    // void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
+    //     std::string prefix = name + (name == "" ? "" : "_");
+    //     if (name == "") {  // toplevel
+    //         os << std::string(tabs, '\t') << "graph g {\n";
+    //     } else {
+    //         os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
+    //     }
+    //     for (auto& c : components) {
+    //         os << std::string(tabs + 1, '\t') << prefix << c.name << " [label=\"" << c.name << "\\n(" << c.type
+    //            << ")\" shape=component margin=0.15];\n";
+    //     }
+    //     int i = 0;
+    //     for (auto& c : connectors) {
+    //         std::string cname = "connect_" + prefix + std::to_string(i);
+    //         os << std::string(tabs + 1, '\t') << cname << " [xlabel=\"" << c.type << "\" shape=point];\n";
+    //         for (auto& n : c.neighbors) {
+    //             os << std::string(tabs + 1, '\t') << cname << " -- "
+    //                << (is_composite(n.address) ? "cluster_" + prefix + n.address : prefix + n.address)
+    //                << (n.port == "" ? "" : "[xlabel=\"" + n.port + "\"]") << ";\n";
+    //         }
+    //         i++;
+    //     }
+    //     for (auto& c : composites) {
+    //         c.second.to_dot(tabs + 1, prefix + c.first, os);
+    //     }
+    //     os << std::string(tabs, '\t') << "}\n";
+    // }
+
+    void print_representation(std::ostream& os = std::cout, int tabs = 0) const {
+        for (auto& c : components) {
+            c.second.print(os, tabs);
+        }
+        for (auto& c : operations) {
+            c.print(os, tabs);
+        }
+        for (auto& c : composites) {
+            os << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
+            c.second.print_representation(os, tabs + 1);
+            os << std::string(tabs, '\t') << "}\n";
+        }
+    }
+
+    // std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
+    //                                              const std::string& name = "") const {
+    //     std::string prefix = name + (name == "" ? "" : "_");
+    //     std::vector<std::string> result;
+    //     for (auto& c : components) {            // local components
+    //         result.push_back(prefix + c.name);  // stringified name
+    //     }
+    //     if (include_composites) {
+    //         for (auto& c : composites) {
+    //             result.push_back(prefix + c.first);
+    //         }
+    //     }
+    //     if (depth > 0) {
+    //         for (auto& c : composites) {  // names from composites until a certain depth
+    //             auto subresult = c.second.all_component_names(depth - 1, include_composites, prefix + c.first);
+    //             result.insert(result.end(), subresult.begin(), subresult.end());
+    //         }
+    //     }
+    //     return result;
+    // }
 };
 
 /*

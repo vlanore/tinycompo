@@ -242,8 +242,8 @@ TEST_CASE("Model test: dot output and representation print") {
     stringstream ss2;
     model.print_representation(ss2);
     CHECK(ss2.str() ==
-          "Component \"mycompo\" (MyBasicCompo) \nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
-          "composite {\n	Component \"2\" (MyBasicCompo) \n}\n");
+          "Component \"mycompo\" (MyBasicCompo)\nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
+          "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
 }
 
 TEST_CASE("Model test: temporary keys") {
@@ -379,7 +379,7 @@ TEST_CASE("Assembly test: get_model.") {
     CHECK(model.size() == 2);
     stringstream ss;
     model2.print_representation(ss);
-    CHECK(ss.str() == "Component \"youpi\" (MyCompo) \n");  // technically compiler-dependant
+    CHECK(ss.str() == "Component \"youpi\" (MyCompo)\n");  // technically compiler-dependant
 }
 
 /*
