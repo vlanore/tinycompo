@@ -316,18 +316,6 @@ struct PortAddress {
 
 /*
 =============================================================================================================================
-  ~*~ _Operation class ~*~
-===========================================================================================================================*/
-struct _Operation {
-    template <class Connector, class... Args>
-    _Operation(_Type<Connector>, Args... args)
-        : _connect([=](Assembly& assembly) { Connector::_connect(assembly, args...); }) {}
-
-    std::function<void(Assembly&)> _connect;
-};
-
-/*
-=============================================================================================================================
   ~*~ Composite ~*~
 ===========================================================================================================================*/
 struct Composite {
@@ -342,8 +330,6 @@ struct Composite {
 struct _GraphAddress {
     std::string address;
     std::string port;
-
-    friend class _AssemblyGraph;
 
     _GraphAddress(const std::string& address, const std::string& port = "") : address(address), port(port) {}
 
@@ -466,6 +452,51 @@ class _AssemblyGraph {
             }
         }
         return result;
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ _Operation class ~*~
+===========================================================================================================================*/
+struct _Operation {
+    template <class Connector, class... Args>
+    _Operation(_Type<Connector>, Args... args)
+        : _connect([=](Assembly& assembly) { Connector::_connect(assembly, args...); }) {}
+
+    std::function<void(Assembly&)> _connect;
+
+    // representation-related stuff
+    std::string name;
+    std::string type;
+    std::vector<_GraphAddress> neighbors;
+
+    void neighbors_from_args() {}
+
+    template <class Arg, class... Args>
+    void neighbors_from_args(Arg, Args... args) {
+        neighbors_from_args(args...);
+    }
+
+    template <class... Args>
+    void neighbors_from_args(const Address& arg, Args... args) {
+        neighbors.push_back(_GraphAddress(arg.to_string()));
+        neighbors_from_args(args...);
+    }
+
+    template <class... Args>
+    void neighbors_from_args(PortAddress arg, Args... args) {
+        neighbors.push_back(_GraphAddress(arg.address.to_string(), arg.prop));
+        neighbors_from_args(args...);
+    }
+
+    void print(std::ostream& os = std::cout, int tabs = 0) const {
+        os << std::string(tabs, '\t') << ((name == "") ? "Connector" : "Component \"" + name + "\"") << " (" << type << ") ";
+        for (auto& n : neighbors) {
+            n.print(os);
+            os << " ";
+        }
+        os << '\n';
     }
 };
 
