@@ -534,7 +534,7 @@ class Model {
         os << std::string(tabs, '\t') << "}\n";
     }
 
-    void print_representation(std::ostream& os = std::cout, int tabs = 0) const {
+    void print(std::ostream& os = std::cout, int tabs = 0) const {
         for (auto& c : components) {
             c.second.print(os, tabs);
         }
@@ -543,7 +543,7 @@ class Model {
         }
         for (auto& c : composites) {
             os << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
-            c.second.print_representation(os, tabs + 1);
+            c.second.print(os, tabs + 1);
             os << std::string(tabs, '\t') << "}\n";
         }
     }

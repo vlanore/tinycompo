@@ -238,7 +238,7 @@ TEST_CASE("Model test: dot output and representation print") {
           "margin=0.15];\n\t}\n}\n");
 
     stringstream ss2;
-    model.print_representation(ss2);
+    model.print(ss2);
     CHECK(ss2.str() ==
           "Component \"mycompo\" (MyBasicCompo)\nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
           "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
@@ -285,7 +285,7 @@ TEST_CASE("Model test: representation copy and composites") {
     Model model2 = model1;  // copy
     model1.component<MyInt>(Address("composite", 'r'), 17);
     stringstream ss;
-    model2.print_representation(ss);  // should not contain composite_r
+    model2.print(ss);  // should not contain composite_r
     CHECK(ss.str() == "Composite composite {\n}\n");
 }
 
@@ -376,7 +376,7 @@ TEST_CASE("Assembly test: get_model.") {
     CHECK(model2.size() == 1);
     CHECK(model.size() == 2);
     stringstream ss;
-    model2.print_representation(ss);
+    model2.print(ss);
     CHECK(ss.str() == "Component \"youpi\" (MyCompo)\n");  // technically compiler-dependant
 }
 
