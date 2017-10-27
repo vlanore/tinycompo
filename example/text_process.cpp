@@ -108,5 +108,5 @@ int main() {
     myassembly.call("Controller", "go");
 
     mymodel.dot_to_file();
-    mymodel.print_representation();
+    mymodel.print();
 }
