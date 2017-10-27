@@ -98,14 +98,14 @@ TEST_CASE("Component without _debug") {
   ~*~ _ComponentBuilder ~*~
 ===========================================================================================================================*/
 TEST_CASE("_ComponentBuilder tests.") {
-    _ComponentBuilder compo(_Type<MyCompo>(), 3, 4);  // create _ComponentBuilder object
-    auto ptr = compo._constructor();                  // instantiate actual object
+    _ComponentBuilder compo(_Type<MyCompo>(), "youpi", 3, 4);  // create _ComponentBuilder object
+    auto ptr = compo._constructor();                           // instantiate actual object
     auto ptr2 = dynamic_cast<MyCompo*>(ptr.get());
     REQUIRE(ptr2 != nullptr);
     CHECK(ptr2->i == 3);
     CHECK(ptr2->j == 4);
-    CHECK(ptr->_debug() == "MyCompo");
-    CHECK(compo._class_name == "MyCompo");  // technically compiler-dependant, but should work with gcc/clang
+    CHECK(compo.name == "youpi");
+    CHECK(compo.type == "MyCompo");  // technically compiler-dependant, but should work with gcc/clang
 }
 
 /*

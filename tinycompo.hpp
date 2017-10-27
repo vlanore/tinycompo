@@ -202,23 +202,6 @@ class Component {
 
 /*
 =============================================================================================================================
-  ~*~ _ComponentBuilder class ~*~
-A small class that is capable of storing a constructor call for any Component child class and execute said call later on
-demand. The class itself is not templated (allowing direct storage) but the constructor call is. This is an internal
-tinycompo class that should never be seen by the user (as denoted by the underscore prefix).
-===========================================================================================================================*/
-struct _ComponentBuilder {
-    template <class T, class... Args>
-    _ComponentBuilder(_Type<T>, Args... args)
-        : _constructor([=]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(args...))); }),
-          _class_name(TinycompoDebug::type<T>()) {}
-
-    std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
-    std::string _class_name{""};
-};
-
-/*
-=============================================================================================================================
   ~*~ key_to_string ~*~
 ===========================================================================================================================*/
 template <class Key>
@@ -327,7 +310,7 @@ struct Composite {
   ~*~ Graph representation classes ~*~
   Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
 ===========================================================================================================================*/
-struct _GraphAddress {
+struct _GraphAddress {  // TODO MARKED FOR DESTRUCTION
     std::string address;
     std::string port;
 
@@ -467,7 +450,6 @@ struct _Operation {
     std::function<void(Assembly&)> _connect;
 
     // representation-related stuff
-    std::string name;
     std::string type;
     std::vector<_GraphAddress> neighbors;
 
@@ -491,12 +473,38 @@ struct _Operation {
     }
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
-        os << std::string(tabs, '\t') << ((name == "") ? "Connector" : "Component \"" + name + "\"") << " (" << type << ") ";
+        os << std::string(tabs, '\t') << "Connector (" << type << ") ";
         for (auto& n : neighbors) {
             n.print(os);
             os << " ";
         }
         os << '\n';
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ _ComponentBuilder class ~*~
+A small class that is capable of storing a constructor call for any Component child class and execute said call later on
+demand. The class itself is not templated (allowing direct storage) but the constructor call is. This is an internal
+tinycompo class that should never be seen by the user (as denoted by the underscore prefix).
+===========================================================================================================================*/
+struct _ComponentBuilder {
+    template <class T, class... Args>
+    _ComponentBuilder(_Type<T>, const std::string& name, Args... args)
+        : _constructor([=]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(args...))); }),
+          type(TinycompoDebug::type<T>()),
+          name(name) {}
+
+    std::function<std::unique_ptr<Component>()> _constructor;  // stores the component constructor
+
+    // representation-related stuff
+    std::string type;
+    std::string name;
+
+    void print(std::ostream& os = std::cout, int tabs = 0) const {
+        os << std::string(tabs, '\t') << "Component \"" << name << "\""
+           << " (" << type << ")\n";
     }
 };
 
@@ -553,8 +561,9 @@ class Model {
         }
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
-                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+                           std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
 
+        // TODO MARKED FOR DESTRUCTION
         representation.components.push_back(_Node());
         representation.components.back().name = key_name;
         representation.components.back().type = TinycompoDebug::type<T>();
@@ -594,7 +603,9 @@ class Model {
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), args...);
+        operations.back().neighbors_from_args(args...);
 
+        // FIXME MARKED FOR DESTRUCTION
         representation.connectors.push_back(_Node());
         representation.connectors.back().type = TinycompoDebug::type<C>();
         representation.connectors.back().neighbors_from_args(args...);

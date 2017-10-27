@@ -73,6 +73,7 @@ int main() {
     auto scheduler = model.component<MoveScheduler>("scheduler");
     auto moves = model.composite<Moves>("Moves", size);
     model.connect<ConnectAllMoves>(moves, pg, scheduler);
+    model.connect<Use<LogDensity>>(PortAddress("downward", Address(moves, "Move_Theta")), Address(moves, "SS_Omega"));
 
     auto mcmc_engine = model.component<MCMCEngine>("MCMC", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", mcmc_engine), sampler);
