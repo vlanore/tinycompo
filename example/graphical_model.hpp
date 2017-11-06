@@ -79,7 +79,7 @@ struct LogDensity {
     virtual double log_density() const = 0;
 };
 
-struct SuffStats : public LogDensity {
+struct AbstractSuffStats : public LogDensity {
     virtual void corrupt() const = 0;
 };
 
@@ -365,8 +365,8 @@ class MHMove : public Move {
     void addDownward(LogDensity *ptr) { downward.push_back(ptr); }
 
     // suff stats corruption
-    vector<SuffStats *> corrupted_suff_stats;
-    void add_corrupted_suff_stats(SuffStats *ss) { corrupted_suff_stats.push_back(ss); }
+    vector<AbstractSuffStats *> corrupted_suff_stats;
+    void add_corrupted_suff_stats(AbstractSuffStats *ss) { corrupted_suff_stats.push_back(ss); }
     void corrupt() const {
         for (auto ss : corrupted_suff_stats) {
             ss->corrupt();
@@ -459,7 +459,7 @@ class MCMCEngine : public Go {
     }
 };
 
-class GammaSuffStat : public SuffStats, public Component {
+class GammaSuffStat : public AbstractSuffStats, public Component {
     mutable double sum_xi{0}, sum_log_xi{0};
     mutable bool valid{false};
     vector<RandomNode *> targets;

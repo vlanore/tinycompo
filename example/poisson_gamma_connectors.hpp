@@ -157,14 +157,14 @@ struct ConnectAllMoves {
         return s.substr(++it);
     }
 
-    static void _connect(Assembly& assembly, Address move_composite, Address model, Address scheduler) {
-        vector<string> moves_and_suffstats = assembly.at<Assembly>(move_composite).get_model().all_component_names(0, true);
+    static void _connect(Assembly& assembly, Address moves, Address model, Address suffstats, Address scheduler) {
+        vector<string> moves_and_suffstats = assembly.at<Assembly>(moves).get_model().all_component_names(0, true);
         for (auto m : moves_and_suffstats) {
-            Address m_address = Address(move_composite, m);
+            Address m_address = Address(moves, m);
             Address m_target = Address(model, strip(m));
             bool is_move = assembly.is_composite(m_address) ? assembly.derives_from<Move>(Address(m_address, 0))
                                                             : assembly.derives_from<Move>(m_address);
-            if (assembly.derives_from<SuffStats>(m_address)) {  // sufftstats
+            if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats
                 // searching for parent (assuming single) of target (FIXME temporary)
                 Address m_parent("invalid");  // no default constructor
                 auto graph = assembly.at<Assembly>(model).get_model().get_digraph();

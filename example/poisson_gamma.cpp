@@ -50,9 +50,6 @@ struct Moves : public Composite {
         model.component<MHMove<Scaling>>("Move_Sigma", 3, 10);
         model.component<MHMove<Scaling>>("Move_Theta", 3, 10);
         model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10);
-
-        auto suff_stats = model.component<GammaSuffStat>("SS_Omega");
-        model.connect<MultiProvide<SuffStats>>(PortAddress("corrupt", Address("Move_Omega")), suff_stats);
     }
 };
 
@@ -70,10 +67,13 @@ int main() {
     auto sampler = model.component<MultiSample>("sampler");
     model.connect<UseAllUnclampedNodes>(PortAddress("register", sampler), pg);
 
+    auto suffstats = model.composite("suffstats");
+    auto gamma_suffstats = model.component<GammaSuffStat>(Address(suffstats, "Suffstats_Omega"));
+    model.connect<MultiUse<RandomNode>>(PortAddress("target", gamma_suffstats), Address(pg, "Omega"));
+
     auto scheduler = model.component<MoveScheduler>("scheduler");
-    auto moves = model.composite<Moves>("Moves", size);
-    model.connect<ConnectAllMoves>(moves, pg, scheduler);
-    model.connect<Use<LogDensity>>(PortAddress("downward", Address(moves, "Move_Theta")), Address(moves, "SS_Omega"));
+    auto moves = model.composite<Moves>("moves", size);
+    model.connect<ConnectAllMoves>(moves, pg, suffstats, scheduler);
 
     auto mcmc_engine = model.component<MCMCEngine>("MCMC", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", mcmc_engine), sampler);
@@ -102,6 +102,6 @@ int main() {
     // DEBUG
     Model(_Type<PoissonGamma>(), 3).dot_to_file("tmp_pg.dot");
     model.dot_to_file();
-    // model.print_representation();
+    // model.print();
     // assembly.print_all();
 }
