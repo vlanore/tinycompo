@@ -49,7 +49,7 @@ its terms.*/
 class Model;
 class Assembly;
 class Address;
-class PortAddress;
+struct PortAddress;
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
