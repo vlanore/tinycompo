@@ -319,6 +319,16 @@ TEST_CASE("Model test: meta") {
     CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
 }
 
+TEST_CASE("Model test: composite not found") {
+    Model model;
+    model.composite("youpi");
+    model.composite("youpla");
+    TINYCOMPO_TEST_ERRORS {
+        model.get_composite("youplaboum");
+    }
+    TINYCOMPO_TEST_ERRORS_END("composite not found", "-- Error: composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n\n");
+}
+
 /*
 =============================================================================================================================
   ~*~ Assembly ~*~

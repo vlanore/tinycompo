@@ -476,7 +476,16 @@ class Model {
     Model& get_composite(const Key& key) {
         std::string key_name = key_to_string(key);
         auto compositeIt = composites.find(key_name);
-        return dynamic_cast<Model&>(compositeIt->second);
+        if (compositeIt == composites.end()) {
+            TinycompoDebug error("composite not found");
+            error << "Composite " << key_name << " does not exist. Existing composites are:\n";
+            for (auto& c : composites) {
+                error << "  * " << c.first << '\n';
+            }
+            error.fail();
+        } else {
+            return dynamic_cast<Model&>(compositeIt->second);
+        }
     }
 
     bool is_composite(const std::string& address) const {
