@@ -313,20 +313,22 @@ TEST_CASE("Model test: meta") {
     model.meta(Address("compo"), "prop1", "value1");
     model.meta(Address("compo"), "prop2", "value2");
     model.meta(Address("composite", "compo2"), "prop3", "value3");
+    model.meta(Address("composite"), "prop4", "value4");
 
     CHECK(model.get_meta(Address("compo"), "prop1") == "value1");
     CHECK(model.get_meta(Address("compo"), "prop2") == "value2");
     CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
+    CHECK(model.get_meta(Address("composite"), "prop4") == "value4");
 }
 
 TEST_CASE("Model test: composite not found") {
     Model model;
     model.composite("youpi");
     model.composite("youpla");
-    TINYCOMPO_TEST_ERRORS {
-        model.get_composite("youplaboum");
-    }
-    TINYCOMPO_TEST_ERRORS_END("composite not found", "-- Error: composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n\n");
+    TINYCOMPO_TEST_ERRORS { model.get_composite("youplaboum"); }
+    TINYCOMPO_TEST_ERRORS_END("composite not found",
+                              "-- Error: composite not found. Composite youplaboum does not exist. Existing composites "
+                              "are:\n  * youpi\n  * youpla\n\n");
 }
 
 /*

@@ -48,8 +48,13 @@ struct PoissonGamma : public Composite {
 struct Moves : public Composite {
     static void contents(Model& model, int size) {
         model.component<MHMove<Scaling>>("Move_Sigma", 3, 10);
+        model.meta("Move_Sigma", "target", "Sigma");
+
         model.component<MHMove<Scaling>>("Move_Theta", 3, 10);
+        model.meta("Move_Theta", "target", "Theta");
+
         model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10);
+        // model.meta("Move_Sigma", "target", "Sigma");
     }
 };
 

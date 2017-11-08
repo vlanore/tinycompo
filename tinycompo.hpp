@@ -60,6 +60,8 @@ struct _AbstractPort {
 
 struct _AbstractAddress {};  // for identification of _Address types encountered in the wild
 
+using DirectedGraph = std::pair<std::set<std::string>, std::multimap<std::string, std::string>>;
+
 /*
 =============================================================================================================================
   ~*~ Debug ~*~
@@ -236,7 +238,7 @@ class Address {
 
   public:
     template <class... Keys>
-    explicit Address(Keys... keys) {
+    Address(Keys... keys) {  // not explicit (how dangerous is this, really?)
         register_keys(std::forward<Keys>(keys)...);
     }
 
@@ -266,6 +268,11 @@ class Address {
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
                                [this](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
+    }
+
+    // for use as key in maps
+    bool operator<(const Address& other_address) const {
+        return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
     }
 };
 
@@ -412,6 +419,8 @@ class Model {
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
 
+    std::map<Address, std::map<std::string, std::string>> meta_data;
+
     std::string strip(std::string s) const {
         auto it = s.find('_');
         return s.substr(++it);
@@ -495,27 +504,9 @@ class Model {
                                });
     }
 
-    template <class CallKey>
-    void meta(CallKey key, const std::string& prop, const std::string& value) {
-        std::string key_name = key_to_string(key);
-        components.at(key_name).meta.insert(components.at(key_name).meta.end(), make_pair(prop, value));
-    }
+    void meta(Address address, const std::string& prop, const std::string& value) { meta_data[address][prop] = value; }
 
-    void meta(Address address, const std::string& prop, const std::string& value) {
-        if (!address.is_composite()) {
-            meta(address.first(), prop, value);
-        } else {
-            get_composite(address.first()).meta(address.rest(), prop, value);
-        }
-    }
-
-    std::string get_meta(Address address, const std::string& prop) {
-        if (!address.is_composite()) {
-            return components.at(address.first()).meta.at(prop);
-        } else {
-            return get_composite(address.first()).get_meta(address.rest(), prop);
-        }
-    }
+    std::string get_meta(Address address, const std::string& prop) { return meta_data.at(address).at(prop); }
 
     template <class C, class... Args>
     void connect(Args&&... args) {
@@ -532,7 +523,7 @@ class Model {
         dot(file);
     }
 
-    std::pair<std::set<std::string>, std::multimap<std::string, std::string>> get_digraph() const {
+    DirectedGraph get_digraph() const {
         std::set<std::string> nodes;
         std::multimap<std::string, std::string> edges;
         for (auto c : operations) {
