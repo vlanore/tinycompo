@@ -158,10 +158,18 @@ struct ConnectAllMoves {
     }
 
     static void _connect(Assembly& assembly, Address moves, Address model, Address suffstats, Address scheduler) {
-        vector<string> moves_and_suffstats = assembly.at<Assembly>(moves).get_model().all_component_names(0, true);
-        for (auto m : moves_and_suffstats) {
-            Address m_address = Address(moves, m);
-            Address m_target = Address(model, strip(m));
+        vector<string> move_names = assembly.at<Assembly>(moves).get_model().all_component_names(0, true);
+        vector<string> suffstat_names = assembly.at<Assembly>(suffstats).get_model().all_component_names(0);
+        auto global_graph = assembly.get_model().get_digraph();
+
+        for (auto m : move_names) {
+            auto m_address = Address(moves, m);
+            auto m_target = Address(model, strip(m));
+
+            // is there a suffstat for the target?
+            for (auto s : suffstat_names) {  // for all suffstats
+            }
+
             bool is_move = assembly.is_composite(m_address) ? assembly.derives_from<Move>(Address(m_address, 0))
                                                             : assembly.derives_from<Move>(m_address);
             if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats

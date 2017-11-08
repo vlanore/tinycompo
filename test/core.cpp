@@ -305,6 +305,20 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
     CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1_t", "2", "1_r", "1_t_l"}));
 }
 
+TEST_CASE("Model test: meta") {
+    Model model;
+    model.component<MyInt>("compo");
+    model.composite("composite");
+    model.component<MyInt>(Address("composite", "compo2"));
+    model.meta(Address("compo"), "prop1", "value1");
+    model.meta(Address("compo"), "prop2", "value2");
+    model.meta(Address("composite", "compo2"), "prop3", "value3");
+
+    CHECK(model.get_meta(Address("compo"), "prop1") == "value1");
+    CHECK(model.get_meta(Address("compo"), "prop2") == "value2");
+    CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
+}
+
 /*
 =============================================================================================================================
   ~*~ Assembly ~*~

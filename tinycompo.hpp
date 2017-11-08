@@ -391,6 +391,7 @@ struct _ComponentBuilder {
     // representation-related stuff
     std::string type;
     std::string name;  // should it be removed (not very useful as its stored in a map by name)
+    std::map<std::string, std::string> meta;
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
         os << std::string(tabs, '\t') << "Component \"" << name << "\""
@@ -483,6 +484,28 @@ class Model {
                                [this, address](bool acc, std::pair<std::string, Model> ref) {
                                    return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
                                });
+    }
+
+    template <class CallKey>
+    void meta(CallKey key, const std::string& prop, const std::string& value) {
+        std::string key_name = key_to_string(key);
+        components.at(key_name).meta.insert(components.at(key_name).meta.end(), make_pair(prop, value));
+    }
+
+    void meta(Address address, const std::string& prop, const std::string& value) {
+        if (!address.is_composite()) {
+            meta(address.first(), prop, value);
+        } else {
+            get_composite(address.first()).meta(address.rest(), prop, value);
+        }
+    }
+
+    std::string get_meta(Address address, const std::string& prop) {
+        if (!address.is_composite()) {
+            return components.at(address.first()).meta.at(prop);
+        } else {
+            return get_composite(address.first()).get_meta(address.rest(), prop);
+        }
     }
 
     template <class C, class... Args>
