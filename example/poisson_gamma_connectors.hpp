@@ -152,40 +152,52 @@ struct ConnectMove {
 };
 
 struct ConnectAllMoves {
-    static string strip(string s) {
-        auto it = s.find('_');
-        return s.substr(++it);
+    static string find_father(DirectedGraph graph, string node) {
+        auto it = find_if(graph.second.begin(), graph.second.end(), [node](pair<string, string> edge) {
+                return edge.second == node;
+            });
+        if (it != graph.second.end()) cout << "Father of " << node << " is " << it->first << "\n";
+        return it == graph.second.end() ? "invalid" : it->first;
     }
 
-    static void _connect(Assembly& assembly, Address moves, Address model, Address suffstats, Address scheduler) {
+    static void _connect(Assembly& assembly, Address moves, Address model, Address scheduler) {
+        // gather all component names in the moves composite
         vector<string> move_names = assembly.at<Assembly>(moves).get_model().all_component_names(0, true);
-        vector<string> suffstat_names = assembly.at<Assembly>(suffstats).get_model().all_component_names(0);
-        auto global_graph = assembly.get_model().get_digraph();
+        DirectedGraph model_graph = assembly.at<Assembly>(model).get_model().get_digraph();
 
         for (auto m : move_names) {
+            // build the move's address + build its target address from metadata
             auto m_address = Address(moves, m);
-            auto m_target = Address(model, strip(m));
+            auto m_target = Address(model, assembly.get_model().get_meta(m, "target"));
 
-            // is there a suffstat for the target?
-            for (auto s : suffstat_names) {  // for all suffstats
-            }
-
+            //is this component a move or a suffstat?
             bool is_move = assembly.is_composite(m_address) ? assembly.derives_from<Move>(Address(m_address, 0))
-                                                            : assembly.derives_from<Move>(m_address);
-            if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats
-                // searching for parent (assuming single) of target (FIXME temporary)
-                Address m_parent("invalid");  // no default constructor
-                auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
-                for (auto e : graph.second) {
-                    if (e.first == strip(m)) {
-                        m_parent = Address(model, e.second);
-                    }
-                }
-                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), m_parent);
+                : assembly.derives_from<Move>(m_address);
+
+            // make all the easy connections
+            if (is_move) {
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("node", m_address), m_target); // to target node
+                AdaptiveUse<Go>::_connect(assembly, PortAddress("move", scheduler), m_address); // register to scheduler
+                // downward not connected yet (needs to know about suffstats first)
+            } else { // assuming suffstat (FIXME? actually check)
                 AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target);
-            } else if (is_move) {  // moves
-                ConnectMove::_connect(assembly, m_address, model, strip(m), scheduler);
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), find_father(model_graph, m));
             }
+
+            // if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats
+            //     // searching for parent (assuming single) of target (FIXME temporary)
+            //     Address m_parent("invalid");  // no default constructor
+            //     auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
+            //     for (auto e : graph.second) {
+            //         if (e.first == strip(m)) {
+            //             m_parent = Address(model, e.second);
+            //         }
+            //     }
+            //     AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), m_parent);
+            //     AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target);
+            // } else if (is_move) {  // moves
+            //     ConnectMove::_connect(assembly, m_address, model, strip(m), scheduler);
+            // }
         }
     }
 };

@@ -271,9 +271,9 @@ class Address {
     }
 
     // for use as key in maps
-    bool operator<(const Address& other_address) const {
-        return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
-    }
+    // bool operator<(const Address& other_address) const {
+    //     return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
+    // }
 };
 
 Address address_from_composite_string(const std::string& input) {
@@ -419,7 +419,7 @@ class Model {
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
 
-    std::map<Address, std::map<std::string, std::string>> meta_data;
+    std::map<std::string, std::map<std::string, std::string>> meta_data;
 
     std::string strip(std::string s) const {
         auto it = s.find('_');
@@ -497,6 +497,22 @@ class Model {
         }
     }
 
+    template <class Key>
+    const Model& get_composite(const Key& key) const {
+        std::string key_name = key_to_string(key);
+        auto compositeIt = composites.find(key_name);
+        if (compositeIt == composites.end()) {
+            TinycompoDebug error("composite not found");
+            error << "Composite " << key_name << " does not exist. Existing composites are:\n";
+            for (auto& c : composites) {
+                error << "  * " << c.first << '\n';
+            }
+            error.fail();
+        } else {
+            return dynamic_cast<const Model&>(compositeIt->second);
+        }
+    }
+
     bool is_composite(const std::string& address) const {
         return std::accumulate(composites.begin(), composites.end(), false,
                                [this, address](bool acc, std::pair<std::string, Model> ref) {
@@ -504,9 +520,21 @@ class Model {
                                });
     }
 
-    void meta(Address address, const std::string& prop, const std::string& value) { meta_data[address][prop] = value; }
+    void meta(Address address, const std::string& prop, const std::string& value) {
+        if (!address.is_composite()){
+            meta_data[address.first()][prop] = value;
+        } else {
+            get_composite(address.first()).meta(address.rest(), prop, value);
+        }
+    }
 
-    std::string get_meta(Address address, const std::string& prop) { return meta_data.at(address).at(prop); }
+    std::string get_meta(Address address, const std::string& prop) const {
+        if (!address.is_composite()){
+            return meta_data.at(address.first()).at(prop);
+        } else {
+            return get_composite(address.first()).get_meta(address.rest(), prop);
+        }
+    }
 
     template <class C, class... Args>
     void connect(Args&&... args) {

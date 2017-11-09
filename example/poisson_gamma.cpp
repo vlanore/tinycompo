@@ -54,7 +54,10 @@ struct Moves : public Composite {
         model.meta("Move_Theta", "target", "Theta");
 
         model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10);
-        // model.meta("Move_Sigma", "target", "Sigma");
+        model.meta("Move_Omega", "target", "Omega");
+
+        model.component<GammaSuffStat>("GammaSuffStat");
+        model.meta("GammaSuffStat", "target", "Omega");
     }
 };
 
@@ -72,13 +75,9 @@ int main() {
     auto sampler = model.component<MultiSample>("sampler");
     model.connect<UseAllUnclampedNodes>(PortAddress("register", sampler), pg);
 
-    auto suffstats = model.composite("suffstats");
-    auto gamma_suffstats = model.component<GammaSuffStat>(Address(suffstats, "Suffstats_Omega"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("target", gamma_suffstats), Address(pg, "Omega"));
-
     auto scheduler = model.component<MoveScheduler>("scheduler");
     auto moves = model.composite<Moves>("moves", size);
-    model.connect<ConnectAllMoves>(moves, pg, suffstats, scheduler);
+    model.connect<ConnectAllMoves>(moves, pg, scheduler);
 
     auto mcmc_engine = model.component<MCMCEngine>("MCMC", 10000);
     model.connect<Use<Sampler>>(PortAddress("sampler", mcmc_engine), sampler);

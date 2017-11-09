@@ -306,6 +306,15 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
 }
 
 TEST_CASE("Model test: meta") {
+    struct MyMetaComposite {
+        static void contents(Model& model) {
+            model.component<MyInt>("hello");
+            model.meta("hello", "prop", "tralala");
+        }
+
+        static void ports(Assembly&) {}
+    };
+
     Model model;
     model.component<MyInt>("compo");
     model.composite("composite");
@@ -314,11 +323,13 @@ TEST_CASE("Model test: meta") {
     model.meta(Address("compo"), "prop2", "value2");
     model.meta(Address("composite", "compo2"), "prop3", "value3");
     model.meta(Address("composite"), "prop4", "value4");
+    model.composite<MyMetaComposite>("composite2");
 
     CHECK(model.get_meta(Address("compo"), "prop1") == "value1");
     CHECK(model.get_meta(Address("compo"), "prop2") == "value2");
     CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
     CHECK(model.get_meta(Address("composite"), "prop4") == "value4");
+    CHECK(model.get_meta(Address("composite2", "hello"), "prop") == "tralala");
 }
 
 TEST_CASE("Model test: composite not found") {
