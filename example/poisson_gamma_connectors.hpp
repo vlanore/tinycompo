@@ -158,11 +158,37 @@ struct ConnectAllMoves {
         return it == graph.second.end() ? "invalid" : it->second;
     }
 
+    static vector<string> markov_blanket(Assembly& assembly, Address model, const string& target) {
+        auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
+
+        vector<string> blanket;
+        std::function<void(const string&)> find_blanket = [&](const string name) {
+            for (auto e : graph.second) {  // graph.second is edges
+                if (e.second == name) {
+                    // if child is RandomNode then add it to blanket
+                    Address origin = Address(model, e.first);
+                    bool origin_is_random = assembly.is_composite(origin)
+                                                ? assembly.derives_from<RandomNode>(Address(origin, 0))
+                                                : assembly.derives_from<RandomNode>(origin);
+                    if (origin_is_random) {
+                        blanket.push_back(e.first);
+                    } else {  // else, keep going
+                        find_blanket(e.first);
+                    }
+                }
+            }
+        };
+        find_blanket(target);
+        return blanket;
+    }
+
     static void _connect(Assembly& assembly, Address moves, Address model, Address scheduler) {
         // gather all component names in the moves composite
         vector<string> move_names = assembly.at<Assembly>(moves).get_model().all_component_names(0, true);
         DirectedGraph model_graph = assembly.at<Assembly>(model).get_model().get_digraph();
 
+        vector<string> suffstats;
+        vector<string> mh_moves;
         for (auto m : move_names) {
             // build the move's address + build its target address from metadata
             auto m_address = Address(moves, m);
@@ -178,27 +204,46 @@ struct ConnectAllMoves {
                 AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("node", m_address),
                                                   m_target_address);                             // to target node
                 AdaptiveUse<Go>::_connect(assembly, PortAddress("move", scheduler), m_address);  // register to scheduler
+                mh_moves.push_back(m);
                 // downward not connected yet (needs to know about suffstats first)
             } else {  // assuming suffstat (FIXME? actually check)
                 auto parent = find_parent(model_graph, m_target);
                 AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target_address);
                 AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), Address(model, parent));
+                suffstats.push_back(m);
+            }
+        }
+        // now that the list of suffstats is known, do the downward and corrupt connections
+        for (auto m : mh_moves) {
+            auto m_address = Address(moves, m);
+            auto m_target = assembly.get_model().get_meta(m_address, "target");
+            auto blanket = markov_blanket(assembly, model, m_target);
+
+            for (auto down_target : blanket) {
+                auto suffstat_to_down_target =
+                    find_if(suffstats.begin(), suffstats.end(), [&assembly, moves, down_target](string ss) {
+                        auto ss_target = assembly.get_model().get_meta(Address(moves, ss), "target");
+                        return down_target == ss_target;
+                    });
+
+                if (suffstat_to_down_target == suffstats.end()) {  // no suffstat for move's target
+                    AdaptiveUse<LogDensity>::_connect(assembly, PortAddress("downward", m_address),
+                                                      Address(model, down_target));
+                } else {
+                    AdaptiveUse<LogDensity>::_connect(assembly, PortAddress("downward", m_address),
+                                                      Address(moves, *suffstat_to_down_target));
+                }
             }
 
-            // if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats
-            //     // searching for parent (assuming single) of target (FIXME temporary)
-            //     Address m_parent("invalid");  // no default constructor
-            //     auto graph = assembly.at<Assembly>(model).get_model().get_digraph();
-            //     for (auto e : graph.second) {
-            //         if (e.first == strip(m)) {
-            //             m_parent = Address(model, e.second);
-            //         }
-            //     }
-            //     AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), m_parent);
-            //     AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target);
-            // } else if (is_move) {  // moves
-            //     ConnectMove::_connect(assembly, m_address, model, strip(m), scheduler);
-            // }
+            auto suffstat_to_target = find_if(suffstats.begin(), suffstats.end(), [&assembly, moves, m_target](string ss) {
+                auto ss_target = assembly.get_model().get_meta(Address(moves, ss), "target");
+                return m_target == ss_target;
+            });
+
+            if (suffstat_to_target != suffstats.end()) {
+                AdaptiveUse<AbstractSuffStats>::_connect(assembly, PortAddress("corrupt", m_address),
+                                                         Address(moves, *suffstat_to_target));
+            }
         }
     }
 };
