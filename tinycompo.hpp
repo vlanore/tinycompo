@@ -272,7 +272,8 @@ class Address {
 
     // for use as key in maps
     // bool operator<(const Address& other_address) const {
-    //     return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
+    //     return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(),
+    //     other_address.keys.end());
     // }
 };
 
@@ -436,7 +437,10 @@ class Model {
     }
 
     Model(const Model& other_model)
-        : components(other_model.components), operations(other_model.operations), composites(other_model.composites) {}
+        : components(other_model.components),
+          operations(other_model.operations),
+          composites(other_model.composites),
+          meta_data(other_model.meta_data) {}
 
     template <class T, class... Args>
     Address component(const Address& address, Args&&... args) {
@@ -521,7 +525,7 @@ class Model {
     }
 
     void meta(Address address, const std::string& prop, const std::string& value) {
-        if (!address.is_composite()){
+        if (!address.is_composite()) {
             meta_data[address.first()][prop] = value;
         } else {
             get_composite(address.first()).meta(address.rest(), prop, value);
@@ -529,7 +533,12 @@ class Model {
     }
 
     std::string get_meta(Address address, const std::string& prop) const {
-        if (!address.is_composite()){
+        if (!address.is_composite()) {
+            if (meta_data.find(address.first()) == meta_data.end()) {
+                TinycompoDebug("no metadata entry for address " + address.first()).fail();
+            } else if (meta_data.at(address.first()).find(prop) == meta_data.at(address.first()).end()) {
+                TinycompoDebug("metadata entry for address " + address.first() + " does not contain prop " + prop).fail();
+            }
             return meta_data.at(address.first()).at(prop);
         } else {
             return get_composite(address.first()).get_meta(address.rest(), prop);

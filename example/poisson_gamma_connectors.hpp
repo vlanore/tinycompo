@@ -152,12 +152,10 @@ struct ConnectMove {
 };
 
 struct ConnectAllMoves {
-    static string find_father(DirectedGraph graph, string node) {
-        auto it = find_if(graph.second.begin(), graph.second.end(), [node](pair<string, string> edge) {
-                return edge.second == node;
-            });
-        if (it != graph.second.end()) cout << "Father of " << node << " is " << it->first << "\n";
-        return it == graph.second.end() ? "invalid" : it->first;
+    static string find_parent(DirectedGraph graph, string node) {
+        auto it = find_if(graph.second.begin(), graph.second.end(),
+                          [node](pair<string, string> edge) { return edge.first == node; });
+        return it == graph.second.end() ? "invalid" : it->second;
     }
 
     static void _connect(Assembly& assembly, Address moves, Address model, Address scheduler) {
@@ -168,20 +166,23 @@ struct ConnectAllMoves {
         for (auto m : move_names) {
             // build the move's address + build its target address from metadata
             auto m_address = Address(moves, m);
-            auto m_target = Address(model, assembly.get_model().get_meta(m, "target"));
+            auto m_target = assembly.get_model().get_meta(m_address, "target");
+            auto m_target_address = Address(model, m_target);
 
-            //is this component a move or a suffstat?
+            // is this component a move or a suffstat?
             bool is_move = assembly.is_composite(m_address) ? assembly.derives_from<Move>(Address(m_address, 0))
-                : assembly.derives_from<Move>(m_address);
+                                                            : assembly.derives_from<Move>(m_address);
 
-            // make all the easy connections
+            // make all the connections except downward connections for moves (until we know all suffstats)
             if (is_move) {
-                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("node", m_address), m_target); // to target node
-                AdaptiveUse<Go>::_connect(assembly, PortAddress("move", scheduler), m_address); // register to scheduler
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("node", m_address),
+                                                  m_target_address);                             // to target node
+                AdaptiveUse<Go>::_connect(assembly, PortAddress("move", scheduler), m_address);  // register to scheduler
                 // downward not connected yet (needs to know about suffstats first)
-            } else { // assuming suffstat (FIXME? actually check)
-                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target);
-                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), find_father(model_graph, m));
+            } else {  // assuming suffstat (FIXME? actually check)
+                auto parent = find_parent(model_graph, m_target);
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("target", m_address), m_target_address);
+                AdaptiveUse<RandomNode>::_connect(assembly, PortAddress("parent", m_address), Address(model, parent));
             }
 
             // if (assembly.derives_from<AbstractSuffStats>(m_address)) {  // sufftstats
