@@ -337,6 +337,10 @@ TEST_CASE("Model test: composite not found") {
     TINYCOMPO_TEST_ERRORS { model.get_composite("youplaboum"); }
     TINYCOMPO_TEST_ERRORS_END(
         "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
+    const Model model2{model};  // testing const version of error
+    TINYCOMPO_TEST_MORE_ERRORS { model2.get_composite("youplaboum"); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
 }
 
 /*
