@@ -62,6 +62,8 @@ struct Moves : public Composite {
 };
 
 int main() {
+    srand(time(NULL));
+
     Model model;
 
     // graphical model part

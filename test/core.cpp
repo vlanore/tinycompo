@@ -33,13 +33,13 @@ using namespace std;
   ~*~ Debug ~*~
 ===========================================================================================================================*/
 TEST_CASE("Exception tests") {
-    TINYCOMPO_TEST_ERRORS {
-        TinycompoDebug e{"my error"};
-        e << "Something failed.";
-        e.fail();
-    }
-    TINYCOMPO_TEST_ERRORS_END("my error", "-- Error: my error. Something failed.\n");
+    // TODO
     CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
+}
+
+TEST_CASE("Exception overhaul tests") {
+    TinycompoException e1("An error occured");
+    TinycompoException e2("Something went wrong in context:", e1);
 }
 
 /*
@@ -79,12 +79,9 @@ TEST_CASE("Component tests.") {
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
     TINYCOMPO_TEST_ERRORS { compo.set("myPort", true); }
-    TINYCOMPO_TEST_ERRORS_END("setting property failed",
-                              "-- Error: setting property failed. Type _Port<bool const> does not "
-                              "seem to match port myPort.\n");
+    TINYCOMPO_TEST_ERRORS_END("Setting property failed. Type _Port<bool const> does not seem to match port myPort.");
     TINYCOMPO_TEST_MORE_ERRORS { compo.set("badPort", 1, 2); }
-    TINYCOMPO_TEST_ERRORS_END("port name not found",
-                              "-- Error: port name not found. Could not find port badPort in component MyCompo.\n");
+    TINYCOMPO_TEST_ERRORS_END("Port name not found. Could not find port badPort in component MyCompo.");
 }
 
 TEST_CASE("Component without _debug") {
@@ -337,9 +334,8 @@ TEST_CASE("Model test: composite not found") {
     model.composite("youpi");
     model.composite("youpla");
     TINYCOMPO_TEST_ERRORS { model.get_composite("youplaboum"); }
-    TINYCOMPO_TEST_ERRORS_END("composite not found",
-                              "-- Error: composite not found. Composite youplaboum does not exist. Existing composites "
-                              "are:\n  * youpi\n  * youpla\n\n");
+    TINYCOMPO_TEST_ERRORS_END(
+        "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
 }
 
 /*
@@ -403,9 +399,9 @@ TEST_CASE("Assembly test: incorrect address.") {
     model.component<MyCompo>("compo1");
     Assembly assembly(model);
     TINYCOMPO_TEST_ERRORS { assembly.at<MyCompo>("compo"); }
-    TINYCOMPO_TEST_ERRORS_END("<Assembly::at> Trying to access incorrect address",
-                              "-- Error: <Assembly::at> Trying to access incorrect address. Address compo does not exist. "
-                              "Existing addresses are:\n  * compo0\n  * compo1\n\n");
+    TINYCOMPO_TEST_ERRORS_END(
+        "<Assembly::at> Trying to access incorrect address. Address compo does not exist. Existing addresses are:\n  * "
+        "compo0\n  * compo1\n");
 }
 
 TEST_CASE("Assembly test: component names.") {

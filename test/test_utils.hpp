@@ -31,31 +31,25 @@ license and that you accept its terms.*/
 #include "../tinycompo.hpp"
 #include "doctest.h"
 
-#define TINYCOMPO_TEST_ERRORS                  \
-    std::stringstream error_short, error_long; \
-    TinycompoDebug::set_stream(error_long);    \
+#define TINYCOMPO_TEST_ERRORS      \
+    std::string error_message{""}; \
     try
 
-#define TINYCOMPO_TEST_MORE_ERRORS          \
-    error_short.str("");                    \
-    error_long.str("");                     \
-    TinycompoDebug::set_stream(error_long); \
+#define TINYCOMPO_TEST_MORE_ERRORS \
+    error_message = "";            \
     try
 
-#define TINYCOMPO_TEST_ERRORS_END(short, long) \
-    catch (TinycompoException & e) {           \
-        error_short << e.what();               \
-    }                                          \
-    TinycompoDebug::set_stream(std::cerr);     \
-    CHECK(error_short.str() == short);         \
-    CHECK(error_long.str() == long);
+#define TINYCOMPO_TEST_ERRORS_END(expected) \
+    catch (TinycompoException & e) {        \
+        error_message = e.what();           \
+    }                                       \
+    CHECK(error_message == expected);
 
-#define TINYCOMPO_THERE_WAS_AN_ERROR       \
-    catch (TinycompoException & e) {       \
-        error_short << e.what();           \
-    }                                      \
-    TinycompoDebug::set_stream(std::cerr); \
-    CHECK(error_short.str() != "");
+#define TINYCOMPO_THERE_WAS_AN_ERROR \
+    catch (TinycompoException & e) { \
+        error_message = e.what();    \
+    }                                \
+    CHECK(error_message != "");
 
 class MyCompo : public Component {  // example of a user creating their own component
   public:                           // by inheriting from the Component class

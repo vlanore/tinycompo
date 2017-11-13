@@ -77,37 +77,32 @@ std::string demangle(const char* name) {
 std::string demangle(const char* name) { return name; }
 #endif
 
-struct TinycompoException : public std::exception {
+class TinycompoException : public std::exception {
     std::string message{""};
-    explicit TinycompoException(const std::string& init = "") : message{init} {}
+    std::vector<TinycompoException> context;
+
+  public:
+    TinycompoException(const std::string& init = "") : message{init} {}
+    TinycompoException(const std::string& init, const TinycompoException& context_in)
+        : message{init}, context({context_in}) {}
     const char* what() const noexcept override { return message.c_str(); }
 };
 
-class TinycompoDebug : public std::stringstream {
-    static std::ostream* error_stream;
-    std::string short_message;
-
-  public:
-    static void set_stream(std::ostream& os) { error_stream = &os; }
-
+struct TinycompoDebug {
     template <class T>
     static std::string type() {
         return demangle(typeid(T).name());
     }
 
-    [[noreturn]] void fail() const {
-        *error_stream << "-- Error: " << short_message;
-        if (str() != "") {
-            *error_stream << ". " << str();
+    template <class T1, class T2>
+    static std::string list(const std::map<T1, T2>& structure) {
+        std::stringstream acc;
+        for (auto& e : structure) {
+            acc << "  * " << e.first << '\n';
         }
-        *error_stream << std::endl;
-        throw TinycompoException(short_message);
+        return acc.str();
     }
-
-    explicit TinycompoDebug(const std::string& error_desc) : short_message(error_desc) {}
 };
-
-std::ostream* TinycompoDebug::error_stream = &std::cerr;
 
 /*
 =============================================================================================================================
@@ -181,19 +176,15 @@ class Component {
     template <class... Args>
     void set(std::string name, Args... args) {    // no perfect forwarding to avoid references
         if (_ports.find(name) == _ports.end()) {  // there exists no port with this name
-            TinycompoDebug e{"port name not found"};
-            e << "Could not find port " << name << " in component " << _debug() << ".";
-            e.fail();
+            throw TinycompoException{"Port name not found. Could not find port " + name + " in component " + _debug() + "."};
         } else {  // there exists a port with this name
             auto ptr = dynamic_cast<_Port<const Args...>*>(_ports[name].get());
             if (ptr != nullptr)  // casting succeedeed
             {
                 ptr->_set(std::forward<Args>(args)...);
             } else {  // casting failed, trying to provide useful error message
-                TinycompoDebug e{"setting property failed"};
-                e << "Type " << demangle(typeid(_Port<const Args...>).name()) << " does not seem to match port " << name
-                  << '.';
-                e.fail();
+                throw TinycompoException("Setting property failed. Type " + demangle(typeid(_Port<const Args...>).name()) +
+                                         " does not seem to match port " + name + '.');
             }
         }
     }
@@ -457,7 +448,7 @@ class Model {
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     Address component(CallKey key, Args&&... args) {
         if (!std::is_base_of<Component, T>::value) {
-            TinycompoDebug("trying to declare a component that does not inherit from Component").fail();
+            throw TinycompoException("trying to declare a component that does not inherit from Component");
         }
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
@@ -490,12 +481,8 @@ class Model {
         std::string key_name = key_to_string(key);
         auto compositeIt = composites.find(key_name);
         if (compositeIt == composites.end()) {
-            TinycompoDebug error("composite not found");
-            error << "Composite " << key_name << " does not exist. Existing composites are:\n";
-            for (auto& c : composites) {
-                error << "  * " << c.first << '\n';
-            }
-            error.fail();
+            throw TinycompoException("Composite not found. Composite " + key_name +
+                                     " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
             return dynamic_cast<Model&>(compositeIt->second);
         }
@@ -506,12 +493,8 @@ class Model {
         std::string key_name = key_to_string(key);
         auto compositeIt = composites.find(key_name);
         if (compositeIt == composites.end()) {
-            TinycompoDebug error("composite not found");
-            error << "Composite " << key_name << " does not exist. Existing composites are:\n";
-            for (auto& c : composites) {
-                error << "  * " << c.first << '\n';
-            }
-            error.fail();
+            throw TinycompoException("Composite not found. Composite " + key_name +
+                                     " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
             return dynamic_cast<const Model&>(compositeIt->second);
         }
@@ -535,9 +518,9 @@ class Model {
     std::string get_meta(Address address, const std::string& prop) const {
         if (!address.is_composite()) {
             if (meta_data.find(address.first()) == meta_data.end()) {
-                TinycompoDebug("no metadata entry for address " + address.first()).fail();
+                throw TinycompoException("no metadata entry for address " + address.first());
             } else if (meta_data.at(address.first()).find(prop) == meta_data.at(address.first()).end()) {
-                TinycompoDebug("metadata entry for address " + address.first() + " does not contain prop " + prop).fail();
+                throw TinycompoException("metadata entry for address " + address.first() + " does not contain prop " + prop);
             }
             return meta_data.at(address.first()).at(prop);
         } else {
@@ -692,12 +675,8 @@ class Assembly : public Component {
         try {
             return dynamic_cast<T&>(*(instances.at(key_name).get()));
         } catch (std::out_of_range) {
-            TinycompoDebug e{"<Assembly::at> Trying to access incorrect address"};
-            e << "Address " << key_name << " does not exist. Existing addresses are:\n";
-            for (auto& key : instances) {
-                e << "  * " << key.first << "\n";
-            }
-            e.fail();
+            throw TinycompoException("<Assembly::at> Trying to access incorrect address. Address " + key_name +
+                                     " does not exist. Existing addresses are:\n" + TinycompoDebug::list(instances));
         }
     }
 
@@ -853,10 +832,9 @@ struct ArrayOneToOne {
                 ref1.at(i).set(array1.prop, ptr);
             }
         } else {
-            TinycompoDebug e{"Array connection: mismatched sizes"};
-            e << array1.address.to_string() << " has size " << ref1.size() << " while " << array2.to_string() << " has size "
-              << ref2.size() << ".";
-            e.fail();
+            throw TinycompoException{"Array connection: mismatched sizes. " + array1.address.to_string() + " has size " +
+                                     std::to_string(ref1.size()) + " while " + array2.to_string() + " has size " +
+                                     std::to_string(ref2.size()) + '.'};
         }
     }
 };
@@ -892,7 +870,7 @@ struct MultiProvide {
                 a.at(Address(array.address, i)).set(array.prop, &a.at<Interface>(mapper));
             }
         } catch (...) {
-            TinycompoDebug("<MultiProvide::_connect> There was an error while trying to connect components.").fail();
+            throw TinycompoException("<MultiProvide::_connect> There was an error while trying to connect components.");
         }
     }
 };

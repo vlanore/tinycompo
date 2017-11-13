@@ -82,9 +82,7 @@ TEST_CASE("Array connector error test.") {
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
     }
-    TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes",
-                              "-- Error: Array connection: mismatched sizes. proxyArray has size 4 "
-                              "while intArray has size 5.\n");
+    TINYCOMPO_TEST_ERRORS_END("Array connection: mismatched sizes. proxyArray has size 4 while intArray has size 5.");
 }
 
 /*
@@ -122,7 +120,5 @@ TEST_CASE("MultiProvide connector tests.") {
     TINYCOMPO_TEST_ERRORS {
         MultiProvide<IntInterface>::_connect(assembly, PortAddress("ptt", "proxyArray"), Address("superInt"));
     }
-    TINYCOMPO_TEST_ERRORS_END("<MultiProvide::_connect> There was an error while trying to connect components.",
-                              "-- Error: port name not found. Could not find port ptt in component MyIntProxy.\n-- Error: "
-                              "<MultiProvide::_connect> There was an error while trying to connect components.\n");
+    TINYCOMPO_TEST_ERRORS_END("<MultiProvide::_connect> There was an error while trying to connect components.");
 }
