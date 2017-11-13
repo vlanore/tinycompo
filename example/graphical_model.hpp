@@ -33,6 +33,7 @@ its terms.*/
 #include "tinycompo.hpp"
 
 using namespace std;
+using namespace tc;
 
 int factorial(int n) {
     if (n < 2) {

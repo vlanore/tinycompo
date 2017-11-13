@@ -79,7 +79,7 @@ TEST_CASE("Component tests.") {
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
     TINYCOMPO_TEST_ERRORS { compo.set("myPort", true); }
-    TINYCOMPO_TEST_ERRORS_END("Setting property failed. Type _Port<bool const> does not seem to match port myPort.");
+    TINYCOMPO_TEST_ERRORS_END("Setting property failed. Type tc::_Port<bool const> does not seem to match port myPort.");
     TINYCOMPO_TEST_MORE_ERRORS { compo.set("badPort", 1, 2); }
     TINYCOMPO_TEST_ERRORS_END("Port name not found. Could not find port badPort in component MyCompo.");
 }
@@ -209,15 +209,16 @@ TEST_CASE("Model test: dot output and representation print") {
     model.dot(ss);
     CHECK(ss.str() ==
           "graph g {\n\tmycompo [label=\"mycompo\\n(MyBasicCompo)\" shape=component margin=0.15];\n\tconnect_0 "
-          "[xlabel=\"Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
+          "[xlabel=\"tc::Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
           "composite_2;\n\tsubgraph cluster_composite {\n\t\tcomposite_2 [label=\"2\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n\t}\n}\n");
 
     stringstream ss2;
     model.print(ss2);
-    CHECK(ss2.str() ==
-          "Component \"mycompo\" (MyBasicCompo)\nConnector (Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
-          "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
+    CHECK(
+        ss2.str() ==
+        "Component \"mycompo\" (MyBasicCompo)\nConnector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
+        "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
 }
 
 TEST_CASE("Model test: temporary keys") {

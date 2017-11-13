@@ -29,6 +29,8 @@ its terms.*/
 #include <tinycompo.hpp>
 #include <vector>
 
+using namespace tc;
+
 class TextProcessor {
   public:
     virtual std::string process(const std::string& in) const = 0;

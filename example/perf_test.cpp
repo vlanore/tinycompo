@@ -27,6 +27,8 @@ its terms.*/
 #include <cstdlib>
 #include "tinycompo.hpp"
 
+using namespace tc;
+
 #define ITERATIONS 1000000000
 
 struct GetInt {

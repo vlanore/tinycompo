@@ -31,6 +31,8 @@ license and that you accept its terms.*/
 #include "../tinycompo.hpp"
 #include "doctest.h"
 
+using namespace tc;
+
 #define TINYCOMPO_TEST_ERRORS      \
     std::string error_message{""}; \
     try
