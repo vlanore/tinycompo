@@ -176,14 +176,6 @@ TEST_CASE("model test: model copy") {
     CHECK(model2.size() == 2);
 }
 
-// TEST_CASE("model test: composite/component inheritance mismatch") {
-//     class MyKey : public Composite {};
-//     Model model;
-//     TINYCOMPO_TEST_ERRORS { model.component<MyKey>("hello"); }
-//     TINYCOMPO_TEST_ERRORS_END("trying to declare a component that does not inherit from Component",
-//                               "-- Error: trying to declare a component that does not inherit from Component\n");
-// }
-
 TEST_CASE("model test: composite referencees") {
     Model model;
     model.composite("compo0");
