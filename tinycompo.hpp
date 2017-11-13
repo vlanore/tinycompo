@@ -63,21 +63,11 @@ namespace tc {
 
     using DirectedGraph = std::pair<std::set<std::string>, std::multimap<std::string, std::string>>;
 
-/*
-=========================================================================================================================
-  ~*~ Debug ~*~
-  A few classes related to debug messages.
-=======================================================================================================================*/
-#ifdef __GNUG__
-    std::string demangle(const char* name) {
-        int status{0};
-        std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status), std::free};
-        return (status == 0) ? res.get() : name;
-    }
-#else
-    std::string demangle(const char* name) { return name; }
-#endif
-
+    /*
+    =========================================================================================================================
+      ~*~ Debug ~*~
+      A few classes related to debug messages.
+    =======================================================================================================================*/
     class TinycompoException : public std::exception {
         std::string message{""};
         std::vector<TinycompoException> context;
@@ -89,7 +79,18 @@ namespace tc {
         const char* what() const noexcept override { return message.c_str(); }
     };
 
-    struct TinycompoDebug {
+    class TinycompoDebug {
+#ifdef __GNUG__
+        static std::string demangle(const char* name) {
+            int status{0};
+            std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, NULL, NULL, &status), std::free};
+            return (status == 0) ? res.get() : name;
+        }
+#else
+        static std::string demangle(const char* name) { return name; }
+#endif
+
+      public:
         template <class T>
         static std::string type() {
             return demangle(typeid(T).name());
@@ -189,8 +190,8 @@ namespace tc {
                     ptr->_set(std::forward<Args>(args)...);
                 } else {  // casting failed, trying to provide useful error message
                     throw TinycompoException("Setting property failed. Type " +
-                                             demangle(typeid(_Port<const Args...>).name()) +
-                                             " does not seem to match port " + name + '.');
+                                             TinycompoDebug::type<_Port<const Args...>>() + " does not seem to match port " +
+                                             name + '.');
                 }
             }
         }
