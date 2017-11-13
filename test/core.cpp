@@ -32,14 +32,16 @@ using namespace std;
 =============================================================================================================================
   ~*~ Debug ~*~
 ===========================================================================================================================*/
-TEST_CASE("Exception tests") {
-    // TODO
-    // CHECK(demangle("PFvPFvvEE") == "void (*)(void (*)())");
+TEST_CASE("Demangling test") {
+    CHECK(TinycompoDebug::type<void*(int, int)>() == "void* (int, int)");
+    CHECK(TinycompoDebug::type<_Port<MyCompo>>() == "tc::_Port<MyCompo>");
 }
 
 TEST_CASE("Exception overhaul tests") {
     TinycompoException e1("An error occured");
     TinycompoException e2("Something went wrong in context:", e1);
+    CHECK(string(e1.what()) == "An error occured");
+    CHECK(string(e2.what()) == "Something went wrong in context:");
 }
 
 /*
