@@ -27,37 +27,29 @@ its terms.*/
 
 struct PoissonGamma : public Composite {
     static void contents(Model& model, int size) {
-        model.component<Exponential>("Sigma");
-        model.connect<Set>(PortAddress("paramConst", "Sigma"), 1.0);
+        model.component<Exponential>("Sigma").connect<Set>("paramConst", 1.0);
 
-        model.component<Exponential>("Theta");
-        model.connect<Set>(PortAddress("paramConst", "Theta"), 1.0);
+        model.component<Exponential>("Theta").connect<Set>("paramConst", 1.0);
 
-        model.composite<Array<Gamma>>("Omega", size);
-        model.connect<MultiProvide<Real>>(PortAddress("paramPtr", "Omega"), Address("Theta"));
+        model.composite<Array<Gamma>>("Omega", size).connect<MultiProvide<Real>>("paramPtr", Address("Theta"));
 
-        model.composite<Array<Product>>("rate", size);
-        model.connect<ArrayOneToOne<Real>>(PortAddress("aPtr", "rate"), Address("Omega"));
-        model.connect<MultiProvide<Real>>(PortAddress("bPtr", "rate"), Address("Sigma"));
+        model.composite<Array<Product>>("rate", size)
+            .connect<ArrayOneToOne<Real>>("aPtr", Address("Omega"))
+            .connect<MultiProvide<Real>>("bPtr", Address("Sigma"));
 
-        model.composite<Array<Poisson>>("X", size);
-        model.connect<ArrayOneToOne<Real>>(PortAddress("paramPtr", "X"), Address("rate"));
+        model.composite<Array<Poisson>>("X", size).connect<ArrayOneToOne<Real>>("paramPtr", Address("rate"));
     }
 };
 
 struct Moves : public Composite {
     static void contents(Model& model, int size) {
-        model.component<MHMove<Scaling>>("Move_Sigma", 3, 10);
-        model.meta("Move_Sigma", "target", "Sigma");
+        model.component<MHMove<Scaling>>("Move_Sigma", 3, 10).meta("target", "Sigma");
 
-        model.component<MHMove<Scaling>>("Move_Theta", 3, 10);
-        model.meta("Move_Theta", "target", "Theta");
+        model.component<MHMove<Scaling>>("Move_Theta", 3, 10).meta("target", "Theta");
 
-        model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10);
-        model.meta("Move_Omega", "target", "Omega");
+        model.composite<Array<MHMove<Scaling>>>("Move_Omega", size, 3, 10).meta("target", "Omega");
 
-        model.component<GammaSuffStat>("GammaSuffStat");
-        model.meta("GammaSuffStat", "target", "Omega");
+        model.component<GammaSuffStat>("GammaSuffStat").meta("target", "Omega");
     }
 };
 
@@ -69,40 +61,39 @@ int main() {
     // graphical model part
     int size = 5;
     vector<double> data{0, 1, 1, 0, 1};
-    auto pg = model.composite<PoissonGamma>("PG", size);
+    model.composite<PoissonGamma>("PG", size);
     model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), data);
     model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
 
     // MCMC infrastructure
-    auto sampler = model.component<MultiSample>("sampler");
-    model.connect<UseAllUnclampedNodes>(PortAddress("register", sampler), pg);
+    model.component<MultiSample>("sampler").connect<UseAllUnclampedNodes>("register", Address("PG"));
 
-    auto scheduler = model.component<MoveScheduler>("scheduler");
-    auto moves = model.composite<Moves>("moves", size);
-    model.connect<ConnectAllMoves>(moves, pg, scheduler);
+    model.component<MoveScheduler>("scheduler");
+    model.composite<Moves>("moves", size);
+    model.connect<ConnectAllMoves>(Address("moves"), Address("PG"), Address("scheduler"));
 
-    auto mcmc_engine = model.component<MCMCEngine>("MCMC", 10000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", mcmc_engine), sampler);
-    model.connect<Use<MoveScheduler>>(PortAddress("scheduler", mcmc_engine), scheduler);
-    model.connect<ListUse<Real>>(PortAddress("variables", mcmc_engine), Address(pg, "Theta"), Address(pg, "Sigma"));
+    model.component<FileOutput>("tracefile", "tmp_mcmc.trace");
 
-    auto tracefile = model.component<FileOutput>("traceFile", "tmp_mcmc.trace");
-    model.connect<Use<DataStream>>(PortAddress("output", mcmc_engine), tracefile);
+    model.component<MCMCEngine>("MCMC", 10000)
+        .connect<Use<Sampler>>("sampler", Address("sampler"))
+        .connect<Use<MoveScheduler>>("scheduler", Address("scheduler"))
+        .connect<ListUse<Real>>("variables", Address("PG", "Theta"), Address("PG", "Sigma"))
+        .connect<Use<DataStream>>("output", Address("tracefile"));
 
     // RS infrastructure
-    model.component<RejectionSampling>("RS", 500000);
-    model.connect<Use<Sampler>>(PortAddress("sampler", "RS"), Address("sampler2"));
-    model.connect<MultiUse<RandomNode>>(PortAddress("data", "RS"), Address("PG", "X"));
+    model.component<RejectionSampling>("RS", 500000)
+        .connect<Use<Sampler>>("sampler", Address("sampler2"))
+        .connect<MultiUse<RandomNode>>("data", Address("PG", "X"));
 
     model.component<MultiSample>("sampler2");
-    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "sampler2"), pg);
+    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "sampler2"), Address("PG"));
 
     model.component<FileOutput>("traceFile2", "tmp_rs.trace");
     model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("traceFile2"));
 
     // instantiate and call everything!
     Assembly assembly(model);
-    assembly.call(mcmc_engine, "go");
+    assembly.call("MCMC", "go");
     assembly.call("RS", "go");
 
     // DEBUG
