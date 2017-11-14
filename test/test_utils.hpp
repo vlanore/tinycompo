@@ -69,7 +69,7 @@ class MyCompo : public Component {  // example of a user creating their own comp
         j = jin;
     }
 
-    std::string _debug() const override { return "MyCompo"; }
+    std::string debug() const override { return "MyCompo"; }
 };
 
 class IntInterface {
@@ -81,7 +81,7 @@ class MyInt : public Component, public IntInterface {
   public:
     int i{1};
     explicit MyInt(int i = 0) : i(i) { port("set", &MyInt::set); }
-    std::string _debug() const override { return "MyInt"; }
+    std::string debug() const override { return "MyInt"; }
     int get() const override { return i; }
     void set(int i2) { i = i2; }
 };
@@ -92,7 +92,7 @@ class MyIntProxy : public Component, public IntInterface {
   public:
     MyIntProxy() { port("ptr", &MyIntProxy::set_ptr); }
     void set_ptr(IntInterface* ptrin) { ptr = ptrin; }
-    std::string _debug() const override { return "MyIntProxy"; }
+    std::string debug() const override { return "MyIntProxy"; }
     int get() const override { return 2 * ptr->get(); }
 };
 
@@ -100,7 +100,7 @@ class IntReducer : public Component, public IntInterface {
     std::vector<IntInterface*> ptrs;
 
   public:
-    std::string _debug() const override { return "IntReducer"; }
+    std::string debug() const override { return "IntReducer"; }
 
     void addPtr(IntInterface* ptr) { ptrs.push_back(ptr); }
 

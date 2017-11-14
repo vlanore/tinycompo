@@ -109,10 +109,8 @@ class TinycompoDebug {
 /*
 =============================================================================================================================
   ~*~ _Port class ~*~
-_Port<Args...> derives from _AbstractPort which allows the storage of pointers to _Port by converting them to
-_AbstractPort*.
-These classes are for internal use by tinycompo and should not be seen by the user (as denoted by the underscore
-prefixes).
+_Port<Args...> derives from _AbstractPort which allows the storage of pointers to _Port by converting them to _AbstractPort*.
+These classes are for internal use by tinycompo and should not be seen by the user (as denoted by the underscore prefixes).
 ===========================================================================================================================*/
 template <class... Args>
 struct _Port : public _AbstractPort {
@@ -144,30 +142,31 @@ struct _ProvidePort : public _AbstractPort {
 /*
 =============================================================================================================================
   ~*~ Component class ~*~
-tinycompo components should always inherit from this class. It is mostly used as a base to be able to store pointers to
-child
+tinycompo components should always inherit from this class. It is mostly used as a base to be able to store pointers to child
 class instances but also provides basic debugging methods and the infrastructure required to declare ports.
 ===========================================================================================================================*/
 class Component {
-  protected:
-    std::map<std::string, std::unique_ptr<_AbstractPort>> _ports;
-    std::string name{""};
+    std::map<std::string, std::unique_ptr<_AbstractPort>> _ports;  // not meant to be accessible for users
+    std::string name{""};                                          // accessible through get/set name accessors
+
+    friend Assembly;
 
   public:
-    Component(const Component&) = delete;  // forbidding copy
+    void operator=(const Component&) = delete;  // forbidding assignation
+    Component(const Component&) = delete;       // forbidding copy
     Component() = default;
     virtual ~Component() = default;
 
-    virtual std::string _debug() const { return "Component"; };
+    virtual std::string debug() const { return "Component"; };  // runtime overridable method for debug info (class&state)
 
     template <class C, class... Args>
-    void port(std::string name, void (C::*prop)(Args...)) {  // port is a setter member function
+    void port(std::string name, void (C::*prop)(Args...)) {  // case where the port is a setter member function
         _ports[name] = std::unique_ptr<_AbstractPort>(
             static_cast<_AbstractPort*>(new _Port<const Args...>(dynamic_cast<C*>(this), prop)));
     }
 
     template <class C, class Arg>
-    void port(std::string name, Arg(C::*prop)) {  // port is a data member
+    void port(std::string name, Arg(C::*prop)) {  // case where the port is a data member
         _ports[name] =
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _Port<const Arg>(dynamic_cast<C*>(this), prop)));
     }
@@ -181,7 +180,7 @@ class Component {
     template <class... Args>
     void set(std::string name, Args... args) {    // no perfect forwarding to avoid references
         if (_ports.find(name) == _ports.end()) {  // there exists no port with this name
-            throw TinycompoException{"Port name not found. Could not find port " + name + " in component " + _debug() + "."};
+            throw TinycompoException{"Port name not found. Could not find port " + name + " in component " + debug() + "."};
         } else {  // there exists a port with this name
             auto ptr = dynamic_cast<_Port<const Args...>*>(_ports[name].get());
             if (ptr != nullptr)  // casting succeedeed
@@ -657,7 +656,7 @@ class Assembly : public Component {
         }
     }
 
-    std::string _debug() const override {
+    std::string debug() const override {
         std::stringstream ss;
         ss << "Composite {\n";
         print_all(ss);
@@ -699,7 +698,7 @@ class Assembly : public Component {
 
     void print_all(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
-            os << i.first << ": " << i.second->_debug() << std::endl;
+            os << i.first << ": " << i.second->debug() << std::endl;
         }
     }
 
@@ -751,8 +750,7 @@ struct Set {
   ~*~ Use class ~*~
 UseProvide is a "connector class", ie a functor that can be passed as template parameter to Assembly::connect. This
 particular connector implements the "use/provide" connection, ie setting a port of one component (the user) to a pointer
-to
-an interface of another (the provider). This class should be used as-is to declare assembly connections.
+to an interface of another (the provider). This class should be used as-is to declare assembly connections.
 ===========================================================================================================================*/
 template <class Interface>
 struct Use {
@@ -825,8 +823,8 @@ struct ArraySet {
 =============================================================================================================================
   ~*~ ArrayOneToOne class ~*~
 This is a connector that takes two arrays with identical sizes and connects (as if using the UseProvide connector) every
-i-th
-element in array1 to its corresponding element in array2 (ie, the i-th element in array2). This class should be used as a
+i-th element in array1 to its corresponding element in array2 (ie, the i-th element in array2). This class should be used as
+a
 template parameter for Assembly::connect.
 ===========================================================================================================================*/
 template <class Interface>
@@ -850,10 +848,8 @@ struct ArrayOneToOne {
 /*
 =============================================================================================================================
   ~*~ MultiUse class ~*~
-The MultiUse class is a connector that connects (as if using the Use connector) one port of one component to every
-component
-in an array. This can be seen as a "multiple use" connector (the reducer is the user in multiple use/provide
-connections).
+The MultiUse class is a connector that connects (as if using the Use connector) one port of one component to every component
+in an array. This can be seen as a "multiple use" connector (the reducer is the user in multiple use/provide connections).
 This class should be used as a template parameter for Assembly::connect.
 ===========================================================================================================================*/
 template <class Interface>
@@ -884,5 +880,7 @@ struct MultiProvide {
         }
     }
 };
-}
+
+}  // end of namespacec tc
+
 #endif  // TINYCOMPO_HPP

@@ -76,7 +76,7 @@ TEST_CASE("_Port tests.") {
 TEST_CASE("Component tests.") {
     MyCompo compo{};
     // MyCompo compo2 = compo; // does not work because Component copy is forbidden (intentional)
-    CHECK(compo._debug() == "MyCompo");
+    CHECK(compo.debug() == "MyCompo");
     compo.set("myPort", 17, 18);
     CHECK(compo.i == 17);
     CHECK(compo.j == 18);
@@ -86,10 +86,10 @@ TEST_CASE("Component tests.") {
     TINYCOMPO_TEST_ERRORS_END("Port name not found. Could not find port badPort in component MyCompo.");
 }
 
-TEST_CASE("Component without _debug") {
+TEST_CASE("Component without debug") {
     struct MyBasicCompo : public Component {};
     MyBasicCompo compo{};
-    CHECK(compo._debug() == "Component");
+    CHECK(compo.debug() == "Component");
 }
 
 /*

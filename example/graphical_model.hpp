@@ -112,7 +112,7 @@ class DataStream {
 =================================================================================================*/
 class ConsoleOutput : public Component, public DataStream {
   public:
-    std::string _debug() const override { return "ConsoleOutput"; }
+    std::string debug() const override { return "ConsoleOutput"; }
     void header(const std::string &str) override { std::cout << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
         std::for_each(line.begin(), line.end(), [](double e) { std::cout << e << "  "; });
@@ -127,7 +127,7 @@ class FileOutput : public Component, public DataStream {
   public:
     explicit FileOutput(const std::string &filename) : filename(filename) { file.open(filename); }
     ~FileOutput() { file.close(); }
-    std::string _debug() const override { return sf("FileOutput(%s)", filename.c_str()); }
+    std::string debug() const override { return sf("FileOutput(%s)", filename.c_str()); }
     void header(const std::string &str) override { file << str << std::endl; }
     void dataLine(const std::vector<double> &line) override {
         std::for_each(line.begin(), line.end(), [this](double e) { file << e << "\t"; });
@@ -182,7 +182,7 @@ class UnaryReal : public RandomNode {
         port("value", &UnaryReal::setValue);
     };
 
-    std::string _debug() const override {
+    std::string debug() const override {
         std::stringstream ss;
         ss << name << "(" << param.getValue() << "):" << value << "[" << clamped_value() << "]";
         return ss.str();
@@ -265,7 +265,7 @@ class BinaryOperation : public Real {
     void setA(Real *ptr) { a = RealProp(ptr); }
     double getValue() const override { return Op()(a.getValue(), b.getValue()); }
     void setValue(double) override { std::cerr << "-- Warning! Trying to set a deterministic node!\n"; }
-    std::string _debug() const override {
+    std::string debug() const override {
         std::stringstream ss;
         ss << "BinaryOperation(" << a.getValue() << "," << b.getValue() << "):" << getValue();
         return ss.str();
@@ -289,7 +289,7 @@ class MultiSample : public Sampler {
         std::for_each(nodes.begin(), nodes.end(), [](RandomNode *n) { n->sample(); });
     }
 
-    std::string _debug() const override { return "MultiSample"; }
+    std::string debug() const override { return "MultiSample"; }
 
     std::string getVarList() const override {
         return std::accumulate(nodes.begin(), nodes.end(), std::string("#"),
@@ -318,7 +318,7 @@ class RejectionSampling : public Go {
         port("output", &RejectionSampling::output);
     }
 
-    std::string _debug() const override { return "RejectionSampling"; }
+    std::string debug() const override { return "RejectionSampling"; }
     void go() override {
         int accepted = 0;
         std::cout << "-- Starting rejection sampling!\n";
@@ -403,7 +403,7 @@ class MHMove : public Move {
         }
     }
 
-    string _debug() const override { return sf("MHMove[%.1f\%]", nacc * 100. / ntot); }
+    string debug() const override { return sf("MHMove[%.1f\%]", nacc * 100. / ntot); }
 };
 
 class MoveScheduler : public Component {
