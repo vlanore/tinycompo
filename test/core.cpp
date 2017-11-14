@@ -139,7 +139,7 @@ TEST_CASE("address tests.") {
 }
 
 TEST_CASE("Address: builder from string") {
-    Address a = address_from_composite_string("Omega_3_1");
+    Address a("Omega_3_1");
     CHECK(a.first() == "Omega");
     CHECK(a.rest().first() == "3");
     CHECK(a.rest().rest().first() == "1");
@@ -469,13 +469,13 @@ TEST_CASE("Assembly test: composite ports.") {
 
     Model model;
     model.composite<MyFancyComposite>("composite");
-    model.component<MyIntProxy>("my_proxy");
-    model.connect<UseProvide<IntInterface>>(PortAddress("ptr", "my_proxy"), PortAddress("int", "composite"));
+    model.component<MyIntProxy>("myProxy");
+    model.connect<UseProvide<IntInterface>>(PortAddress("ptr", "myProxy"), PortAddress("int", "composite"));
     model.component<User>("u");
     model.connect<UseProvide<GetInt>>(PortAddress("ptr", "u"), PortAddress("prov", "composite"));
 
     Assembly assembly(model);
-    CHECK(assembly.at<IntInterface>("my_proxy").get() == 14);
+    CHECK(assembly.at<IntInterface>("myProxy").get() == 14);
     CHECK(assembly.at<User>("u").ptr->getInt() == 2);
 }
 

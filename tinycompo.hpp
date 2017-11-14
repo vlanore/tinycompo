@@ -235,6 +235,31 @@ class Address {
   public:
     Address(const ComponentReference&);
 
+    Address(const char* input) : Address(std::string(input)) {}
+
+    Address(const std::string& input) {
+        std::string copy = input;
+        auto get_token = [&]() -> std::string {
+            auto it = copy.find('_');
+            std::string result;
+            if (it != std::string::npos) {
+                result = copy.substr(0, it);
+                copy = copy.substr(++it);
+            } else {
+                result = copy;
+                copy = "";
+            }
+            return result;
+        };
+        std::string token = get_token();
+        keys.push_back(token);
+        while (true) {
+            token = get_token();
+            if (token == "") break;
+            keys.push_back(token);
+        }
+    }
+
     template <class... Keys>
     Address(Keys... keys) {  // not explicit (how dangerous is this, really?)
         register_keys(std::forward<Keys>(keys)...);
@@ -275,29 +300,29 @@ class Address {
     // }
 };
 
-Address address_from_composite_string(const std::string& input) {
-    std::string copy = input;
-    auto get_token = [&]() -> std::string {
-        auto it = copy.find('_');
-        std::string result;
-        if (it != std::string::npos) {
-            result = copy.substr(0, it);
-            copy = copy.substr(++it);
-        } else {
-            result = copy;
-            copy = "";
-        }
-        return result;
-    };
-    std::string token = get_token();
-    Address result(token);
-    while (true) {
-        token = get_token();
-        if (token == "") break;
-        result = Address(result, token);
-    }
-    return result;
-}
+// Address address_from_composite_string(const std::string& input) {
+//     std::string copy = input;
+//     auto get_token = [&]() -> std::string {
+//         auto it = copy.find('_');
+//         std::string result;
+//         if (it != std::string::npos) {
+//             result = copy.substr(0, it);
+//             copy = copy.substr(++it);
+//         } else {
+//             result = copy;
+//             copy = "";
+//         }
+//         return result;
+//     };
+//     std::string token = get_token();
+//     Address result(token);
+//     while (true) {
+//         token = get_token();
+//         if (token == "") break;
+//         result = Address(result, token);
+//     }
+//     return result;
+// }
 
 struct PortAddress {
     std::string prop;
