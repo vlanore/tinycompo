@@ -83,13 +83,12 @@ int main() {
     // RS infrastructure
     model.component<RejectionSampling>("RS", 500000)
         .connect<Use<Sampler>>("sampler", Address("sampler2"))
-        .connect<MultiUse<RandomNode>>("data", Address("PG", "X"));
+        .connect<MultiUse<RandomNode>>("data", Address("PG", "X"))
+        .connect<Use<DataStream>>("output", Address("traceFile2"));
 
-    model.component<MultiSample>("sampler2");
-    model.connect<UseTopoSortInComposite<RandomNode>>(PortAddress("register", "sampler2"), Address("PG"));
+    model.component<MultiSample>("sampler2").connect<UseTopoSortInComposite<RandomNode>>("register", Address("PG"));
 
     model.component<FileOutput>("traceFile2", "tmp_rs.trace");
-    model.connect<Use<DataStream>>(PortAddress("output", "RS"), Address("traceFile2"));
 
     // instantiate and call everything!
     Assembly assembly(model);

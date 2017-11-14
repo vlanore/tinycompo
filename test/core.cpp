@@ -484,12 +484,10 @@ TEST_CASE("ComponentReference test") {
     auto a = model.component<MyInt>("a", 7);
     auto b = model.component<MyIntProxy>("b");
     b.connect<Use<IntInterface>>("ptr", a);
+
     auto c = model.composite("c");
     auto d = model.component<MyInt>(Address("c", "d"), 8);
-    auto e = model.component<MyIntProxy>(Address("c", "e"));
-    e.connect<Use<IntInterface>>("ptr", d);
-
-    e.meta("prop", "value");
+    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d).meta("prop", "value");
     CHECK(model.get_meta(e, "prop") == "value");
 
     Assembly assembly(model);
