@@ -39,6 +39,7 @@ its terms.*/
 #include <set>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -452,9 +453,8 @@ class Model {
     template <class T, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     Address component(CallKey key, Args&&... args) {
-        if (!std::is_base_of<Component, T>::value) {
-            throw TinycompoException("trying to declare a component that does not inherit from Component");
-        }
+        static_assert(std::is_base_of<Component, T>::value,
+                      "Trying to declare a component that does not inherit from Component.");
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
@@ -523,9 +523,9 @@ class Model {
     std::string get_meta(Address address, const std::string& prop) const {
         if (!address.is_composite()) {
             if (meta_data.find(address.first()) == meta_data.end()) {
-                throw TinycompoException("no metadata entry for address " + address.first());
+                throw TinycompoException("No metadata entry for address " + address.first());
             } else if (meta_data.at(address.first()).find(prop) == meta_data.at(address.first()).end()) {
-                throw TinycompoException("metadata entry for address " + address.first() + " does not contain prop " + prop);
+                throw TinycompoException("Metadata entry for address " + address.first() + " does not contain prop " + prop);
             }
             return meta_data.at(address.first()).at(prop);
         } else {

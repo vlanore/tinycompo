@@ -322,6 +322,11 @@ TEST_CASE("Model test: meta") {
     CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
     CHECK(model.get_meta(Address("composite"), "prop4") == "value4");
     CHECK(model.get_meta(Address("composite2", "hello"), "prop") == "tralala");
+
+    TINYCOMPO_TEST_ERRORS { model.get_meta(Address("pouloulou"), "prop"); }
+    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address pouloulou");
+    TINYCOMPO_TEST_MORE_ERRORS { model.get_meta(Address("compo"), "prop3"); }
+    TINYCOMPO_TEST_ERRORS_END("Metadata entry for address compo does not contain prop prop3");
 }
 
 TEST_CASE("Model test: composite not found") {
