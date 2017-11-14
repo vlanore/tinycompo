@@ -51,6 +51,7 @@ class Model;
 class Assembly;
 class Address;
 struct PortAddress;
+class ComponentReference;
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
@@ -232,6 +233,8 @@ class Address {
     }
 
   public:
+    Address(const ComponentReference&);
+
     template <class... Keys>
     Address(Keys... keys) {  // not explicit (how dangerous is this, really?)
         register_keys(std::forward<Keys>(keys)...);
@@ -404,6 +407,28 @@ struct _ComponentBuilder {
 
 /*
 =============================================================================================================================
+  ~*~ ComponentReference ~*~
+  Small class used to interact with an already-instantiated component without repeating its name everytime.
+===========================================================================================================================*/
+class ComponentReference {
+    Model& model_ref;
+    Address component_address;
+    friend Address;
+
+  public:
+    ComponentReference(Model& model_ref, const Address& component_address)
+        : model_ref(model_ref), component_address(component_address) {}
+
+    template <class T, class... Args>
+    ComponentReference& connect(const std::string&, Args&&...);  // implemented after Model
+
+    ComponentReference& meta(const std::string&, const std::string&);  // implemented after Model
+};
+
+Address::Address(const ComponentReference& ref) { keys = ref.component_address.keys; }
+
+/*
+=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
@@ -439,45 +464,45 @@ class Model {
           meta_data(other_model.meta_data) {}
 
     template <class T, class... Args>
-    Address component(const Address& address, Args&&... args) {
+    ComponentReference component(const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             component<T>(address.first(), std::forward<Args>(args)...);
         } else {
             get_composite(address.first()).component<T>(address.rest(), std::forward<Args>(args)...);
         }
-        return address;
+        return ComponentReference(*this, address);
     }
 
     // horrible enable_if to avoid ambiguous call with version below
     template <class T, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    Address component(CallKey key, Args&&... args) {
+    ComponentReference component(CallKey key, Args&&... args) {
         static_assert(std::is_base_of<Component, T>::value,
                       "Trying to declare a component that does not inherit from Component.");
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
-        return Address(key);
+        return ComponentReference(*this, Address(key));
     }
 
     template <class T = Composite, class... Args>
-    Address composite(const Address& address, Args&&... args) {
+    ComponentReference composite(const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             composite<T>(address.first(), std::forward<Args>(args)...);
         } else {
             get_composite(address.first()).composite<T>(address.rest(), std::forward<Args...>(args)...);
         }
-        return address;
+        return ComponentReference(*this, address);
     }
 
     template <class T = Composite, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    Address composite(CallKey key, Args&&... args) {
+    ComponentReference composite(CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
 
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
-        return Address(key);
+        return ComponentReference(*this, Address(key));
     }
 
     template <class Key>
@@ -624,6 +649,17 @@ class Model {
         return result;
     }
 };
+
+template <class T, class... Args>
+ComponentReference& ComponentReference::connect(const std::string& port, Args&&... args) {
+    model_ref.connect<T>(PortAddress(port, component_address), std::forward<Args>(args)...);
+    return *this;
+}
+
+ComponentReference& ComponentReference::meta(const std::string& prop, const std::string& value) {
+    model_ref.meta(component_address, prop, value);
+    return *this;
+}
 
 /*
 =============================================================================================================================

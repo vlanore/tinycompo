@@ -262,15 +262,16 @@ TEST_CASE("Model test: copy and composites") {
 
 TEST_CASE("Model test: digraph export") {
     Model model;
-    auto d = model.component<MyInt>("d", 3);
-    auto e = model.component<MyInt>("e", 5);
-    auto c = model.component<IntReducer>("c");
-    model.connect<Use<IntInterface>>(PortAddress("ptr", c), d);
-    model.connect<Use<IntInterface>>(PortAddress("ptr", c), e);
-    auto a = model.component<MyIntProxy>("a");
-    auto b = model.component<MyIntProxy>("b");
-    model.connect<Use<IntInterface>>(PortAddress("ptr", a), c);
-    model.connect<Use<IntInterface>>(PortAddress("ptr", b), c);
+    model.component<MyInt>("d", 3);
+    model.component<MyInt>("e", 5);
+    model.component<IntReducer>("c");
+    model.connect<Use<IntInterface>>(PortAddress("ptr", "c"), Address("d"));
+    model.connect<Use<IntInterface>>(PortAddress("ptr", "c"), Address("e"));
+    // model.connect<Use<IntInterface>>(PortAddress("ptr", "c"), "e"); // TODO TODO WHY DOES THIS WORKS
+    model.component<MyIntProxy>("a");
+    model.component<MyIntProxy>("b");
+    model.connect<Use<IntInterface>>(PortAddress("ptr", "a"), Address("c"));
+    model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), Address("c"));
 
     auto graph = model.get_digraph();
     CHECK((graph.first == set<string>{"a", "b", "c", "d", "e"}));
@@ -453,9 +454,9 @@ TEST_CASE("Assembly test: composite ports.") {
 
     struct MyFancyComposite : public Composite {
         static void contents(Model& model) {
-            auto a = model.component<MyInt>("a", 7);
+            model.component<MyInt>("a", 7);
             model.component<MyIntProxy>("b");
-            model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), a);
+            model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), "a");
             model.component<Provider>("p");
         }
 
@@ -476,6 +477,24 @@ TEST_CASE("Assembly test: composite ports.") {
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("my_proxy").get() == 14);
     CHECK(assembly.at<User>("u").ptr->getInt() == 2);
+}
+
+TEST_CASE("ComponentReference test") {
+    Model model;
+    auto a = model.component<MyInt>("a", 7);
+    auto b = model.component<MyIntProxy>("b");
+    b.connect<Use<IntInterface>>("ptr", a);
+    auto c = model.composite("c");
+    auto d = model.component<MyInt>(Address("c", "d"), 8);
+    auto e = model.component<MyIntProxy>(Address("c", "e"));
+    e.connect<Use<IntInterface>>("ptr", d);
+
+    e.meta("prop", "value");
+    CHECK(model.get_meta(e, "prop") == "value");
+
+    Assembly assembly(model);
+    CHECK(assembly.at<IntInterface>("b").get() == 14);
+    CHECK(assembly.at<IntInterface>(Address("c", "e")).get() == 16);
 }
 
 /*
