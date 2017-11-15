@@ -4,7 +4,7 @@ FLAGS = --std=gnu++11 -Wall -Wextra -Wfatal-errors
 
 all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin
 
-mpi: example/mpi_test_mpibin
+mpi: example/mpi_test_mpibin example/mpi_overhaul_mpibin
 
 
 #======================================================================================================================
