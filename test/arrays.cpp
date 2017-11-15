@@ -29,14 +29,16 @@ its terms.*/
 =============================================================================================================================
   ~*~ Array ~*~
 ===========================================================================================================================*/
-// TEST_CASE("Array tests.") {
-//     Array<MyCompo> myArray(3, 11, 12);
-//     CHECK(myArray.size() == 3);
-//     Assembly array(myArray);
-//     array.at<MyCompo>(2).i = 17;
-//     CHECK(array.at<MyCompo>(2).i == 17);
-//     CHECK(array.at<MyCompo>(0).i == 11);
-// }
+TEST_CASE("Array tests.") {
+    Model model;
+    model.composite<Array<MyCompo>>("a", 3, 11, 12);
+
+    Assembly assembly(model);
+    CHECK(assembly.at<Assembly>("a").size() == 3);
+    assembly.at<MyCompo>(Address("a", 2)).i = 17;
+    CHECK(assembly.at<MyCompo>(Address("a", 2)).i == 17);
+    CHECK(assembly.at<MyCompo>(Address("a", 0)).i == 11);
+}
 
 /*
 =============================================================================================================================
