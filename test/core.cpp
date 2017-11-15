@@ -124,7 +124,7 @@ TEST_CASE("key_to_string test.") {
     CHECK(key_to_string(key) == "3");
 }
 
-TEST_CASE("address tests.") {
+TEST_CASE("Address tests.") {
     auto a = Address("a", 2, 3, "b");
     CHECK(a.first() == "a");
     CHECK(a.rest().first() == "2");
@@ -136,6 +136,11 @@ TEST_CASE("address tests.") {
 
     CHECK(a.to_string() == "a_2_3_b");
     CHECK(Address(a, 17).to_string() == "a_2_3_b_17");
+
+    Address b("a", "b");
+    Address c("c", "d");
+    Address e(b, c);
+    CHECK(e.to_string() == "a_b_c_d");
 }
 
 TEST_CASE("Address: builder from string") {

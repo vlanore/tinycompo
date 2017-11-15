@@ -292,37 +292,7 @@ class Address {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
                                [this](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
     }
-
-    // for use as key in maps
-    // bool operator<(const Address& other_address) const {
-    //     return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(),
-    //     other_address.keys.end());
-    // }
 };
-
-// Address address_from_composite_string(const std::string& input) {
-//     std::string copy = input;
-//     auto get_token = [&]() -> std::string {
-//         auto it = copy.find('_');
-//         std::string result;
-//         if (it != std::string::npos) {
-//             result = copy.substr(0, it);
-//             copy = copy.substr(++it);
-//         } else {
-//             result = copy;
-//             copy = "";
-//         }
-//         return result;
-//     };
-//     std::string token = get_token();
-//     Address result(token);
-//     while (true) {
-//         token = get_token();
-//         if (token == "") break;
-//         result = Address(result, token);
-//     }
-//     return result;
-// }
 
 struct PortAddress {
     std::string prop;
@@ -941,6 +911,6 @@ struct MultiProvide {
     }
 };
 
-}  // end of namespacec tc
+}  // namespacec tc
 
 #endif  // TINYCOMPO_HPP
