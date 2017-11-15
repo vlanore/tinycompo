@@ -2,21 +2,50 @@
 #include "tinycompo.hpp"
 
 using namespace std;
+using namespace tc;
 
-struct Hello : public tc::Component {
-    Hello() {
-        port("hello", &Hello::hello);
-    }
+/*
+=============================================================================================================================
+  ~*~ Random tetsing stuff ~*~
+===========================================================================================================================*/
+struct MyCompo : public Component {
+    MyCompo(int i) { cout << "Hello " + to_string(i) + "\n"; }
+};
 
-    void hello() {
-        cout << "Hello\n";
+/*
+=============================================================================================================================
+  ~*~ MPI classes ~*~
+===========================================================================================================================*/
+using Interval = int;
+class MPIAssembly;
+
+class MPIModel {
+    Model model;
+    map<Address, Interval> intervals;
+    friend MPIAssembly;
+
+  public:
+    template <class T, class... Args>
+    void component(Address address, Interval interval, Args&&... args) {
+        model.component<T>(address, std::forward<Args>(args)...);
+        intervals[address] = interval;
     }
 };
 
-int main() {
-    tc::Model model;
-    model.component<Hello>("compo");
+class MPIAssembly : public Component {
+    Assembly assembly;
 
-    tc::Assembly assembly(model);
-    assembly.call("compo", "hello");
+  public:
+    MPIAssembly(MPIModel model) : assembly(model.model) {}
+};
+
+/*
+=============================================================================================================================
+  ~*~ main ~*~
+===========================================================================================================================*/
+int main() {
+    MPIModel model;
+    model.component<MyCompo>("a", 1, 17);
+
+    MPIAssembly assembly(model);
 }
