@@ -529,6 +529,14 @@ class Model {
         }
     }
 
+    bool is_composite(const Address& address) const {
+        if (address.is_composite()) {
+            return get_composite(address.first()).is_composite(address.rest());
+        } else {
+            return is_composite(address.first());
+        }
+    }
+
     bool is_composite(const std::string& address) const {
         return std::accumulate(composites.begin(), composites.end(), false,
                                [this, address](bool acc, std::pair<std::string, Model> ref) {
@@ -554,6 +562,21 @@ class Model {
             return meta_data.at(address.first()).at(prop);
         } else {
             return get_composite(address.first()).get_meta(address.rest(), prop);
+        }
+    }
+
+    void remove(Address address) {
+        if (address.is_composite()) {
+            get_composite(address.first()).remove(address.rest());
+        } else {
+            if (is_composite(address)) {
+                composites.erase(address.first());
+            } else {
+                components.erase(address.first());
+            }
+            if (meta_data.find(address.first()) != meta_data.end()) {
+                meta_data.erase(address.first());
+            }
         }
     }
 

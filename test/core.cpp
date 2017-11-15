@@ -348,6 +348,31 @@ TEST_CASE("Model test: composite not found") {
         "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
 }
 
+TEST_CASE("Model test: remove components!") {
+    Model model;
+    model.component<MyInt>("a", 2).meta("p0", "v0");
+    model.component<MyInt>("b", 3).meta("p1", "v1");
+    model.composite("c").meta("pc", "vc");
+    model.component<MyInt>(Address("c", "d"), 4).meta("p2", "v2");
+
+    stringstream ss;
+    model.remove("b");
+    model.print(ss);
+    CHECK(ss.str() == "Component \"a\" (MyInt)\nComposite c {\n\tComponent \"d\" (MyInt)\n}\n");
+    TINYCOMPO_TEST_ERRORS { model.get_meta("b", "p1"); }
+    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address b");
+    CHECK(model.get_meta("a", "p0") == "v0");
+    CHECK(model.get_meta("c", "pc") == "vc");
+
+    model.remove("c");
+    ss.str("");
+    model.print(ss);
+    CHECK(ss.str() == "Component \"a\" (MyInt)\n");
+    TINYCOMPO_TEST_MORE_ERRORS { model.get_meta("c", "pc"); }
+    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address c");
+    CHECK(model.get_meta("a", "p0") == "v0");
+}
+
 /*
 =============================================================================================================================
   ~*~ Assembly ~*~
@@ -489,12 +514,16 @@ TEST_CASE("Assembly test: composite ports.") {
 
 TEST_CASE("Assembly: derives_from and is_composite") {
     Model model;
-    model.component<MyInt>("a");
+    model.component<MyInt>("a", 1);
     model.composite("b");
+    model.component<MyInt>(Address("b", "c"), 3);
+    model.composite(Address("b", "d"));
 
     Assembly assembly(model);
     CHECK(assembly.is_composite("a") == false);
     CHECK(assembly.is_composite("b") == true);
+    CHECK(assembly.is_composite(Address("b", "c")) == false);
+    CHECK(assembly.is_composite(Address("b", "d")) == true);
     CHECK(assembly.derives_from<IntInterface>("a") == true);
     CHECK(assembly.derives_from<IntInterface>("b") == false);
 }

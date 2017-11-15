@@ -6,7 +6,7 @@ using namespace tc;
 
 /*
 =============================================================================================================================
-  ~*~ Random tetsing stuff ~*~
+  ~*~ Random testing stuff ~*~
 ===========================================================================================================================*/
 struct MyCompo : public Component {
     MyCompo(int i) { cout << "Hello " + to_string(i) + "\n"; }
@@ -14,7 +14,7 @@ struct MyCompo : public Component {
 
 /*
 =============================================================================================================================
-  ~*~ MPI classes ~*~
+  ~*~ MPI Model ~*~
 ===========================================================================================================================*/
 using Interval = int;
 class MPIAssembly;
@@ -32,8 +32,36 @@ class MPIModel {
     }
 };
 
+/*
+=============================================================================================================================
+  ~*~ Option class ~*~
+===========================================================================================================================*/
+template <class T>
+class Option {
+    list<T> data;  // please don't laugh
+
+  public:
+    Option() = default;
+    Option(const T& data) : data(1, data) {}
+
+    template <class... Args>
+    Option(Args&&... args) {
+        data.emplace_front(forward<Args>(args)...);
+    }
+
+    void operator=(const T& new_data) { data.size() == 0 ? data.push_back(new_data) : data.at(0) = new_data; }
+
+    bool operator!() { return data.size() == 1; }
+    T& operator*() { return data.front(); }
+    T* operator->() { return &data.front(); }
+};
+
+/*
+=============================================================================================================================
+  ~*~ MPI Assembly ~*~
+===========================================================================================================================*/
 class MPIAssembly : public Component {
-    Assembly assembly;
+    Option<Assembly> assembly;
 
   public:
     MPIAssembly(MPIModel model) : assembly(model.model) {}
@@ -44,8 +72,13 @@ class MPIAssembly : public Component {
   ~*~ main ~*~
 ===========================================================================================================================*/
 int main() {
+    MPI_Init(NULL, NULL);
+
     MPIModel model;
     model.component<MyCompo>("a", 1, 17);
+    model.component<MyCompo>("b", 0, 13);
 
     MPIAssembly assembly(model);
+
+    MPI_Finalize();
 }
