@@ -9,7 +9,11 @@ using namespace tc;
   ~*~ Random testing stuff ~*~
 ===========================================================================================================================*/
 struct MyCompo : public Component {
-    MyCompo(int i) { cout << "Hello " + to_string(i) + "\n"; }
+    MyCompo(int i) {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("<%d> Hello %d\n", rank, i);
+    }
 };
 
 /*
@@ -49,7 +53,10 @@ class Option {
         data.emplace_front(forward<Args>(args)...);
     }
 
-    void operator=(const T& new_data) { data.size() == 0 ? data.push_back(new_data) : data.at(0) = new_data; }
+    template <class... Args>
+    void set(Args&&... args) {
+        data.emplace_front(forward<Args>(args)...);
+    }
 
     bool operator!() { return data.size() == 1; }
     T& operator*() { return data.front(); }
@@ -62,9 +69,21 @@ class Option {
 ===========================================================================================================================*/
 class MPIAssembly : public Component {
     Option<Assembly> assembly;
+    int rank;
 
   public:
-    MPIAssembly(MPIModel model) : assembly(model.model) {}
+    MPIAssembly(MPIModel model) {
+        MPI_Init(NULL, NULL);
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        for (auto i : model.intervals) {
+            if (i.second != rank) {
+                model.model.remove(i.first);
+            }
+        }
+        assembly.set(model.model);
+    }
+
+    ~MPIAssembly() { MPI_Finalize(); }
 };
 
 /*
@@ -72,13 +91,9 @@ class MPIAssembly : public Component {
   ~*~ main ~*~
 ===========================================================================================================================*/
 int main() {
-    MPI_Init(NULL, NULL);
-
     MPIModel model;
     model.component<MyCompo>("a", 1, 17);
     model.component<MyCompo>("b", 0, 13);
 
     MPIAssembly assembly(model);
-
-    MPI_Finalize();
 }
