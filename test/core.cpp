@@ -365,6 +365,9 @@ TEST_CASE("Assembly test: instances and call.") {
     b.call("Compo2", "myPort", 77, 79);
     CHECK(ref2.i == 77);
     CHECK(ref2.j == 79);
+    b.call(PortAddress("myPort", "Compo2"), 17, 19);
+    CHECK(ref2.i == 17);
+    CHECK(ref2.j == 19);
     stringstream ss;
     b.print_all(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
@@ -482,6 +485,18 @@ TEST_CASE("Assembly test: composite ports.") {
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("myProxy").get() == 14);
     CHECK(assembly.at<User>("u").ptr->getInt() == 2);
+}
+
+TEST_CASE("Assembly: derives_from and is_composite") {
+    Model model;
+    model.component<MyInt>("a");
+    model.composite("b");
+
+    Assembly assembly(model);
+    CHECK(assembly.is_composite("a") == false);
+    CHECK(assembly.is_composite("b") == true);
+    CHECK(assembly.derives_from<IntInterface>("a") == true);
+    CHECK(assembly.derives_from<IntInterface>("b") == false);
 }
 
 TEST_CASE("ComponentReference test") {
