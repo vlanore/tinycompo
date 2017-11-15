@@ -2,10 +2,8 @@ TEST_FILES = $(shell ls -d -1 $$PWD/test/*.*pp)
 EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 FLAGS = --std=gnu++11 -Wall -Wextra -Wfatal-errors
 
-all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin
-
+all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin mpi
 mpi: example/mpi_test_mpibin example/mpi_overhaul_mpibin
-
 
 #======================================================================================================================
 test_bin: test.cpp tinycompo.hpp $(TEST_FILES)

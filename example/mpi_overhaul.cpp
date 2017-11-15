@@ -8,12 +8,28 @@ using namespace tc;
 =============================================================================================================================
   ~*~ Random testing stuff ~*~
 ===========================================================================================================================*/
-struct MyCompo : public Component {
-    MyCompo(int i) {
-        int rank;
+class MPICore {
+    const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
+
+  public:
+    int rank{-1};
+    int size{-1};
+    MPICore() {
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("<%d> Hello %d\n", rank, i);
     }
+    template <class... Args>
+    void message(const std::string& format, Args... args) {
+        string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
+        printf(format2.c_str(), rank, size, args...);
+    }
+};
+
+class MyCompo : public Component {
+    MPICore core;
+
+  public:
+    MyCompo(int i) { core.message("Hello %d", i); }
 };
 
 /*
