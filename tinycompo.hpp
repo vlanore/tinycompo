@@ -43,6 +43,7 @@ its terms.*/
 #include <vector>
 
 namespace tc {
+
 /*
 =============================================================================================================================
   ~*~ Various forward-declarations and abstract interfaces ~*~

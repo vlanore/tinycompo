@@ -6,7 +6,7 @@ using namespace tc;
 
 /*
 =============================================================================================================================
-  ~*~ Random testing stuff ~*~
+  ~*~ MPICore class ~*~
 ===========================================================================================================================*/
 class MPICore {
     const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
@@ -25,28 +25,54 @@ class MPICore {
     }
 };
 
+/*
+=============================================================================================================================
+  ~*~ Random testing stuff ~*~
+===========================================================================================================================*/
 class MyCompo : public Component {
     MPICore core;
 
   public:
-    MyCompo(int i) { core.message("Hello %d", i); }
+    MyCompo(string s) { core.message("Hello %s", s.c_str()); }
 };
+
+/*
+=============================================================================================================================
+  ~*~ ProcessSet ~*~
+===========================================================================================================================*/
+struct ProcessSet {
+    function<bool(int)> contains;
+
+    ProcessSet() : contains([](int) { return false; }) {}
+    ProcessSet(int p) : contains([p](int i) { return i == p; }) {}
+    ProcessSet(int p, int q) : contains([p, q](int i) { return i <= p and i < q; }) {}
+    template <class F>
+    ProcessSet(F f) : contains(f) {}
+};
+
+namespace process {
+ProcessSet all{[](int) { return true; }};
+ProcessSet odd{[](int i) { return i % 2 == 1; }};
+ProcessSet even{[](int i) { return i % 2 == 0; }};
+ProcessSet up_from(int p) {
+    return ProcessSet([p](int i) { return i >= p; });
+}
+}
 
 /*
 =============================================================================================================================
   ~*~ MPI Model ~*~
 ===========================================================================================================================*/
-using Interval = int;
 class MPIAssembly;
 
 class MPIModel {
     Model model;
-    map<Address, Interval> intervals;
+    map<Address, ProcessSet> intervals;
     friend MPIAssembly;
 
   public:
     template <class T, class... Args>
-    void component(Address address, Interval interval, Args&&... args) {
+    void component(Address address, ProcessSet interval, Args&&... args) {
         model.component<T>(address, std::forward<Args>(args)...);
         intervals[address] = interval;
     }
@@ -92,7 +118,7 @@ class MPIAssembly : public Component {
         MPI_Init(NULL, NULL);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         for (auto i : model.intervals) {
-            if (i.second != rank) {
+            if (!i.second.contains(rank)) {
                 model.model.remove(i.first);
             }
         }
@@ -108,8 +134,13 @@ class MPIAssembly : public Component {
 ===========================================================================================================================*/
 int main() {
     MPIModel model;
-    model.component<MyCompo>("a", 1, 17);
-    model.component<MyCompo>("b", 0, 13);
+    model.component<MyCompo>("a", 1, "1");
+    model.component<MyCompo>("b", 0, "0");
+    model.component<MyCompo>("c", process::all, "all");
+    model.component<MyCompo>("d", process::up_from(2), "at least 2");
+    model.component<MyCompo>("e", {2, 4}, "2 to 4");
+    model.component<MyCompo>("f", process::odd, "odd");
+    model.component<MyCompo>("g", process::even, "even");
 
     MPIAssembly assembly(model);
 }
