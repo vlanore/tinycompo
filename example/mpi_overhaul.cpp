@@ -27,17 +27,6 @@ class MPICore {
 
 /*
 =============================================================================================================================
-  ~*~ Random testing stuff ~*~
-===========================================================================================================================*/
-class MyCompo : public Component {
-    MPICore core;
-
-  public:
-    MyCompo(string s) { core.message("Hello %s", s.c_str()); }
-};
-
-/*
-=============================================================================================================================
   ~*~ ProcessSet ~*~
 ===========================================================================================================================*/
 struct ProcessSet {
@@ -45,7 +34,7 @@ struct ProcessSet {
 
     ProcessSet() : contains([](int) { return false; }) {}
     ProcessSet(int p) : contains([p](int i) { return i == p; }) {}
-    ProcessSet(int p, int q) : contains([p, q](int i) { return i <= p and i < q; }) {}
+    ProcessSet(int p, int q) : contains([p, q](int i) { return i >= p and i < q; }) {}
     template <class F>
     ProcessSet(F f) : contains(f) {}
 };
@@ -54,6 +43,7 @@ namespace process {
 ProcessSet all{[](int) { return true; }};
 ProcessSet odd{[](int i) { return i % 2 == 1; }};
 ProcessSet even{[](int i) { return i % 2 == 0; }};
+ProcessSet interval(int i, int j) { return ProcessSet{i, j}; }
 ProcessSet up_from(int p) {
     return ProcessSet([p](int i) { return i >= p; });
 }
@@ -130,6 +120,17 @@ class MPIAssembly : public Component {
 
 /*
 =============================================================================================================================
+  ~*~ Random testing stuff ~*~
+===========================================================================================================================*/
+class MyCompo : public Component {
+    MPICore core;
+
+  public:
+    MyCompo(string s) { core.message("Hello %s", s.c_str()); }
+};
+
+/*
+=============================================================================================================================
   ~*~ main ~*~
 ===========================================================================================================================*/
 int main() {
@@ -139,8 +140,9 @@ int main() {
     model.component<MyCompo>("c", process::all, "all");
     model.component<MyCompo>("d", process::up_from(2), "at least 2");
     model.component<MyCompo>("e", {2, 4}, "2 to 4");
-    model.component<MyCompo>("f", process::odd, "odd");
-    model.component<MyCompo>("g", process::even, "even");
+    model.component<MyCompo>("f", process::interval(2, 4), "2 to 4 again");
+    model.component<MyCompo>("g", process::odd, "odd");
+    model.component<MyCompo>("h", process::even, "even");
 
     MPIAssembly assembly(model);
 }
