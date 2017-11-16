@@ -4,6 +4,10 @@
 using namespace std;
 using namespace tc;
 
+struct Go {
+    virtual void go() = 0;
+};
+
 /*
 =============================================================================================================================
   ~*~ MPICore class ~*~
@@ -22,6 +26,25 @@ class MPICore {
     void message(const std::string& format, Args... args) {
         string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
         printf(format2.c_str(), rank, size, args...);
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ MPIPort ~*~
+===========================================================================================================================*/
+struct MPIPort {
+    int proc{-1};
+    int tag{-1};
+    MPIPort() = default;
+    MPIPort(int p, int t) : proc(p), tag(t) {}
+
+    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD); }
+    void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, MPI_COMM_WORLD); }
+
+    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
+    void receive(void* data, int count, MPI_Datatype type) {
+        MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 };
 
@@ -122,6 +145,12 @@ class MPIAssembly : public Component {
     }
 
     void barrier() { MPI_Barrier(MPI_COMM_WORLD); }
+
+    void call(PortAddress port, ProcessSet processes) {
+        if (processes.contains(rank)) {
+            assembly->call(port);
+        }
+    }
 };
 
 #ifndef TC_MPI_INITIALIZED
@@ -133,11 +162,42 @@ _MPIInit MPIAssembly::init{};
 =============================================================================================================================
   ~*~ Random testing stuff ~*~
 ===========================================================================================================================*/
-class MyCompo : public Component {
+class MyCompoOdd : public Component, public Go {
     MPICore core;
+    MPIPort my_port;
 
   public:
-    MyCompo(string s) { core.message("Hello %s", s.c_str()); }
+    MyCompoOdd() { port("go", &MyCompoOdd::go); }
+
+    void go() override {
+        core.message("hello");
+
+        // my_port.send(core.rank);
+        // core.message("sent %d", core.rank);
+
+        // int receive_msg;
+        // my_port.receive(receive_msg);
+        // core.message("received %d", receive_msg);
+    }
+};
+
+class MyCompoEven : public Component, public Go {
+    MPICore core;
+    MPIPort my_port;
+
+  public:
+    MyCompoEven() { port("go", &MyCompoEven::go); }
+
+    void go() override {
+        core.message("hello");
+
+        // int receive_msg;
+        // my_port.receive(receive_msg);
+        // core.message("received %d", receive_msg);
+
+        // my_port.send(core.rank);
+        // core.message("sent %d", core.rank);
+    }
 };
 
 /*
@@ -146,16 +206,10 @@ class MyCompo : public Component {
 ===========================================================================================================================*/
 int main() {
     MPIModel model;
-    model.component<MyCompo>("a", 1, "1");
-    model.component<MyCompo>("b", 0, "0");
-    model.component<MyCompo>("c", process::all, "all");
-    model.component<MyCompo>("d", process::up_from(2), "at least 2");
-    model.component<MyCompo>("e", {2, 4}, "2 to 4");
-    model.component<MyCompo>("f", process::interval(2, 4), "2 to 4 again");
-    model.component<MyCompo>("g", process::odd, "odd");
-    model.component<MyCompo>("h", process::even, "even");
+    model.component<MyCompoOdd>("odd", process::odd);
+    model.component<MyCompoEven>("even", process::even);
 
     MPIAssembly assembly(model);
-    assembly.barrier();
-    MPIAssembly assembly2(model);
+    assembly.call(PortAddress("go", "odd"), process::odd);
+    assembly.call(PortAddress("go", "even"), process::even);
 }
