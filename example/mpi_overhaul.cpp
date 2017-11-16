@@ -99,13 +99,19 @@ class Option {
 =============================================================================================================================
   ~*~ MPI Assembly ~*~
 ===========================================================================================================================*/
+struct _MPIInit {
+    _MPIInit() { MPI_Init(NULL, NULL); }
+    ~_MPIInit() { MPI_Finalize(); }
+};
+
 class MPIAssembly : public Component {
+    static _MPIInit init;
+
     Option<Assembly> assembly;
     int rank;
 
   public:
     MPIAssembly(MPIModel model) {
-        MPI_Init(NULL, NULL);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         for (auto i : model.intervals) {
             if (!i.second.contains(rank)) {
@@ -115,8 +121,13 @@ class MPIAssembly : public Component {
         assembly.set(model.model);
     }
 
-    ~MPIAssembly() { MPI_Finalize(); }
+    void barrier() { MPI_Barrier(MPI_COMM_WORLD); }
 };
+
+#ifndef TC_MPI_INITIALIZED
+#define TC_MPI_INITIALIZED
+_MPIInit MPIAssembly::init{};
+#endif
 
 /*
 =============================================================================================================================
@@ -145,4 +156,6 @@ int main() {
     model.component<MyCompo>("h", process::even, "even");
 
     MPIAssembly assembly(model);
+    assembly.barrier();
+    MPIAssembly assembly2(model);
 }
