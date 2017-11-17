@@ -429,6 +429,17 @@ Address::Address(const ComponentReference& ref) { keys = ref.component_address.k
 
 /*
 =============================================================================================================================
+  ~*~ _MetaOperation ~*~
+===========================================================================================================================*/
+struct _MetaOperation {
+    std::function<void(Model&)> operation;
+
+    template <class T, class... Args>
+    _MetaOperation(_Type<T>, Args... args) : operation([args...](Model& model) { T::connect(model, args...); }) {}
+};
+
+/*
+=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
@@ -440,8 +451,9 @@ class Model {
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
-
     std::map<std::string, std::map<std::string, std::string>> annotate_data;
+
+    std::vector<_MetaOperation> meta_operations;
 
     std::string strip(std::string s) const {
         auto it = s.find('_');
@@ -456,12 +468,6 @@ class Model {
         T::contents(*this, std::forward<Args>(args)...);
         declare_ports = [](Assembly& assembly) { T::ports(assembly); };
     }
-
-    Model(const Model& other_model)
-        : components(other_model.components),
-          operations(other_model.operations),
-          composites(other_model.composites),
-          annotate_data(other_model.annotate_data) {}
 
     template <class T, class... Args>
     ComponentReference component(const Address& address, Args&&... args) {
@@ -583,7 +589,20 @@ class Model {
 
     template <class C, class... Args>
     void connect(Args&&... args) {
-        operations.emplace_back(_Type<C>(), args...);
+        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    // TODO meta_component
+
+    template <class C, class... Args>
+    void meta_connect(Args&&... args) {
+        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    void perform_meta() {
+        for (auto& op : meta_operations) {
+            op.operation(*this);
+        }
     }
 
     std::size_t size() const { return components.size() + composites.size(); }
@@ -697,20 +716,21 @@ class Assembly : public Component {
   public:
     Assembly() = delete;
     explicit Assembly(Model& model, const std::string& name = "") : internal_model(model) {
-        model.declare_ports(*this);  // declaring Assembly ports
+        internal_model.perform_meta();
+        internal_model.declare_ports(*this);  // declaring Assembly ports
         set_name(name);
-        for (auto& c : model.components) {
+        for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
             ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
             instances.at(c.first).get()->set_name(ss.str());
         }
-        for (auto& c : model.composites) {
+        for (auto& c : internal_model.composites) {
             std::stringstream ss;
             ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
             instances.emplace(c.first, std::unique_ptr<Component>(new Assembly(c.second, c.first)));
         }
-        for (auto& o : model.operations) {
+        for (auto& o : internal_model.operations) {
             o._connect(*this);
         }
     }

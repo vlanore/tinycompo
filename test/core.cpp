@@ -375,6 +375,33 @@ TEST_CASE("Model test: remove components!") {
 
 /*
 =============================================================================================================================
+  ~*~ Meta things ~*~
+===========================================================================================================================*/
+template <class Interface>
+struct UseOrArrayUse {
+    static void connect(Model& model, PortAddress user, Address provider) {
+        if (model.is_composite(provider)) {
+            model.connect<MultiUse<Interface>>(user, provider);
+        } else {
+            model.connect<Use<Interface>>(user, provider);
+        }
+    }
+};
+
+TEST_CASE("Meta connections") {
+    Model model;
+    model.composite<Array<MyInt>>("array", 5, 17);
+    model.component<IntReducer>("reducer");
+    model.component<MyIntProxy>("proxy");
+    model.meta_connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "reducer"), Address("array"));
+    model.meta_connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "proxy"), Address("reducer"));
+
+    Assembly assembly(model);
+    CHECK(assembly.at<IntInterface>("proxy").get() == 170);
+}
+
+/*
+=============================================================================================================================
   ~*~ Assembly ~*~
 ===========================================================================================================================*/
 TEST_CASE("Assembly test: instances and call.") {
