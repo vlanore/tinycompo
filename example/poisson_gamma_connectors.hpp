@@ -192,7 +192,7 @@ struct ConnectAllMoves {
         for (auto m : move_names) {
             // build the move's address + build its target address from metadata
             auto m_address = Address(moves, m);
-            auto m_target = assembly.get_model().get_meta(m_address, "target");
+            auto m_target = assembly.get_model().get_annotation(m_address, "target");
             auto m_target_address = Address(model, m_target);
 
             // is this component a move or a suffstat?
@@ -216,13 +216,13 @@ struct ConnectAllMoves {
         // now that the list of suffstats is known, do the downward and corrupt connections
         for (auto m : mh_moves) {
             auto m_address = Address(moves, m);
-            auto m_target = assembly.get_model().get_meta(m_address, "target");
+            auto m_target = assembly.get_model().get_annotation(m_address, "target");
             auto blanket = markov_blanket(assembly, model, m_target);
 
             for (auto down_target : blanket) {
                 auto suffstat_to_down_target =
                     find_if(suffstats.begin(), suffstats.end(), [&assembly, moves, down_target](string ss) {
-                        auto ss_target = assembly.get_model().get_meta(Address(moves, ss), "target");
+                        auto ss_target = assembly.get_model().get_annotation(Address(moves, ss), "target");
                         return down_target == ss_target;
                     });
 
@@ -236,7 +236,7 @@ struct ConnectAllMoves {
             }
 
             auto suffstat_to_target = find_if(suffstats.begin(), suffstats.end(), [&assembly, moves, m_target](string ss) {
-                auto ss_target = assembly.get_model().get_meta(Address(moves, ss), "target");
+                auto ss_target = assembly.get_model().get_annotation(Address(moves, ss), "target");
                 return m_target == ss_target;
             });
 

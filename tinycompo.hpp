@@ -398,7 +398,6 @@ struct _ComponentBuilder {
     // representation-related stuff
     std::string type;
     std::string name;  // should it be removed (not very useful as its stored in a map by name)
-    std::map<std::string, std::string> meta;
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
         os << std::string(tabs, '\t') << "Component \"" << name << "\""
@@ -423,7 +422,7 @@ class ComponentReference {
     template <class T, class... Args>
     ComponentReference& connect(const std::string&, Args&&...);  // implemented after Model
 
-    ComponentReference& meta(const std::string&, const std::string&);  // implemented after Model
+    ComponentReference& annotate(const std::string&, const std::string&);  // implemented after Model
 };
 
 Address::Address(const ComponentReference& ref) { keys = ref.component_address.keys; }
@@ -442,7 +441,7 @@ class Model {
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
 
-    std::map<std::string, std::map<std::string, std::string>> meta_data;
+    std::map<std::string, std::map<std::string, std::string>> annotate_data;
 
     std::string strip(std::string s) const {
         auto it = s.find('_');
@@ -462,7 +461,7 @@ class Model {
         : components(other_model.components),
           operations(other_model.operations),
           composites(other_model.composites),
-          meta_data(other_model.meta_data) {}
+          annotate_data(other_model.annotate_data) {}
 
     template <class T, class... Args>
     ComponentReference component(const Address& address, Args&&... args) {
@@ -545,24 +544,25 @@ class Model {
                                });
     }
 
-    void meta(Address address, const std::string& prop, const std::string& value) {
+    void annotate(Address address, const std::string& prop, const std::string& value) {
         if (!address.is_composite()) {
-            meta_data[address.first()][prop] = value;
+            annotate_data[address.first()][prop] = value;
         } else {
-            get_composite(address.first()).meta(address.rest(), prop, value);
+            get_composite(address.first()).annotate(address.rest(), prop, value);
         }
     }
 
-    std::string get_meta(Address address, const std::string& prop) const {
+    std::string get_annotation(Address address, const std::string& prop) const {
         if (!address.is_composite()) {
-            if (meta_data.find(address.first()) == meta_data.end()) {
-                throw TinycompoException("No metadata entry for address " + address.first());
-            } else if (meta_data.at(address.first()).find(prop) == meta_data.at(address.first()).end()) {
-                throw TinycompoException("Metadata entry for address " + address.first() + " does not contain prop " + prop);
+            if (annotate_data.find(address.first()) == annotate_data.end()) {
+                throw TinycompoException("No annotation entry for address " + address.first());
+            } else if (annotate_data.at(address.first()).find(prop) == annotate_data.at(address.first()).end()) {
+                throw TinycompoException("Annotation entry for address " + address.first() + " does not contain prop " +
+                                         prop);
             }
-            return meta_data.at(address.first()).at(prop);
+            return annotate_data.at(address.first()).at(prop);
         } else {
-            return get_composite(address.first()).get_meta(address.rest(), prop);
+            return get_composite(address.first()).get_annotation(address.rest(), prop);
         }
     }
 
@@ -575,8 +575,8 @@ class Model {
             } else {
                 components.erase(address.first());
             }
-            if (meta_data.find(address.first()) != meta_data.end()) {
-                meta_data.erase(address.first());
+            if (annotate_data.find(address.first()) != annotate_data.end()) {
+                annotate_data.erase(address.first());
             }
         }
     }
@@ -680,8 +680,8 @@ ComponentReference& ComponentReference::connect(const std::string& port, Args&&.
     return *this;
 }
 
-ComponentReference& ComponentReference::meta(const std::string& prop, const std::string& value) {
-    model_ref.meta(component_address, prop, value);
+ComponentReference& ComponentReference::annotate(const std::string& prop, const std::string& value) {
+    model_ref.annotate(component_address, prop, value);
     return *this;
 }
 

@@ -303,11 +303,11 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
     CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1_t", "2", "1_r", "1_t_l"}));
 }
 
-TEST_CASE("Model test: meta") {
+TEST_CASE("Model test: annotate") {
     struct MyMetaComposite {
         static void contents(Model& model) {
             model.component<MyInt>("hello");
-            model.meta("hello", "prop", "tralala");
+            model.annotate("hello", "prop", "tralala");
         }
 
         static void ports(Assembly&) {}
@@ -317,22 +317,22 @@ TEST_CASE("Model test: meta") {
     model.component<MyInt>("compo");
     model.composite("composite");
     model.component<MyInt>(Address("composite", "compo2"));
-    model.meta(Address("compo"), "prop1", "value1");
-    model.meta(Address("compo"), "prop2", "value2");
-    model.meta(Address("composite", "compo2"), "prop3", "value3");
-    model.meta(Address("composite"), "prop4", "value4");
+    model.annotate(Address("compo"), "prop1", "value1");
+    model.annotate(Address("compo"), "prop2", "value2");
+    model.annotate(Address("composite", "compo2"), "prop3", "value3");
+    model.annotate(Address("composite"), "prop4", "value4");
     model.composite<MyMetaComposite>("composite2");
 
-    CHECK(model.get_meta(Address("compo"), "prop1") == "value1");
-    CHECK(model.get_meta(Address("compo"), "prop2") == "value2");
-    CHECK(model.get_meta(Address("composite", "compo2"), "prop3") == "value3");
-    CHECK(model.get_meta(Address("composite"), "prop4") == "value4");
-    CHECK(model.get_meta(Address("composite2", "hello"), "prop") == "tralala");
+    CHECK(model.get_annotation(Address("compo"), "prop1") == "value1");
+    CHECK(model.get_annotation(Address("compo"), "prop2") == "value2");
+    CHECK(model.get_annotation(Address("composite", "compo2"), "prop3") == "value3");
+    CHECK(model.get_annotation(Address("composite"), "prop4") == "value4");
+    CHECK(model.get_annotation(Address("composite2", "hello"), "prop") == "tralala");
 
-    TINYCOMPO_TEST_ERRORS { model.get_meta(Address("pouloulou"), "prop"); }
-    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address pouloulou");
-    TINYCOMPO_TEST_MORE_ERRORS { model.get_meta(Address("compo"), "prop3"); }
-    TINYCOMPO_TEST_ERRORS_END("Metadata entry for address compo does not contain prop prop3");
+    TINYCOMPO_TEST_ERRORS { model.get_annotation(Address("pouloulou"), "prop"); }
+    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address pouloulou");
+    TINYCOMPO_TEST_MORE_ERRORS { model.get_annotation(Address("compo"), "prop3"); }
+    TINYCOMPO_TEST_ERRORS_END("Annotation entry for address compo does not contain prop prop3");
 }
 
 TEST_CASE("Model test: composite not found") {
@@ -350,27 +350,27 @@ TEST_CASE("Model test: composite not found") {
 
 TEST_CASE("Model test: remove components!") {
     Model model;
-    model.component<MyInt>("a", 2).meta("p0", "v0");
-    model.component<MyInt>("b", 3).meta("p1", "v1");
-    model.composite("c").meta("pc", "vc");
-    model.component<MyInt>(Address("c", "d"), 4).meta("p2", "v2");
+    model.component<MyInt>("a", 2).annotate("p0", "v0");
+    model.component<MyInt>("b", 3).annotate("p1", "v1");
+    model.composite("c").annotate("pc", "vc");
+    model.component<MyInt>(Address("c", "d"), 4).annotate("p2", "v2");
 
     stringstream ss;
     model.remove("b");
     model.print(ss);
     CHECK(ss.str() == "Component \"a\" (MyInt)\nComposite c {\n\tComponent \"d\" (MyInt)\n}\n");
-    TINYCOMPO_TEST_ERRORS { model.get_meta("b", "p1"); }
-    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address b");
-    CHECK(model.get_meta("a", "p0") == "v0");
-    CHECK(model.get_meta("c", "pc") == "vc");
+    TINYCOMPO_TEST_ERRORS { model.get_annotation("b", "p1"); }
+    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address b");
+    CHECK(model.get_annotation("a", "p0") == "v0");
+    CHECK(model.get_annotation("c", "pc") == "vc");
 
     model.remove("c");
     ss.str("");
     model.print(ss);
     CHECK(ss.str() == "Component \"a\" (MyInt)\n");
-    TINYCOMPO_TEST_MORE_ERRORS { model.get_meta("c", "pc"); }
-    TINYCOMPO_TEST_ERRORS_END("No metadata entry for address c");
-    CHECK(model.get_meta("a", "p0") == "v0");
+    TINYCOMPO_TEST_MORE_ERRORS { model.get_annotation("c", "pc"); }
+    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address c");
+    CHECK(model.get_annotation("a", "p0") == "v0");
 }
 
 /*
@@ -536,8 +536,8 @@ TEST_CASE("ComponentReference test") {
 
     auto c = model.composite("c");
     auto d = model.component<MyInt>(Address("c", "d"), 8);
-    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d).meta("prop", "value");
-    CHECK(model.get_meta(e, "prop") == "value");
+    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d).annotate("prop", "value");
+    CHECK(model.get_annotation(e, "prop") == "value");
 
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("b").get() == 14);

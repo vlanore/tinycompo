@@ -43,13 +43,13 @@ struct PoissonGamma : public Composite {
 
 struct Moves : public Composite {
     static void contents(Model& model, int size) {
-        model.component<MHMove<Scaling>>("MoveSigma", 3, 10).meta("target", "Sigma");
+        model.component<MHMove<Scaling>>("MoveSigma", 3, 10).annotate("target", "Sigma");
 
-        model.component<MHMove<Scaling>>("MoveTheta", 3, 10).meta("target", "Theta");
+        model.component<MHMove<Scaling>>("MoveTheta", 3, 10).annotate("target", "Theta");
 
-        model.composite<Array<MHMove<Scaling>>>("MoveOmega", size, 3, 10).meta("target", "Omega");
+        model.composite<Array<MHMove<Scaling>>>("MoveOmega", size, 3, 10).annotate("target", "Omega");
 
-        model.component<GammaSuffStat>("GammaSuffStat").meta("target", "Omega");
+        model.component<GammaSuffStat>("GammaSuffStat").annotate("target", "Omega");
     }
 };
 
