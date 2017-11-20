@@ -80,7 +80,7 @@ class TinycompoException : public std::exception {
     const char* what() const noexcept override { return message.c_str(); }
 };
 
-class TinycompoDebug {
+class TinycompoDebug {  // bundle of static functions to help with debug messages
 #ifdef __GNUG__
     static std::string demangle(const char* name) {
         int status{0};
@@ -93,12 +93,12 @@ class TinycompoDebug {
 
   public:
     template <class T>
-    static std::string type() {
+    static std::string type() {  // display human-friendly typename
         return demangle(typeid(T).name());
     }
 
     template <class T1, class T2>
-    static std::string list(const std::map<T1, T2>& structure) {
+    static std::string list(const std::map<T1, T2>& structure) {  // bullet-pointed list of key names in a string
         std::stringstream acc;
         for (auto& e : structure) {
             acc << "  * " << e.first << '\n';
@@ -195,12 +195,12 @@ class Component {
     }
 
     template <class Interface>
-    Interface* get(std::string name) {
-        return dynamic_cast<_ProvidePort<Interface>*>(_ports[name].get())->_get();
+    Interface* get(std::string name) const {
+        return dynamic_cast<_ProvidePort<Interface>*>(_ports.at(name).get())->_get();
     }
 
     void set_name(const std::string& n) { name = n; }
-    std::string get_name() { return name; }
+    std::string get_name() const { return name; }
 };
 
 /*
@@ -887,7 +887,7 @@ struct UseProvide {
 template <class T>
 struct Array : public Composite {
     template <class... Args>
-    static void contents(Model& model, int nb_elems, Args... args) {
+    static void contents(Model& model, int nb_elems, Args&&... args) {
         for (int i = 0; i < nb_elems; i++) {
             model.component<T>(i, std::forward<Args>(args)...);
         }
