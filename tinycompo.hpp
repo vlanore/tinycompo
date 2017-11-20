@@ -68,7 +68,6 @@ using DirectedGraph = std::pair<std::set<std::string>, std::multimap<std::string
 /*
 =============================================================================================================================
   ~*~ Debug ~*~
-  A few classes related to debug messages.
 ===========================================================================================================================*/
 class TinycompoException : public std::exception {
     std::string message{""};
@@ -321,7 +320,7 @@ struct Composite {
 /*
 =============================================================================================================================
   ~*~ Graph representation classes ~*~
-  Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
+Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
 ===========================================================================================================================*/
 struct _GraphAddress {
     std::string address;
@@ -408,7 +407,8 @@ struct _ComponentBuilder {
 /*
 =============================================================================================================================
   ~*~ ComponentReference ~*~
-  Small class used to interact with an already-instantiated component without repeating its name everytime.
+Small class used to interact with an already-declared component without repeating its name everytime. This class allows the
+chaining of declaration, eg : model.component(...).connect(...).connect(...).annotate(...)
 ===========================================================================================================================*/
 class ComponentReference {
     Model& model_ref;
@@ -461,13 +461,17 @@ class Model {
     }
 
   public:
-    Model() = default;
+    Model() = default;  // when creating model from scratch
 
     template <class T, class... Args>
-    Model(_Type<T>, Args... args) {
+    Model(_Type<T>, Args... args) {  // when instantiating from composite functor
         T::contents(*this, std::forward<Args>(args)...);
         declare_ports = [](Assembly& assembly) { T::ports(assembly); };
     }
+
+    /*
+    =========================================================================================================================
+    ~*~ Declaration functions ~*~  */
 
     template <class T, class... Args>
     ComponentReference component(const Address& address, Args&&... args) {
@@ -511,6 +515,52 @@ class Model {
         return ComponentReference(*this, Address(key));
     }
 
+    void remove(Address address) {
+        if (address.is_composite()) {
+            get_composite(address.first()).remove(address.rest());
+        } else {
+            if (is_composite(address)) {
+                composites.erase(address.first());
+            } else {
+                components.erase(address.first());
+            }
+            if (annotate_data.find(address.first()) != annotate_data.end()) {
+                annotate_data.erase(address.first());
+            }
+        }
+    }
+
+    template <class C, class... Args>
+    void connect(Args&&... args) {
+        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    // TODO meta_component
+
+    template <class C, class... Args>
+    void meta_connect(Args&&... args) {
+        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    void annotate(Address address, const std::string& prop, const std::string& value) {
+        if (!address.is_composite()) {
+            annotate_data[address.first()][prop] = value;
+        } else {
+            get_composite(address.first()).annotate(address.rest(), prop, value);
+        }
+    }
+
+    void perform_meta() {
+        for (auto& op : meta_operations) {
+            op.operation(*this);
+        }
+        meta_operations.clear();
+    }
+
+    /*
+    =========================================================================================================================
+    ~*~ Getters / introspection ~*~  */
+
     template <class Key>
     Model& get_composite(const Key& key) {
         std::string key_name = key_to_string(key);
@@ -550,14 +600,6 @@ class Model {
                                });
     }
 
-    void annotate(Address address, const std::string& prop, const std::string& value) {
-        if (!address.is_composite()) {
-            annotate_data[address.first()][prop] = value;
-        } else {
-            get_composite(address.first()).annotate(address.rest(), prop, value);
-        }
-    }
-
     std::string get_annotation(Address address, const std::string& prop) const {
         if (!address.is_composite()) {
             if (annotate_data.find(address.first()) == annotate_data.end()) {
@@ -569,39 +611,6 @@ class Model {
             return annotate_data.at(address.first()).at(prop);
         } else {
             return get_composite(address.first()).get_annotation(address.rest(), prop);
-        }
-    }
-
-    void remove(Address address) {
-        if (address.is_composite()) {
-            get_composite(address.first()).remove(address.rest());
-        } else {
-            if (is_composite(address)) {
-                composites.erase(address.first());
-            } else {
-                components.erase(address.first());
-            }
-            if (annotate_data.find(address.first()) != annotate_data.end()) {
-                annotate_data.erase(address.first());
-            }
-        }
-    }
-
-    template <class C, class... Args>
-    void connect(Args&&... args) {
-        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
-    }
-
-    // TODO meta_component
-
-    template <class C, class... Args>
-    void meta_connect(Args&&... args) {
-        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
-    }
-
-    void perform_meta() {
-        for (auto& op : meta_operations) {
-            op.operation(*this);
         }
     }
 
@@ -903,8 +912,7 @@ struct ArraySet {
   ~*~ ArrayOneToOne class ~*~
 This is a connector that takes two arrays with identical sizes and connects (as if using the UseProvide connector) every
 i-th element in array1 to its corresponding element in array2 (ie, the i-th element in array2). This class should be used as
-a
-template parameter for Assembly::connect.
+a template parameter for Assembly::connect.
 ===========================================================================================================================*/
 template <class Interface>
 struct ArrayOneToOne {
@@ -960,6 +968,6 @@ struct MultiProvide {
     }
 };
 
-}  // namespacec tc
+}  // namespace tc
 
 #endif  // TINYCOMPO_HPP
