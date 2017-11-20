@@ -101,46 +101,30 @@ ProcessSet up_from(int p) {
 =============================================================================================================================
   ~*~ MPI Model ~*~
 ===========================================================================================================================*/
+template <class C>
+struct CondCompo {
+    template <class... Args>
+    static void connect(Model& model, const std::string& name, bool present, Args&&... args) {
+        if (present) {
+            model.component<C>(name, std::forward<Args>(args)...);
+        }
+    }
+};
+
 class MPIAssembly;
 
 class MPIModel {
     Model model;
-    map<Address, ProcessSet> intervals;
+    int rank;
     friend MPIAssembly;
 
   public:
+    MPIModel() { MPI_Comm_rank(MPI_COMM_WORLD, &rank); }
+
     template <class T, class... Args>
     void component(Address address, ProcessSet interval, Args&&... args) {
-        model.component<T>(address, std::forward<Args>(args)...);
-        intervals[address] = interval;
+        model.meta_component<CondCompo<T>>(address, interval.contains(rank), std::forward<Args>(args)...);
     }
-};
-
-/*
-=============================================================================================================================
-  ~*~ Option class ~*~
-===========================================================================================================================*/
-template <class T>
-class Option {
-    list<T> data;  // please don't laugh
-
-  public:
-    Option() = default;
-    Option(const T& data) : data(1, data) {}
-
-    template <class... Args>
-    Option(Args&&... args) {
-        data.emplace_front(forward<Args>(args)...);
-    }
-
-    template <class... Args>
-    void set(Args&&... args) {
-        data.emplace_front(forward<Args>(args)...);
-    }
-
-    bool operator!() { return data.size() == 1; }
-    T& operator*() { return data.front(); }
-    T* operator->() { return &data.front(); }
 };
 
 /*
@@ -155,25 +139,17 @@ struct _MPIInit {
 class MPIAssembly : public Component {
     static _MPIInit init;
 
-    Option<Assembly> assembly;
+    Assembly assembly;
     int rank;
 
   public:
-    MPIAssembly(MPIModel model) {
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        for (auto i : model.intervals) {
-            if (!i.second.contains(rank)) {
-                model.model.remove(i.first);
-            }
-        }
-        assembly.set(model.model);
-    }
+    MPIAssembly(MPIModel model) : assembly(model.model) { MPI_Comm_rank(MPI_COMM_WORLD, &rank); }
 
     void barrier() { MPI_Barrier(MPI_COMM_WORLD); }
 
     void call(PortAddress port, ProcessSet processes) {
         if (processes.contains(rank)) {
-            assembly->call(port);
+            assembly.call(port);
         }
     }
 };

@@ -348,31 +348,6 @@ TEST_CASE("Model test: composite not found") {
         "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
 }
 
-TEST_CASE("Model test: remove components!") {
-    Model model;
-    model.component<MyInt>("a", 2).annotate("p0", "v0");
-    model.component<MyInt>("b", 3).annotate("p1", "v1");
-    model.composite("c").annotate("pc", "vc");
-    model.component<MyInt>(Address("c", "d"), 4).annotate("p2", "v2");
-
-    stringstream ss;
-    model.remove("b");
-    model.print(ss);
-    CHECK(ss.str() == "Component \"a\" (MyInt)\nComposite c {\n\tComponent \"d\" (MyInt)\n}\n");
-    TINYCOMPO_TEST_ERRORS { model.get_annotation("b", "p1"); }
-    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address b");
-    CHECK(model.get_annotation("a", "p0") == "v0");
-    CHECK(model.get_annotation("c", "pc") == "vc");
-
-    model.remove("c");
-    ss.str("");
-    model.print(ss);
-    CHECK(ss.str() == "Component \"a\" (MyInt)\n");
-    TINYCOMPO_TEST_MORE_ERRORS { model.get_annotation("c", "pc"); }
-    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address c");
-    CHECK(model.get_annotation("a", "p0") == "v0");
-}
-
 /*
 =============================================================================================================================
   ~*~ Meta things ~*~

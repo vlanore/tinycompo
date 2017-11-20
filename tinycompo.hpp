@@ -515,21 +515,6 @@ class Model {
         return ComponentReference(*this, Address(key));
     }
 
-    void remove(Address address) {
-        if (address.is_composite()) {
-            get_composite(address.first()).remove(address.rest());
-        } else {
-            if (is_composite(address)) {
-                composites.erase(address.first());
-            } else {
-                components.erase(address.first());
-            }
-            if (annotate_data.find(address.first()) != annotate_data.end()) {
-                annotate_data.erase(address.first());
-            }
-        }
-    }
-
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
