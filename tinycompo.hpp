@@ -535,7 +535,14 @@ class Model {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    // TODO meta_component
+    template <class C, class... Args>
+    void meta_component(Address address, Args&&... args) {
+        if (address.is_composite()) {
+            get_composite(address.first()).meta_component<C>(address.rest(), std::forward<Args>(args)...);
+        } else {
+            meta_operations.emplace_back(_Type<C>(), address.first(), std::forward<Args>(args)...);
+        }
+    }
 
     template <class C, class... Args>
     void meta_connect(Args&&... args) {
@@ -555,6 +562,9 @@ class Model {
             op.operation(*this);
         }
         meta_operations.clear();
+        for (auto& c : composites) {
+            c.second.perform_meta();
+        }
     }
 
     /*
