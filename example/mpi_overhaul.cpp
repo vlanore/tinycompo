@@ -84,25 +84,6 @@ int MPIContext::size{-1};
 
 /*
 =============================================================================================================================
-  ~*~ MPIPort ~*~
-===========================================================================================================================*/
-struct MPIPort {
-    int proc{-1};
-    int tag{-1};
-    MPIPort() = default;
-    MPIPort(int p, int t) : proc(p), tag(t) {}
-
-    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD); }
-    void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, MPI_COMM_WORLD); }
-
-    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
-    void receive(void* data, int count, MPI_Datatype type) {
-        MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
-};
-
-/*
-=============================================================================================================================
   ~*~ ProcessSet ~*~
 ===========================================================================================================================*/
 struct ProcessSet {
@@ -124,6 +105,61 @@ ProcessSet up_from(int p) {
     return ProcessSet([p](int i) { return i >= p; });
 }
 }
+
+/*
+=============================================================================================================================
+  ~*~ MPIPort ~*~
+===========================================================================================================================*/
+struct MPIPort {
+    int proc{-1};
+    int tag{-1};
+    MPIPort() = default;
+    MPIPort(int p, int t) : proc(p), tag(t) {}
+
+    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD); }
+    void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, MPI_COMM_WORLD); }
+
+    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
+    void receive(void* data, int count, MPI_Datatype type) {
+        MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+};
+
+struct RelativeProcess {
+    function<int(int)> process_modifier;
+
+    template <class F>
+    RelativeProcess(F f) : process_modifier(f) {}
+
+    set<int> all_origins(ProcessSet processes) {
+        auto core = MPIContext::core();
+        set<int> result;
+        for (auto p = 0; p < core.size; p++) {
+            if (processes.contains(p) and (process_modifier(p) % core.size) == core.rank) {
+                result.insert(p);
+            }
+        }
+        return result;
+    }
+};
+
+struct P2P {
+    static void connect(Model& model, PortAddress user, ProcessSet user_process, PortAddress provider,
+                        RelativeProcess provider_process) {
+        auto core = MPIContext::core();
+
+        // user-side
+        if (user_process.contains(core.rank)) {
+            model.connect<Set>(user, provider_process.process_modifier(core.rank) % core.size, 0);
+        }
+
+        // provider-side
+        auto origin_processes = provider_process.all_origins(user_process);
+        for (auto p : origin_processes) {
+            model.connect<Set>(provider, p, 0);
+        }
+    }
+};
 
 /*
 =============================================================================================================================
@@ -155,10 +191,10 @@ class MPIModel {
         model.meta_component<CondCompo<T>>(address, process, std::forward<Args>(args)...);
     }
 
-    // template <class T, class... Args>
-    // void connect(ProcessSet interval) {
-
-    // }
+    template <class T, class... Args>
+    void connect(Args&&... args) {
+        model.meta_connect<T>(std::forward<Args>(args)...);
+    }
 };
 
 /*
@@ -188,38 +224,46 @@ class MPIAssembly : public Component {
 class MyCompoOdd : public Component, public Go {
     MPICore core;
     MPIPort my_port;
+    void set_port(int target, int tag) { my_port = MPIPort(target, tag); }
 
   public:
-    MyCompoOdd() : core(MPIContext::core()) { port("go", &MyCompoOdd::go); }
+    MyCompoOdd() : core(MPIContext::core()) {
+        port("go", &MyCompoOdd::go);
+        port("port", &MyCompoOdd::set_port);
+    }
 
     void go() override {
         core.message("hello");
 
-        // my_port.send(core.rank);
-        // core.message("sent %d", core.rank);
+        my_port.send(core.rank);
+        core.message("sent %d", core.rank);
 
-        // int receive_msg;
-        // my_port.receive(receive_msg);
-        // core.message("received %d", receive_msg);
+        int receive_msg;
+        my_port.receive(receive_msg);
+        core.message("received %d", receive_msg);
     }
 };
 
 class MyCompoEven : public Component, public Go {
     MPICore core;
     MPIPort my_port;
+    void set_port(int target, int tag) { my_port = MPIPort(target, tag); }
 
   public:
-    MyCompoEven() : core(MPIContext::core()) { port("go", &MyCompoEven::go); }
+    MyCompoEven() : core(MPIContext::core()) {
+        port("go", &MyCompoEven::go);
+        port("port", &MyCompoEven::set_port);
+    }
 
     void go() override {
         core.message("hello");
 
-        // int receive_msg;
-        // my_port.receive(receive_msg);
-        // core.message("received %d", receive_msg);
+        int receive_msg;
+        my_port.receive(receive_msg);
+        core.message("received %d", receive_msg);
 
-        // my_port.send(core.rank);
-        // core.message("sent %d", core.rank);
+        my_port.send(core.rank);
+        core.message("sent %d", core.rank);
     }
 };
 
@@ -233,6 +277,8 @@ int main(int argc, char** argv) {
     MPIModel model;
     model.component<MyCompoOdd>("odd", process::odd);
     model.component<MyCompoEven>("even", process::even);
+    model.connect<P2P>(PortAddress("port", "odd"), process::odd, PortAddress("port", "even"),
+                       RelativeProcess([](int p) { return p + 1; }));
 
     MPIAssembly assembly(model);
     assembly.call(PortAddress("go", "odd"), process::odd);
