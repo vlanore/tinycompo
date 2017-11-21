@@ -41,18 +41,41 @@ class MPICore {
     const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
 
   public:
-    int rank{-1};
-    int size{-1};
-    MPICore() {
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    }
+    int rank, size;
+    MPICore(int rank, int size) : rank(rank), size(size) {}
     template <class... Args>
     void message(const std::string& format, Args... args) {
         string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
         printf(format2.c_str(), rank, size, args...);
     }
 };
+
+struct MPIContext {
+    int argc;
+    char** argv;
+    static int rank, size;
+
+    MPIContext(int argc, char** argv) : argc(argc), argv(argv) {
+        int initialized;
+        MPI_Initialized(&initialized);
+        if (initialized == 0) {
+            MPI_Init(&argc, &argv);
+        } else {
+            throw TinycompoException("trying to instantiate several MPIContext objects");
+        }
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+    }
+
+    MPIContext(const MPIContext&) = delete;
+
+    ~MPIContext() { MPI_Finalize(); }
+
+    static MPICore core() { return MPICore(rank, size); }
+};
+
+int MPIContext::rank{-1};
+int MPIContext::size{-1};
 
 /*
 =============================================================================================================================
@@ -104,8 +127,9 @@ ProcessSet up_from(int p) {
 template <class C>
 struct CondCompo {
     template <class... Args>
-    static void connect(Model& model, const std::string& name, bool present, Args&&... args) {
-        if (present) {
+    static void connect(Model& model, const std::string& name, ProcessSet process, Args&&... args) {
+        auto core = MPIContext::core();
+        if (process.contains(core.rank)) {
             model.component<C>(name, std::forward<Args>(args)...);
         }
     }
@@ -115,49 +139,42 @@ class MPIAssembly;
 
 class MPIModel {
     Model model;
-    int rank;
+    MPICore core;
     friend MPIAssembly;
 
   public:
-    MPIModel() { MPI_Comm_rank(MPI_COMM_WORLD, &rank); }
+    MPIModel() : core(MPIContext::core()) {}
 
     template <class T, class... Args>
-    void component(Address address, ProcessSet interval, Args&&... args) {
-        model.meta_component<CondCompo<T>>(address, interval.contains(rank), std::forward<Args>(args)...);
+    void component(Address address, ProcessSet process, Args&&... args) {
+        model.meta_component<CondCompo<T>>(address, process, std::forward<Args>(args)...);
     }
+
+    // template <class T, class... Args>
+    // void connect(ProcessSet interval) {
+
+    // }
 };
 
 /*
 =============================================================================================================================
   ~*~ MPI Assembly ~*~
 ===========================================================================================================================*/
-struct _MPIInit {
-    _MPIInit() { MPI_Init(NULL, NULL); }
-    ~_MPIInit() { MPI_Finalize(); }
-};
-
 class MPIAssembly : public Component {
-    static _MPIInit init;
-
     Assembly assembly;
-    int rank;
+    MPICore core;
 
   public:
-    MPIAssembly(MPIModel model) : assembly(model.model) { MPI_Comm_rank(MPI_COMM_WORLD, &rank); }
+    MPIAssembly(MPIModel model) : assembly(model.model), core(MPIContext::core()) {}
 
     void barrier() { MPI_Barrier(MPI_COMM_WORLD); }
 
     void call(PortAddress port, ProcessSet processes) {
-        if (processes.contains(rank)) {
+        if (processes.contains(core.rank)) {
             assembly.call(port);
         }
     }
 };
-
-#ifndef TC_MPI_INITIALIZED
-#define TC_MPI_INITIALIZED
-_MPIInit MPIAssembly::init{};
-#endif
 
 /*
 =============================================================================================================================
@@ -168,7 +185,7 @@ class MyCompoOdd : public Component, public Go {
     MPIPort my_port;
 
   public:
-    MyCompoOdd() { port("go", &MyCompoOdd::go); }
+    MyCompoOdd() : core(MPIContext::core()) { port("go", &MyCompoOdd::go); }
 
     void go() override {
         core.message("hello");
@@ -187,7 +204,7 @@ class MyCompoEven : public Component, public Go {
     MPIPort my_port;
 
   public:
-    MyCompoEven() { port("go", &MyCompoEven::go); }
+    MyCompoEven() : core(MPIContext::core()) { port("go", &MyCompoEven::go); }
 
     void go() override {
         core.message("hello");
@@ -205,7 +222,9 @@ class MyCompoEven : public Component, public Go {
 =============================================================================================================================
   ~*~ main ~*~
 ===========================================================================================================================*/
-int main() {
+int main(int argc, char** argv) {
+    MPIContext context(argc, argv);
+
     MPIModel model;
     model.component<MyCompoOdd>("odd", process::odd);
     model.component<MyCompoEven>("even", process::even);
