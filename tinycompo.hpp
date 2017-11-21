@@ -584,15 +584,19 @@ class Model {
         if (address.is_composite()) {
             return get_composite(address.first()).is_composite(address.rest());
         } else {
-            return is_composite(address.first());
+            return std::accumulate(
+                composites.begin(), composites.end(), false, [this, address](bool acc, std::pair<std::string, Model> ref) {
+                    return acc || ref.second.is_composite(strip(address.first())) || (ref.first == address.first());
+                });
         }
     }
 
-    bool is_composite(const std::string& address) const {
-        return std::accumulate(composites.begin(), composites.end(), false,
-                               [this, address](bool acc, std::pair<std::string, Model> ref) {
-                                   return acc || ref.second.is_composite(strip(address)) || (ref.first == address);
-                               });
+    bool exists(const Address& address) const {
+        if (address.is_composite()) {
+            return get_composite(address.first()).exists(address.rest());
+        } else {
+            return components.count(address.first()) != 0 or composites.count(address.first()) != 0;
+        }
     }
 
     std::string get_annotation(Address address, const std::string& prop) const {

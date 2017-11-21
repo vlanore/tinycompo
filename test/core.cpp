@@ -348,6 +348,30 @@ TEST_CASE("Model test: composite not found") {
         "Composite not found. Composite youplaboum does not exist. Existing composites are:\n  * youpi\n  * youpla\n");
 }
 
+TEST_CASE("Model test: is_composite") {
+    Model model;
+    model.component<MyInt>("a", 17);
+    model.composite("b");
+    model.component<MyInt>(Address("b", "c"), 19);
+
+    CHECK(model.is_composite("a") == false);
+    CHECK(model.is_composite("b") == true);
+    CHECK(model.is_composite(Address("b", "c")) == false);
+}
+
+TEST_CASE("Model test: exists") {
+    Model model;
+    model.component<MyInt>("a", 17);
+    model.composite("b");
+    model.component<MyInt>(Address("b", "c"), 19);
+
+    CHECK(model.exists("a") == true);
+    CHECK(model.exists("c") == false);
+    CHECK(model.exists("youplaboum") == false);
+    CHECK(model.exists("b") == true);
+    CHECK(model.exists(Address("b", "c")) == true);
+}
+
 /*
 =============================================================================================================================
   ~*~ Meta things ~*~

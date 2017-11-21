@@ -134,6 +134,7 @@ RelativeProcess to(int p) {
     return RelativeProcess([p](int) { return p; });
 }
 RelativeProcess to_zero = to(0);
+RelativeProcess to_next([](int p) { return p + 1; });
 }
 
 /*
@@ -227,6 +228,12 @@ class MPIAssembly : public Component {
             assembly.call(port);
         }
     }
+
+    void call(PortAddress port) {
+        if (assembly.get_model().exists(port.address)) {
+            assembly.call(port);
+        }
+    }
 };
 
 /*
@@ -281,12 +288,11 @@ int main(int argc, char** argv) {
     MPIContext context(argc, argv);
 
     MPIModel model;
-    model.component<MySender>("workers", process::up_from(1));
+    model.component<MySender>("workers", process::all);
     model.component<MyReducer>("master", process::zero);
-    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
-                           process::to_zero);
+    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::all, PortAddress("ports", "master"), process::to_zero);
 
     MPIAssembly assembly(model);
-    assembly.call(PortAddress("go", "workers"), process::up_from(1));
-    assembly.call(PortAddress("go", "master"), process::zero);
+    assembly.call(PortAddress("go", "workers"));
+    assembly.call(PortAddress("go", "master"));
 }
