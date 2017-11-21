@@ -55,7 +55,7 @@ class MPICore {
   ~*~ MPIContext class ~*~
 ===========================================================================================================================*/
 struct MPIContext {
-    static int rank, size;
+    static int rank, size, tag_counter;
 
     MPIContext(int argc, char** argv) {
         int initialized;
@@ -74,12 +74,18 @@ struct MPIContext {
     ~MPIContext() { MPI_Finalize(); }
 
     static MPICore core() { return MPICore(rank, size); }
+
+    static int get_tag() {
+        tag_counter++;
+        return tag_counter;
+    }
 };
 
 #ifndef MPICONTEXT_INIT
 #define MPICONTEXT_INIT
 int MPIContext::rank{-1};
 int MPIContext::size{-1};
+int MPIContext::tag_counter{0};
 #endif
 
 /*
@@ -96,14 +102,38 @@ struct ProcessSet {
     ProcessSet(F f) : contains(f) {}
 };
 
+struct RelativeProcess {
+    function<int(int)> process_modifier;
+
+    template <class F>
+    RelativeProcess(F f) : process_modifier(f) {}
+
+    set<int> all_origins(ProcessSet processes) {
+        auto core = MPIContext::core();
+        set<int> result;
+        for (auto p = 0; p < core.size; p++) {
+            if (processes.contains(p) and (process_modifier(p) % core.size) == core.rank) {
+                result.insert(p);
+            }
+        }
+        return result;
+    }
+};
+
 namespace process {
 ProcessSet all{[](int) { return true; }};
 ProcessSet odd{[](int i) { return i % 2 == 1; }};
 ProcessSet even{[](int i) { return i % 2 == 0; }};
 ProcessSet interval(int i, int j) { return ProcessSet{i, j}; }
+ProcessSet zero{0};
 ProcessSet up_from(int p) {
     return ProcessSet([p](int i) { return i >= p; });
 }
+
+RelativeProcess to(int p) {
+    return RelativeProcess([p](int) { return p; });
+}
+RelativeProcess to_zero = to(0);
 }
 
 /*
@@ -125,38 +155,20 @@ struct MPIPort {
     }
 };
 
-struct RelativeProcess {
-    function<int(int)> process_modifier;
-
-    template <class F>
-    RelativeProcess(F f) : process_modifier(f) {}
-
-    set<int> all_origins(ProcessSet processes) {
-        auto core = MPIContext::core();
-        set<int> result;
-        for (auto p = 0; p < core.size; p++) {
-            if (processes.contains(p) and (process_modifier(p) % core.size) == core.rank) {
-                result.insert(p);
-            }
-        }
-        return result;
-    }
-};
-
 struct P2P {
-    static void connect(Model& model, PortAddress user, ProcessSet user_process, PortAddress provider,
+    static void connect(Model& model, int tag, PortAddress user, ProcessSet user_process, PortAddress provider,
                         RelativeProcess provider_process) {
         auto core = MPIContext::core();
 
         // user-side
         if (user_process.contains(core.rank)) {
-            model.connect<Set>(user, provider_process.process_modifier(core.rank) % core.size, 0);
+            model.connect<Set>(user, provider_process.process_modifier(core.rank) % core.size, tag);
         }
 
         // provider-side
         auto origin_processes = provider_process.all_origins(user_process);
         for (auto p : origin_processes) {
-            model.connect<Set>(provider, p, 0);
+            model.connect<Set>(provider, p, tag);
         }
     }
 };
@@ -192,8 +204,8 @@ class MPIModel {
     }
 
     template <class T, class... Args>
-    void connect(Args&&... args) {
-        model.meta_connect<T>(std::forward<Args>(args)...);
+    void mpi_connect(Args&&... args) {
+        model.meta_connect<T>(MPIContext::get_tag(), std::forward<Args>(args)...);
     }
 };
 
@@ -221,49 +233,43 @@ class MPIAssembly : public Component {
 =============================================================================================================================
   ~*~ Random testing stuff ~*~
 ===========================================================================================================================*/
-class MyCompoOdd : public Component, public Go {
+class MySender : public Component, public Go {
     MPICore core;
     MPIPort my_port;
     void set_port(int target, int tag) { my_port = MPIPort(target, tag); }
 
   public:
-    MyCompoOdd() : core(MPIContext::core()) {
-        port("go", &MyCompoOdd::go);
-        port("port", &MyCompoOdd::set_port);
+    MySender() : core(MPIContext::core()) {
+        port("go", &MySender::go);
+        port("port", &MySender::set_port);
     }
 
     void go() override {
-        core.message("hello");
-
         my_port.send(core.rank);
-        core.message("sent %d", core.rank);
-
-        int receive_msg;
-        my_port.receive(receive_msg);
-        core.message("received %d", receive_msg);
+        core.message("sent %d to %d (tag=%d)", core.rank, my_port.proc, my_port.tag);
     }
 };
 
-class MyCompoEven : public Component, public Go {
+class MyReducer : public Component, public Go {
     MPICore core;
-    MPIPort my_port;
-    void set_port(int target, int tag) { my_port = MPIPort(target, tag); }
+    vector<MPIPort> ports;
+    void add_port(int target, int tag) { ports.emplace_back(target, tag); }
 
   public:
-    MyCompoEven() : core(MPIContext::core()) {
-        port("go", &MyCompoEven::go);
-        port("port", &MyCompoEven::set_port);
+    MyReducer() : core(MPIContext::core()) {
+        port("go", &MyReducer::go);
+        port("ports", &MyReducer::add_port);
     }
 
     void go() override {
-        core.message("hello");
-
-        int receive_msg;
-        my_port.receive(receive_msg);
-        core.message("received %d", receive_msg);
-
-        my_port.send(core.rank);
-        core.message("sent %d", core.rank);
+        int acc = 0;
+        for (auto p : ports) {
+            int receive_msg;
+            p.receive(receive_msg);
+            core.message("received %d from %d (tag=%d)", receive_msg, p.proc, p.tag);
+            acc += receive_msg;
+        }
+        core.message("total is %d", acc);
     }
 };
 
@@ -275,12 +281,12 @@ int main(int argc, char** argv) {
     MPIContext context(argc, argv);
 
     MPIModel model;
-    model.component<MyCompoOdd>("odd", process::odd);
-    model.component<MyCompoEven>("even", process::even);
-    model.connect<P2P>(PortAddress("port", "odd"), process::odd, PortAddress("port", "even"),
-                       RelativeProcess([](int p) { return p + 1; }));
+    model.component<MySender>("workers", process::up_from(1));
+    model.component<MyReducer>("master", process::zero);
+    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
+                           process::to_zero);
 
     MPIAssembly assembly(model);
-    assembly.call(PortAddress("go", "odd"), process::odd);
-    assembly.call(PortAddress("go", "even"), process::even);
+    assembly.call(PortAddress("go", "workers"), process::up_from(1));
+    assembly.call(PortAddress("go", "master"), process::zero);
 }
