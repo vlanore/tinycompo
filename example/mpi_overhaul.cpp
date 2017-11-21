@@ -50,12 +50,14 @@ class MPICore {
     }
 };
 
+/*
+=============================================================================================================================
+  ~*~ MPIContext class ~*~
+===========================================================================================================================*/
 struct MPIContext {
-    int argc;
-    char** argv;
     static int rank, size;
 
-    MPIContext(int argc, char** argv) : argc(argc), argv(argv) {
+    MPIContext(int argc, char** argv) {
         int initialized;
         MPI_Initialized(&initialized);
         if (initialized == 0) {
@@ -74,8 +76,11 @@ struct MPIContext {
     static MPICore core() { return MPICore(rank, size); }
 };
 
+#ifndef MPICONTEXT_INIT
+#define MPICONTEXT_INIT
 int MPIContext::rank{-1};
 int MPIContext::size{-1};
+#endif
 
 /*
 =============================================================================================================================
