@@ -189,6 +189,32 @@ struct CondCompo {
     }
 };
 
+class MPICommunicator : public Component {
+    MPI_Group group;
+    MPI_Comm communicator;
+    MPICore core;
+
+  public:
+    MPICommunicator(ProcessSet set) : core(MPIContext::core()) {
+        MPI_Group world_group;  // group of comm_world
+        MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+        vector<int> ranks;
+        for (int i = 0; i < core.rank; i++) {
+            if (set.contains(i)) {
+                ranks.push_back(i);
+            }
+        }
+        MPI_Group_incl(world_group, core.rank, ranks.data(), &group);
+        MPI_Comm_create(MPI_COMM_WORLD, group, &communicator);
+        MPI_Group_free(&world_group);
+    }
+
+    ~MPICommunicator() {
+        MPI_Group_free(&group);
+        MPI_Comm_free(&communicator);
+    }
+};
+
 class MPIAssembly;
 
 class MPIModel {
@@ -208,6 +234,8 @@ class MPIModel {
     void mpi_connect(Args&&... args) {
         model.meta_connect<T>(MPIContext::get_tag(), std::forward<Args>(args)...);
     }
+
+    void comm(Address address, ProcessSet process) { model.component<MPICommunicator>(address, process); }
 };
 
 /*
@@ -288,9 +316,10 @@ int main(int argc, char** argv) {
     MPIContext context(argc, argv);
 
     MPIModel model;
-    model.component<MySender>("workers", process::all);
+    model.component<MySender>("workers", process::up_from(1));
     model.component<MyReducer>("master", process::zero);
-    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::all, PortAddress("ports", "master"), process::to_zero);
+    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
+                           process::to_zero);
 
     MPIAssembly assembly(model);
     assembly.call(PortAddress("go", "workers"));
