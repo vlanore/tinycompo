@@ -38,11 +38,12 @@ struct Go {
   ~*~ MPICore class ~*~
 ===========================================================================================================================*/
 class MPICore {
-    const vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
+    vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
 
   public:
     int rank, size;
-    MPICore(int rank, int size) : rank(rank), size(size) {}
+    MPI_Comm comm;
+    MPICore(int rank, int size, MPI_Comm& comm) : rank(rank), size(size), comm(comm) {}
     template <class... Args>
     void message(const std::string& format, Args... args) {
         string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
@@ -56,6 +57,7 @@ class MPICore {
 ===========================================================================================================================*/
 struct MPIContext {
     static int rank, size, tag_counter;
+    static MPI_Comm comm;
 
     MPIContext(int argc, char** argv) {
         int initialized;
@@ -65,15 +67,15 @@ struct MPIContext {
         } else {
             throw TinycompoException("trying to instantiate several MPIContext objects");
         }
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
+        MPI_Comm_rank(comm, &rank);
+        MPI_Comm_size(comm, &size);
     }
 
     MPIContext(const MPIContext&) = delete;
 
     ~MPIContext() { MPI_Finalize(); }
 
-    static MPICore core() { return MPICore(rank, size); }
+    static MPICore core() { return MPICore(rank, size, comm); }
 
     static int get_tag() {
         tag_counter++;
@@ -86,6 +88,7 @@ struct MPIContext {
 int MPIContext::rank{-1};
 int MPIContext::size{-1};
 int MPIContext::tag_counter{0};
+MPI_Comm MPIContext::comm{MPI_COMM_WORLD};
 #endif
 
 /*
@@ -141,18 +144,21 @@ RelativeProcess to_next([](int p) { return p + 1; });
 =============================================================================================================================
   ~*~ MPIPort ~*~
 ===========================================================================================================================*/
-struct MPIPort {
+class MPIPort {
     int proc{-1};
     int tag{-1};
+    MPICore core{MPIContext::core()};
+
+  public:
     MPIPort() = default;
     MPIPort(int p, int t) : proc(p), tag(t) {}
 
-    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD); }
-    void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, MPI_COMM_WORLD); }
+    void send(int data) { MPI_Send(&data, 1, MPI_INT, proc, tag, core.comm); }
+    void send(void* data, int count, MPI_Datatype type) { MPI_Send(data, count, type, proc, tag, core.comm); }
 
-    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); }
+    void receive(int& data) { MPI_Recv(&data, 1, MPI_INT, proc, tag, core.comm, MPI_STATUS_IGNORE); }
     void receive(void* data, int count, MPI_Datatype type) {
-        MPI_Recv(data, count, type, proc, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(data, count, type, proc, tag, core.comm, MPI_STATUS_IGNORE);
     }
 };
 
@@ -197,7 +203,7 @@ class MPICommunicator : public Component {
   public:
     MPICommunicator(ProcessSet set) : core(MPIContext::core()) {
         MPI_Group world_group;  // group of comm_world
-        MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+        MPI_Comm_group(core.comm, &world_group);
         vector<int> ranks;
         for (int i = 0; i < core.rank; i++) {
             if (set.contains(i)) {
@@ -205,7 +211,7 @@ class MPICommunicator : public Component {
             }
         }
         MPI_Group_incl(world_group, core.rank, ranks.data(), &group);
-        MPI_Comm_create(MPI_COMM_WORLD, group, &communicator);
+        MPI_Comm_create(core.comm, group, &communicator);
         MPI_Group_free(&world_group);
     }
 
@@ -249,7 +255,7 @@ class MPIAssembly : public Component {
   public:
     MPIAssembly(MPIModel model) : assembly(model.model), core(MPIContext::core()) {}
 
-    void barrier() { MPI_Barrier(MPI_COMM_WORLD); }
+    void barrier() { MPI_Barrier(core.comm); }
 
     void call(PortAddress port, ProcessSet processes) {
         if (processes.contains(core.rank)) {
@@ -281,7 +287,7 @@ class MySender : public Component, public Go {
 
     void go() override {
         my_port.send(core.rank);
-        core.message("sent %d to %d (tag=%d)", core.rank, my_port.proc, my_port.tag);
+        core.message("sent %d", core.rank);
     }
 };
 
@@ -301,7 +307,7 @@ class MyReducer : public Component, public Go {
         for (auto p : ports) {
             int receive_msg;
             p.receive(receive_msg);
-            core.message("received %d from %d (tag=%d)", receive_msg, p.proc, p.tag);
+            core.message("received %d", receive_msg);
             acc += receive_msg;
         }
         core.message("total is %d", acc);
