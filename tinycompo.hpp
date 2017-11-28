@@ -443,7 +443,6 @@ struct _MetaOperation {
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
-  protected:                // for the mpi example
     friend class Assembly;  // to access internal data
 
     std::function<void(Assembly&)> declare_ports{[](Assembly&) {}};
@@ -717,7 +716,6 @@ ComponentReference& ComponentReference::annotate(const std::string& prop, const 
   ~*~ Assembly class ~*~
 ===========================================================================================================================*/
 class Assembly : public Component {
-  protected:  // used in mpi example
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
