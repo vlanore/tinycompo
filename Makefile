@@ -15,7 +15,7 @@ example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_conne
 %_bin: %.cpp tinycompo.hpp
 	$(CXX) $< -o $@ -I. $(FLAGS)
 
-%_mpibin: %.cpp tinycompo.hpp
+%_mpibin: %.cpp tinycompo.hpp example/tinycompo_mpi.hpp
 	mpic++ $< -o $@ -I. $(FLAGS)
 
 
