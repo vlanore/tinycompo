@@ -10,15 +10,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-6
-      env: COMPILER=g++-6
+            - g++-5
+            - libopenmpi-dev
+      env: COMPILER=g++-5
     - addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-precise-3.6
           packages:
+            - g++-5
             - clang-3.6
+            - libopenmpi-dev
       env: COMPILER=clang++-3.6
 
 before_install:
@@ -28,7 +31,7 @@ script:
   - export CXX=$COMPILER
   - $CXX -v
   - if [ "$CXX" == "g++-6" ]; then export TINYCOMPO_FLAGS="-fprofile-arcs -ftest-coverage -g"; fi
-  - make && make test
+  - make && make test && make mpi
 
 after_success:
   - if [ "$CXX" == "g++-6" ]; then coveralls --exclude test --exclude example --exclude test.cpp -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR; fi
