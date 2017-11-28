@@ -2,8 +2,8 @@ TEST_FILES = $(shell ls -d -1 $$PWD/test/*.*pp)
 EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 FLAGS = --std=gnu++11 -Wall -Wextra -Wfatal-errors
 
-all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin
-mpi: example/mpi_firstproto_mpibin example/mpi_overhaul_mpibin
+all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin mpi
+mpi: example/mpi_example_mpibin
 
 #======================================================================================================================
 test_bin: test.cpp tinycompo.hpp $(TEST_FILES)
@@ -15,7 +15,7 @@ example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_conne
 %_bin: %.cpp tinycompo.hpp
 	$(CXX) $< -o $@ -I. $(FLAGS)
 
-%_mpibin: %.cpp tinycompo.hpp example/tinycompo_mpi.hpp
+%_mpibin: %.cpp tinycompo.hpp tinycompo_mpi.hpp
 	mpic++ $< -o $@ -I. $(FLAGS)
 
 
@@ -30,7 +30,7 @@ clean:
 	rm -f *.o *_bin *.gcov *.gcno *.gcda *.profraw example/*_bin example/*_mpibin
 
 format:
-	clang-format -i test.cpp tinycompo.hpp $(TEST_FILES) $(EXAMPLE_FILES)
+	clang-format -i test.cpp tinycompo.hpp tinycompo_mpi.hpp $(TEST_FILES) $(EXAMPLE_FILES)
 
-ready: all mpi test format
+ready: all test format
 	git status
