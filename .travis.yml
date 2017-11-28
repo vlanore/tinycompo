@@ -12,7 +12,9 @@ matrix:
           packages:
             - g++-5
             - libopenmpi-dev
-      env: COMPILER=g++-5
+      env:
+        - COMPILER=g++-5
+        - OMPI_CXX=$COMPILER
     - addons:
         apt:
           sources:
@@ -22,7 +24,9 @@ matrix:
             - g++-5
             - clang-3.6
             - libopenmpi-dev
-      env: COMPILER=clang++-3.6
+      env:
+        - COMPILER=clang++-3.6
+        - OMPI_CXX=$COMPILER
 
 before_install:
   - pip install --user cpp-coveralls
