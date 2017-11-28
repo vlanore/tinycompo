@@ -29,8 +29,7 @@ its terms.*/
 #include <mpi.h>
 #include "tinycompo.hpp"
 
-using namespace std;
-using namespace tc;
+namespace tc {
 
 struct Go {
     virtual void go() = 0;
@@ -41,7 +40,7 @@ struct Go {
   ~*~ MPICore class ~*~
 ===========================================================================================================================*/
 class MPICore {
-    vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
+    std::vector<int> colors{31, 32, 33, 34, 35, 36, 91, 92, 93, 94, 95, 96};
 
   public:
     int rank, size;
@@ -49,7 +48,7 @@ class MPICore {
     MPICore(int rank, int size, MPI_Comm& comm) : rank(rank), size(size), comm(comm) {}
     template <class... Args>
     void message(const std::string& format, Args... args) {
-        string format2 = "\e[" + to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
+        std::string format2 = "\e[" + std::to_string(colors[rank % colors.size()]) + "m<%d/%d> " + format + "\e[0m\n";
         printf(format2.c_str(), rank, size, args...);
     }
 };
@@ -99,7 +98,7 @@ MPI_Comm MPIContext::comm{MPI_COMM_WORLD};
   ~*~ ProcessSet ~*~
 ===========================================================================================================================*/
 struct ProcessSet {
-    function<bool(int)> contains;
+    std::function<bool(int)> contains;
 
     ProcessSet() : contains([](int) { return false; }) {}
     ProcessSet(int p) : contains([p](int i) { return i == p; }) {}
@@ -109,14 +108,14 @@ struct ProcessSet {
 };
 
 struct RelativeProcess {
-    function<int(int)> process_modifier;
+    std::function<int(int)> process_modifier;
 
     template <class F>
     RelativeProcess(F f) : process_modifier(f) {}
 
-    set<int> all_origins(ProcessSet processes) {
+    std::set<int> all_origins(ProcessSet processes) {
         auto core = MPIContext::core();
-        set<int> result;
+        std::set<int> result;
         for (auto p = 0; p < core.size; p++) {
             if (processes.contains(p) and (process_modifier(p) % core.size) == core.rank) {
                 result.insert(p);
@@ -127,20 +126,20 @@ struct RelativeProcess {
 };
 
 namespace process {
-ProcessSet all{[](int) { return true; }};
-ProcessSet odd{[](int i) { return i % 2 == 1; }};
-ProcessSet even{[](int i) { return i % 2 == 0; }};
-ProcessSet interval(int i, int j) { return ProcessSet{i, j}; }
-ProcessSet zero{0};
-ProcessSet up_from(int p) {
-    return ProcessSet([p](int i) { return i >= p; });
-}
+    ProcessSet all{[](int) { return true; }};
+    ProcessSet odd{[](int i) { return i % 2 == 1; }};
+    ProcessSet even{[](int i) { return i % 2 == 0; }};
+    ProcessSet interval(int i, int j) { return ProcessSet{i, j}; }
+    ProcessSet zero{0};
+    ProcessSet up_from(int p) {
+        return ProcessSet([p](int i) { return i >= p; });
+    }
 
-RelativeProcess to(int p) {
-    return RelativeProcess([p](int) { return p; });
-}
-RelativeProcess to_zero = to(0);
-RelativeProcess to_next([](int p) { return p + 1; });
+    RelativeProcess to(int p) {
+        return RelativeProcess([p](int) { return p; });
+    }
+    RelativeProcess to_zero = to(0);
+    RelativeProcess to_next([](int p) { return p + 1; });
 }
 
 /*
@@ -206,7 +205,7 @@ class MPICommunicator : public Component {
     MPICommunicator(ProcessSet set) : core(MPIContext::core()) {
         MPI_Group world_group, new_group;
         MPI_Comm_group(core.comm, &world_group);
-        vector<int> ranks;
+        std::vector<int> ranks;
         for (int i = 0; i < core.size; i++) {
             if (set.contains(i)) {
                 ranks.push_back(i);
@@ -218,8 +217,8 @@ class MPICommunicator : public Component {
         MPI_Group_free(&new_group);
     }
 
-    vector<int> all_gather(int data_send) {
-        vector<int> result(core.size, 0);
+    std::vector<int> all_gather(int data_send) {
+        std::vector<int> result(core.size, 0);
         MPI_Allgather(&data_send, 1, MPI_INT, result.data(), 1, MPI_INT, communicator);
         return result;
     }
@@ -290,5 +289,7 @@ class MPIAssembly : public Component {
         }
     }
 };
+
+}  // namespace tc
 
 #endif  // TINYCOMPO_MPI_HPP

@@ -25,6 +25,9 @@ its terms.*/
 
 #include "tinycompo_mpi.hpp"
 
+using namespace tc;
+using namespace std;
+
 class MySender : public Component, public Go {
     MPICore core;
     MPIPort my_port;
