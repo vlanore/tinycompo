@@ -196,14 +196,12 @@ struct CondCompo {
 };
 
 class MPICommunicator : public Component {
-    MPI_Group group;
     MPI_Comm communicator;
     MPICore core;
 
   public:
     MPICommunicator(ProcessSet set) : core(MPIContext::core()) {
-        core.message("Hello from comm");
-        MPI_Group world_group;  // group of comm_world
+        MPI_Group world_group, new_group;
         MPI_Comm_group(core.comm, &world_group);
         vector<int> ranks;
         for (int i = 0; i < core.size; i++) {
@@ -211,10 +209,10 @@ class MPICommunicator : public Component {
                 ranks.push_back(i);
             }
         }
-        MPI_Group_incl(world_group, ranks.size(), ranks.data(), &group);
-        MPI_Comm_create(core.comm, group, &communicator);
+        MPI_Group_incl(world_group, ranks.size(), ranks.data(), &new_group);
+        MPI_Comm_create(core.comm, new_group, &communicator);
         MPI_Group_free(&world_group);
-        core.message("comm created");
+        MPI_Group_free(&new_group);
     }
 
     vector<int> all_gather(int data_send) {
@@ -224,7 +222,6 @@ class MPICommunicator : public Component {
     }
 
     ~MPICommunicator() {
-        MPI_Group_free(&group);
         if (communicator != MPI_COMM_NULL) MPI_Comm_free(&communicator);
     }
 };
@@ -361,10 +358,10 @@ int main(int argc, char** argv) {
     MPIContext context(argc, argv);
 
     MPIModel model;
-    model.component<MySender>("workers", process::up_from(1));
-    model.component<MyReducer>("master", process::zero);
-    model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
-                           process::to_zero);
+    // model.component<MySender>("workers", process::up_from(1));
+    // model.component<MyReducer>("master", process::zero);
+    // model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
+    //                        process::to_zero);
 
     model.comm("oddcomm", process::odd);
     model.component<A2A>("a2a", process::odd);
