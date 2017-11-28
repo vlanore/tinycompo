@@ -182,7 +182,7 @@ struct P2P {
 
 /*
 =============================================================================================================================
-  ~*~ MPI Model ~*~
+  ~*~ MPI Communicator ~*~
 ===========================================================================================================================*/
 template <class C>
 struct CondCompo {
@@ -202,25 +202,46 @@ class MPICommunicator : public Component {
 
   public:
     MPICommunicator(ProcessSet set) : core(MPIContext::core()) {
+        core.message("Hello from comm");
         MPI_Group world_group;  // group of comm_world
         MPI_Comm_group(core.comm, &world_group);
         vector<int> ranks;
-        for (int i = 0; i < core.rank; i++) {
+        for (int i = 0; i < core.size; i++) {
             if (set.contains(i)) {
                 ranks.push_back(i);
             }
         }
-        MPI_Group_incl(world_group, core.rank, ranks.data(), &group);
+        MPI_Group_incl(world_group, ranks.size(), ranks.data(), &group);
         MPI_Comm_create(core.comm, group, &communicator);
         MPI_Group_free(&world_group);
+        core.message("comm created");
+    }
+
+    vector<int> all_gather(int data_send) {
+        vector<int> result(core.size, 0);
+        MPI_Allgather(&data_send, 1, MPI_INT, result.data(), 1, MPI_INT, communicator);
+        return result;
     }
 
     ~MPICommunicator() {
         MPI_Group_free(&group);
-        MPI_Comm_free(&communicator);
+        if (communicator != MPI_COMM_NULL) MPI_Comm_free(&communicator);
     }
 };
 
+struct UseComm {
+    static void connect(Model& model, int, PortAddress user, ProcessSet processes, Address comm) {
+        auto core = MPIContext::core();
+        if (processes.contains(core.rank)) {
+            model.connect<Use<MPICommunicator>>(user, comm);
+        }
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ MPI Model ~*~
+===========================================================================================================================*/
 class MPIAssembly;
 
 class MPIModel {
@@ -314,6 +335,24 @@ class MyReducer : public Component, public Go {
     }
 };
 
+class A2A : public Component, public Go {
+    MPICommunicator* comm;
+    MPICore core;
+
+  public:
+    A2A() : core(MPIContext::core()) {
+        port("comm", &A2A::comm);
+        port("go", &A2A::go);
+    }
+
+    void go() override {
+        int my_data = rand() % 17;
+        core.message("my data is %d", my_data);
+        auto data = comm->all_gather(my_data);
+        core.message("data sum is %d", accumulate(data.begin(), data.end(), 0));
+    }
+};
+
 /*
 =============================================================================================================================
   ~*~ main ~*~
@@ -327,7 +366,12 @@ int main(int argc, char** argv) {
     model.mpi_connect<P2P>(PortAddress("port", "workers"), process::up_from(1), PortAddress("ports", "master"),
                            process::to_zero);
 
+    model.comm("oddcomm", process::odd);
+    model.component<A2A>("a2a", process::odd);
+    model.mpi_connect<UseComm>(PortAddress("comm", "a2a"), process::odd, "oddcomm");
+
     MPIAssembly assembly(model);
     assembly.call(PortAddress("go", "workers"));
     assembly.call(PortAddress("go", "master"));
+    assembly.call(PortAddress("go", "a2a"));
 }
