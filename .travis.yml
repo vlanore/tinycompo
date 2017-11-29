@@ -3,19 +3,16 @@ language: cpp
 dist: trusty
 sudo: false
 
-addons:
-  apt:
-    packages:
-      - g++-5
-      - libopenmpi-dev
-      - openmpi-bin
-
 matrix:
   include:
     - addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+            - libopenmpi-dev
+            - openmpi-bin
       env:
         - COMPILER=g++-5
         - OMPI_CXX=$COMPILER
@@ -25,7 +22,10 @@ matrix:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-precise-3.6
           packages:
+            - g++-5
             - clang-3.6
+            - libopenmpi-dev
+            - openmpi-bin
       env:
         - COMPILER=clang++-3.6
         - OMPI_CXX=$COMPILER
