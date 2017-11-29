@@ -34,6 +34,7 @@ before_install:
 script:
   - export CXX=$COMPILER
   - $CXX -v
+  - ls ${PATH//:/ } | grep mpi
   - mpic++ -v
   - if [ "$CXX" == "g++-5" ]; then export TINYCOMPO_FLAGS="-fprofile-arcs -ftest-coverage -g"; fi
   - make && make test && make test_mpi
