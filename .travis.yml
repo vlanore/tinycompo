@@ -36,7 +36,7 @@ script:
   - $CXX -v
   - mpic++ -v
   - if [ "$CXX" == "g++-5" ]; then export TINYCOMPO_FLAGS="-fprofile-arcs -ftest-coverage -g"; fi
-  - make && make test
+  - make && make test && make test_mpi
 
 after_success:
   - if [ "$CXX" == "g++-5" ]; then coveralls --exclude test --exclude example --exclude test.cpp -t GdwyhgW7dWNP8F2nPJhfml2p89pYt41bR; fi
