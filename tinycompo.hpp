@@ -358,13 +358,6 @@ struct _Operation {
         neighbors_from_args(g, cargs...);
     }
 
-    // template <class... Args, class... CArgs>
-    // void neighbors_from_args(void (*)(Address, Args...), Address carg, CArgs... cargs) {
-    //     neighbors.push_back(_GraphAddress(carg.to_string()));
-    //     void (*g)(Args...) = nullptr;
-    //     neighbors_from_args(g, cargs...);
-    // }
-
     template <class... Args, class... CArgs>
     void neighbors_from_args(void (*)(PortAddress, Args...), PortAddress carg, CArgs... cargs) {
         neighbors.push_back(_GraphAddress(carg.address.to_string(), carg.prop));
