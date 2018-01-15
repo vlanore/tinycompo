@@ -193,7 +193,11 @@ TEST_CASE("model test: composite referencees") {
 
 struct MyBasicCompo : public Component {
     MyBasicCompo* buddy{nullptr};
-    MyBasicCompo() { port("buddy", &MyBasicCompo::setBuddy); }
+    std::string data;
+    MyBasicCompo() {
+        port("buddy", &MyBasicCompo::setBuddy);
+        port("data", &MyBasicCompo::data);
+    }
     void setBuddy(MyBasicCompo* buddyin) { buddy = buddyin; }
 };
 
@@ -218,6 +222,21 @@ TEST_CASE("Model test: dot output and representation print") {
         ss2.str() ==
         "Component \"mycompo\" (MyBasicCompo)\nConnector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
         "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
+}
+
+TEST_CASE("Model test: addresses passed as strings detected as such by representation") {
+    Model model;
+    model.component<MyBasicCompo>("mycompo")
+        .connect<Use<MyBasicCompo>>("buddy", "compo2")
+        .connect<Set<string>>("data", "youpi");
+
+    stringstream ss;
+    model.print(ss);
+    CHECK(ss.str() ==
+          "Component \"mycompo\" (MyBasicCompo)\n"
+          "Connector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->compo2 \n"
+          "Connector (tc::Set<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >) "
+          "->mycompo.data \n");
 }
 
 TEST_CASE("Model test: temporary keys") {
@@ -637,24 +656,10 @@ TEST_CASE("UseProvide test.") {
 TEST_CASE("Set test") {
     Model model;
     model.component<MyCompo>("compo", 2, 3);
-    model.connect<Set>(PortAddress("myPort", "compo"), 5, 7);
+    model.connect<Set<int, int>>(PortAddress("myPort", "compo"), 5, 7);
     Assembly assembly(model);
     CHECK(assembly.at<MyCompo>("compo").i == 5);
     CHECK(assembly.at<MyCompo>("compo").j == 7);
-}
-
-TEST_CASE("ListUse test") {
-    Model model;
-    model.component<IntReducer>("user");
-    model.composite("array");
-    model.component<MyInt>(Address("array", 0), 1);
-    model.component<MyInt>(Address("array", 1), 4);
-    model.component<MyInt>(Address("array", 2), 12);
-    model.component<MyInt>(Address("array", 3), 7);
-    model.connect<ListUse<IntInterface>>(PortAddress("ptr", "user"), Address("array", 0), Address("array", 1),
-                                         Address("array", 3));
-    Assembly assembly(model);
-    CHECK(assembly.at<IntInterface>("user").get() == 12);
 }
 
 TEST_CASE("Attribute port declaration.") {
@@ -664,7 +669,7 @@ TEST_CASE("Attribute port declaration.") {
     };
     Model model;
     model.component<MyUltraBasicCompo>("compo");
-    model.connect<Set>(PortAddress("data", "compo"), 14);
+    model.connect<Set<int>>(PortAddress("data", "compo"), 14);
     Assembly assembly(model);
     CHECK(assembly.at<MyUltraBasicCompo>("compo").data == 14);
 }

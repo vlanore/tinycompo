@@ -340,7 +340,7 @@ struct _Operation {
     _Operation(_Type<Connector>, Args... args)
         : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
           type(TinycompoDebug::type<Connector>()) {
-        neighbors_from_args(args...);
+        f1<Connector>(args...);
     }
 
     std::function<void(Assembly&)> _connect;
@@ -349,23 +349,44 @@ struct _Operation {
     std::string type;
     std::vector<_GraphAddress> neighbors;
 
-    void neighbors_from_args() {}
+    void neighbors_from_args(void (*)()) {}
 
-    template <class Arg, class... Args>
-    void neighbors_from_args(Arg, Args... args) {
-        neighbors_from_args(args...);
+    template <class... Args, class CArg, class... CArgs>
+    void neighbors_from_args(void (*)(Address, Args...), CArg carg, CArgs... cargs) {
+        neighbors.push_back(_GraphAddress(Address(carg).to_string()));
+        void (*g)(Args...) = nullptr;
+        neighbors_from_args(g, cargs...);
     }
 
-    template <class... Args>
-    void neighbors_from_args(const Address& arg, Args... args) {
-        neighbors.push_back(_GraphAddress(arg.to_string()));
-        neighbors_from_args(args...);
+    // template <class... Args, class... CArgs>
+    // void neighbors_from_args(void (*)(Address, Args...), Address carg, CArgs... cargs) {
+    //     neighbors.push_back(_GraphAddress(carg.to_string()));
+    //     void (*g)(Args...) = nullptr;
+    //     neighbors_from_args(g, cargs...);
+    // }
+
+    template <class... Args, class... CArgs>
+    void neighbors_from_args(void (*)(PortAddress, Args...), PortAddress carg, CArgs... cargs) {
+        neighbors.push_back(_GraphAddress(carg.address.to_string(), carg.prop));
+        void (*g)(Args...) = nullptr;
+        neighbors_from_args(g, cargs...);
     }
 
-    template <class... Args>
-    void neighbors_from_args(PortAddress arg, Args... args) {
-        neighbors.push_back(_GraphAddress(arg.address.to_string(), arg.prop));
-        neighbors_from_args(args...);
+    template <class Arg, class... Args, class CArg, class... CArgs>
+    void neighbors_from_args(void (*)(Arg, Args...), CArg, CArgs... cargs) {
+        void (*g)(Args...) = nullptr;
+        neighbors_from_args(g, cargs...);
+    }
+
+    template <class... Args, class... CArgs>
+    void f2(void (*)(Assembly&, Args...), CArgs... cargs) {
+        void (*g)(Args...) = nullptr;
+        neighbors_from_args(g, cargs...);
+    }
+
+    template <class Functor, class... Args>
+    void f1(Args... args) {
+        f2(Functor::_connect, args...);
     }
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
@@ -823,8 +844,8 @@ inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress por
 =============================================================================================================================
   ~*~ Set class ~*~
 ===========================================================================================================================*/
+template <class... Args>
 struct Set {
-    template <class... Args>
     static void _connect(Assembly& assembly, PortAddress component, Args... args) {
         assembly.at(component.address).set(component.prop, std::forward<Args>(args)...);
     }
@@ -843,24 +864,6 @@ struct Use {
         auto& ref_user = assembly.at(user.address);
         auto& ref_provider = assembly.template at<Interface>(provider);
         ref_user.set(user.prop, &ref_provider);
-    }
-};
-
-/*
-=============================================================================================================================
-  ~*~ ListUse class ~*~
-===========================================================================================================================*/
-template <class Interface>
-struct ListUse {
-    static void _connect(Assembly& assembly, const PortAddress& user, const Address& provider) {
-        Use<Interface>::_connect(assembly, user, provider);
-    }
-
-    template <class... OtherProviderAddresses>
-    static void _connect(Assembly& assembly, const PortAddress& user, const Address& provider,
-                         OtherProviderAddresses... other_providers) {
-        _connect(assembly, user, provider);
-        _connect(assembly, user, std::forward<OtherProviderAddresses>(other_providers)...);
     }
 };
 
@@ -895,8 +898,8 @@ struct Array : public Composite {
 =============================================================================================================================
   ~*~ ArraySet class ~*~
 ===========================================================================================================================*/
+template <class Data>
 struct ArraySet {
-    template <class... Keys, class Data>
     static void _connect(Assembly& assembly, PortAddress array, const std::vector<Data>& data) {
         auto& arrayRef = assembly.template at<Assembly>(array.address);
         for (int i = 0; i < static_cast<int>(arrayRef.size()); i++) {

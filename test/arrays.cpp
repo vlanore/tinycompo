@@ -47,7 +47,7 @@ TEST_CASE("Array tests.") {
 TEST_CASE("ArraySet tests.") {
     Model model;
     model.composite<Array<MyInt>>("array", 5, 2);
-    model.connect<ArraySet>(PortAddress("set", "array"), std::vector<int>{5, 4, 3, 2, 1});
+    model.connect<ArraySet<int>>(PortAddress("set", "array"), std::vector<int>{5, 4, 3, 2, 1});
     Assembly assembly(model);
     CHECK(assembly.at<MyInt>(Address("array", 0)).i == 5);
     CHECK(assembly.at<MyInt>(Address("array", 1)).i == 4);

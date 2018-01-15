@@ -27,9 +27,9 @@ its terms.*/
 
 struct PoissonGamma : public Composite {
     static void contents(Model& model, int size) {
-        model.component<Exponential>("Sigma").connect<Set>("paramConst", 1.0);
+        model.component<Exponential>("Sigma").connect<Set<double>>("paramConst", 1.0);
 
-        model.component<Exponential>("Theta").connect<Set>("paramConst", 1.0);
+        model.component<Exponential>("Theta").connect<Set<double>>("paramConst", 1.0);
 
         model.composite<Array<Gamma>>("Omega", size).connect<MultiProvide<Real>>("paramPtr", Address("Theta"));
 
@@ -62,8 +62,8 @@ int main() {
     int size = 5;
     vector<double> data{0, 1, 1, 0, 1};
     model.composite<PoissonGamma>("PG", size);
-    model.connect<ArraySet>(PortAddress("clamp", "PG", "X"), data);
-    model.connect<ArraySet>(PortAddress("value", "PG", "X"), data);
+    model.connect<ArraySet<double>>(PortAddress("clamp", "PG", "X"), data);
+    model.connect<ArraySet<double>>(PortAddress("value", "PG", "X"), data);
 
     // MCMC infrastructure
     model.component<MultiSample>("sampler").connect<UseAllUnclampedNodes>("register", Address("PG"));
@@ -77,7 +77,8 @@ int main() {
     model.component<MCMCEngine>("MCMC", 10000)
         .connect<Use<Sampler>>("sampler", Address("sampler"))
         .connect<Use<MoveScheduler>>("scheduler", Address("scheduler"))
-        .connect<ListUse<Real>>("variables", Address("PG", "Theta"), Address("PG", "Sigma"))
+        .connect<Use<Real>>("variables", Address("PG", "Theta"))
+        .connect<Use<Real>>("variables", Address("PG", "Sigma"))
         .connect<Use<DataStream>>("output", Address("tracefile"));
 
     // RS infrastructure

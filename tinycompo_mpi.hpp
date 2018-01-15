@@ -171,13 +171,13 @@ struct P2P {
 
         // user-side
         if (user_process.contains(core.rank)) {
-            model.connect<Set>(user, provider_process.process_modifier(core.rank) % core.size, tag);
+            model.connect<Set<int, int>>(user, provider_process.process_modifier(core.rank) % core.size, tag);
         }
 
         // provider-side
         auto origin_processes = provider_process.all_origins(user_process);
         for (auto p : origin_processes) {
-            model.connect<Set>(provider, p, tag);
+            model.connect<Set<int, int>>(provider, p, tag);
         }
     }
 };
