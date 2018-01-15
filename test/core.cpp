@@ -232,11 +232,14 @@ TEST_CASE("Model test: addresses passed as strings detected as such by represent
 
     stringstream ss;
     model.print(ss);
-    CHECK(ss.str() ==
-          "Component \"mycompo\" (MyBasicCompo)\n"
-          "Connector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->compo2 \n"
-          "Connector (tc::Set<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >) "
-          "->mycompo.data \n");
+    CHECK((ss.str() ==
+               "Component \"mycompo\" (MyBasicCompo)\n"
+               "Connector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->compo2 \n"
+               "Connector (tc::Set<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >) "
+               "->mycompo.data \n" or
+           ss.str() == "Component \"mycompo\" (MyBasicCompo)\n"
+                       "Connector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->compo2 \n"
+                       "Connector (tc::Set<std::string>) ->mycompo.data \n"));
 }
 
 TEST_CASE("Model test: temporary keys") {
