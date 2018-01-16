@@ -437,9 +437,10 @@ class ComponentReference {
     ComponentReference& connect(const std::string&, Args&&...);  // implemented after Model
 
     ComponentReference& annotate(const std::string&, const std::string&);  // implemented after Model
-};
 
-inline Address::Address(const ComponentReference& ref) { keys = ref.component_address.keys; }
+    template <class... Args>
+    ComponentReference& set(const std::string&, Args&&...);  // implemented after Model
+};
 
 /*
 =============================================================================================================================
@@ -714,17 +715,6 @@ class Model {
     }
 };
 
-template <class T, class... Args>
-inline ComponentReference& ComponentReference::connect(const std::string& port, Args&&... args) {
-    model_ref.connect<T>(PortAddress(port, component_address), std::forward<Args>(args)...);
-    return *this;
-}
-
-inline ComponentReference& ComponentReference::annotate(const std::string& prop, const std::string& value) {
-    model_ref.annotate(component_address, prop, value);
-    return *this;
-}
-
 /*
 =============================================================================================================================
   ~*~ Assembly class ~*~
@@ -823,15 +813,6 @@ class Assembly : public Component {
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
     }
 };
-
-// implementation of _ProvidePort methods that depended on Assembly interface
-template <class Interface>
-inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, Address address)
-    : _get([&assembly, address]() { return &assembly.at<Interface>(address); }) {}
-
-template <class Interface>
-inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress port)
-    : _get([&assembly, port]() { return assembly.at<Component>(port.address).get<Interface>(port.prop); }) {}
 
 /*
 =============================================================================================================================
@@ -960,6 +941,41 @@ struct MultiProvide {
         }
     }
 };
+
+/*
+=============================================================================================================================
+  ~*~ Out-of-order implementations ~*~
+===========================================================================================================================*/
+
+// Address method that depends on ComponentReference
+inline Address::Address(const ComponentReference& ref) { keys = ref.component_address.keys; }
+
+// ComponentReference methods that depend on Model
+template <class T, class... Args>
+inline ComponentReference& ComponentReference::connect(const std::string& port, Args&&... args) {
+    model_ref.connect<T>(PortAddress(port, component_address), std::forward<Args>(args)...);
+    return *this;
+}
+
+inline ComponentReference& ComponentReference::annotate(const std::string& prop, const std::string& value) {
+    model_ref.annotate(component_address, prop, value);
+    return *this;
+}
+
+template <class... Args>
+inline ComponentReference& ComponentReference::set(const std::string& port, Args&&... args) {
+    model_ref.connect<Set<Args...>>(PortAddress(port, component_address), std::forward<Args>(args)...);
+    return *this;
+}
+
+// implementation of _ProvidePort methods that depended on Assembly interface
+template <class Interface>
+inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, Address address)
+    : _get([&assembly, address]() { return &assembly.at<Interface>(address); }) {}
+
+template <class Interface>
+inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress port)
+    : _get([&assembly, port]() { return assembly.at<Component>(port.address).get<Interface>(port.prop); }) {}
 
 }  // namespace tc
 

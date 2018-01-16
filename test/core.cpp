@@ -605,6 +605,15 @@ TEST_CASE("ComponentReference test") {
     CHECK(assembly.at<IntInterface>(Address("c", "e")).get() == 16);
 }
 
+TEST_CASE("ComponentReference set test") {
+    Model model;
+    model.component<MyCompo>("compo").set("myPort", 19, 77);
+
+    Assembly assembly(model);
+    CHECK(assembly.at<MyCompo>("compo").i == 19);
+    CHECK(assembly.at<MyCompo>("compo").j == 77);
+}
+
 /*
 =============================================================================================================================
   ~*~ Ports ~*~
