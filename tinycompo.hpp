@@ -724,7 +724,8 @@ class Assembly : public Component {
     Model internal_model;
 
   public:
-    Assembly() = delete;
+    Assembly() : internal_model(Model()) {}
+
     explicit Assembly(Model& model, const std::string& name = "") : internal_model(model) {
         internal_model.perform_meta();
         internal_model.declare_ports(*this);  // declaring Assembly ports
