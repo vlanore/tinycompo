@@ -589,6 +589,30 @@ TEST_CASE("Assembly: derives_from and is_composite") {
     CHECK(assembly.derives_from<IntInterface>("b") == false);
 }
 
+TEST_CASE("Assembly: instantiate from new model") {
+    Model model;
+    model.component<MyInt>("a", 1);
+    model.composite("b");
+    model.component<MyInt>(Address("b", "c"), 3);
+    Model model2;
+    model2.component<MyInt>("a", 3);
+    model2.composite("c");
+    model2.component<MyInt>(Address("c", "d"), 17);
+
+    Assembly assembly(model);
+    assembly.instantiate_from(model2);
+    CHECK(assembly.at<MyInt>("a").get() == 3);
+    CHECK(assembly.at<MyInt>(Address("c", "d")).get() == 17);
+    TINYCOMPO_TEST_ERRORS { assembly.at<MyInt>(Address("b", "c")); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "<Assembly::at> Trying to access incorrect address. Address b does not exist. "
+        "Existing addresses are:\n  * a\n  * c\n");
+}
+
+/*
+=============================================================================================================================
+  ~*~ ComponentReference ~*~
+===========================================================================================================================*/
 TEST_CASE("ComponentReference test") {
     Model model;
     auto a = model.component<MyInt>("a", 7);

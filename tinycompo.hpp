@@ -723,13 +723,9 @@ class Assembly : public Component {
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
-  public:
-    Assembly() : internal_model(Model()) {}
-
-    explicit Assembly(Model& model, const std::string& name = "") : internal_model(model) {
+    void build() {
         internal_model.perform_meta();
         internal_model.declare_ports(*this);  // declaring Assembly ports
-        set_name(name);
         for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
@@ -744,6 +740,20 @@ class Assembly : public Component {
         for (auto& o : internal_model.operations) {
             o._connect(*this);
         }
+    }
+
+  public:
+    Assembly() : internal_model(Model()) {}
+
+    explicit Assembly(Model& model, const std::string& name = "") : internal_model(model) {
+        set_name(name);
+        build();
+    }
+
+    void instantiate_from(Model model) {
+        instances.clear();
+        internal_model = model;
+        build();
     }
 
     std::string debug() const override {
