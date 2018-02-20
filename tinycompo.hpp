@@ -437,12 +437,15 @@ class ComponentReference {
         : model_ref(model_ref), component_address(component_address) {}
 
     template <class T, class... Args>
-    ComponentReference& connect(const std::string&, Args&&...);  // implemented after Model
+    ComponentReference& connect(const std::string&, Args&&...);  // implemented at the end
 
-    ComponentReference& annotate(const std::string&, const std::string&);  // implemented after Model
+    ComponentReference& annotate(const std::string&, const std::string&);  // implemented at the end
+
+    template <class C, class Lambda>
+    ComponentReference& configure(Lambda lambda);  // implemented at the end
 
     template <class... Args>
-    ComponentReference& set(const std::string&, Args&&...);  // implemented after Model
+    ComponentReference& set(const std::string&, Args&&...);  // implemented at the end
 };
 
 /*
@@ -982,6 +985,12 @@ inline ComponentReference& ComponentReference::connect(const std::string& port, 
 
 inline ComponentReference& ComponentReference::annotate(const std::string& prop, const std::string& value) {
     model_ref.annotate(component_address, prop, value);
+    return *this;
+}
+
+template <class C, class Lambda>
+inline ComponentReference& ComponentReference::configure(Lambda lambda) {
+    model_ref.configure<C>(component_address, lambda);
     return *this;
 }
 

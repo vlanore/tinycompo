@@ -650,6 +650,15 @@ TEST_CASE("Configure test") {
     Assembly assembly(model);
     CHECK(assembly.at<MyInt>("Compo1").get() == 17);
 }
+
+TEST_CASE("Configure with component references") {
+    Model model;
+    model.component<MyInt>("Compo1", 4).configure<MyInt>([](MyInt& r) { r.set(17); });
+
+    Assembly assembly(model);
+    CHECK(assembly.at<MyInt>("Compo1").get() == 17);
+}
+
 /*
 =============================================================================================================================
   ~*~ Ports ~*~
