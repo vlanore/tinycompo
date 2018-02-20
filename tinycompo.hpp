@@ -343,6 +343,9 @@ struct _Operation {
         f1<Connector>(args...);
     }
 
+    template <class Target, class Lambda>
+    _Operation(Address address, _Type<Target>, Lambda lambda);  // def at end of file
+
     std::function<void(Assembly&)> _connect;
 
     // representation-related stuff
@@ -532,6 +535,11 @@ class Model {
     template <class C, class... Args>
     void connect(Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    template <class C, class Lambda>
+    void configure(Address address, Lambda lambda) {
+        operations.emplace_back(address, _Type<C>(), lambda);
     }
 
     template <class C, class... Args>
@@ -957,6 +965,10 @@ struct MultiProvide {
 =============================================================================================================================
   ~*~ Out-of-order implementations ~*~
 ===========================================================================================================================*/
+
+template <class Target, class Lambda>
+inline _Operation::_Operation(Address address, _Type<Target>, Lambda lambda)
+    : _connect([lambda, address](Assembly& a) { lambda(a.at<Target>(address)); }), type("lambda") {}
 
 // Address method that depends on ComponentReference
 inline Address::Address(const ComponentReference& ref) { keys = ref.component_address.keys; }
