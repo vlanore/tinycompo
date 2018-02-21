@@ -441,7 +441,7 @@ class ComponentReference {
 
     ComponentReference& annotate(const std::string&, const std::string&);  // implemented at the end
 
-    template <class C, class Lambda>
+    template <class Lambda>
     ComponentReference& configure(Lambda lambda);  // implemented at the end
 
     template <class... Args>
@@ -478,6 +478,11 @@ class Model {
     std::string strip(std::string s) const {
         auto it = s.find('_');
         return s.substr(++it);
+    }
+
+    template <class Lambda, class C>
+    void _configure_helper(Address address, Lambda lambda, void (Lambda::*)(C&) const) {
+        operations.emplace_back(address, _Type<C>(), lambda);
     }
 
   public:
@@ -540,9 +545,9 @@ class Model {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    template <class C, class Lambda>
+    template <class Lambda>
     void configure(Address address, Lambda lambda) {
-        operations.emplace_back(address, _Type<C>(), lambda);
+        _configure_helper(address, lambda, &Lambda::operator());
     }
 
     template <class C, class... Args>
@@ -988,9 +993,9 @@ inline ComponentReference& ComponentReference::annotate(const std::string& prop,
     return *this;
 }
 
-template <class C, class Lambda>
+template <class Lambda>
 inline ComponentReference& ComponentReference::configure(Lambda lambda) {
-    model_ref.configure<C>(component_address, lambda);
+    model_ref.configure(component_address, lambda);
     return *this;
 }
 
