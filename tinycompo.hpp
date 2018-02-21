@@ -336,37 +336,37 @@ struct _GraphAddress {
   ~*~ _Operation class ~*~
 ===========================================================================================================================*/
 class _Operation {
-    void neighbors_from_args(void (*)()) {}
-
-    template <class... Args, class CArg, class... CArgs>
-    void neighbors_from_args(void (*)(Address, Args...), CArg carg, CArgs... cargs) {
-        neighbors.push_back(_GraphAddress(Address(carg).to_string()));
-        void (*g)(Args...) = nullptr;
-        neighbors_from_args(g, cargs...);
+    template <class Functor, class... Args>
+    void neighbors_from_args(Args... args) {  // populates the list of neighbors from arguments of the Connector
+        helper1(Functor::_connect, args...);
     }
 
     template <class... Args, class... CArgs>
-    void neighbors_from_args(void (*)(PortAddress, Args...), PortAddress carg, CArgs... cargs) {
+    void helper1(void (*)(Assembly&, Args...), CArgs... cargs) {
+        void (*g)(Args...) = nullptr;  // Double recursion on connect call arguments (cargs) and on argument types of
+        helper2(g, cargs...);          // _connect function (through the g pointer). This is necessary because call
+    }                                  // arguments might have the wrong type (eg a string instead of an address).
+
+    void helper2(void (*)()) {}
+
+    template <class... Args, class CArg, class... CArgs>
+    void helper2(void (*)(Address, Args...), CArg carg, CArgs... cargs) {
+        neighbors.push_back(_GraphAddress(Address(carg).to_string()));
+        void (*g)(Args...) = nullptr;
+        helper2(g, cargs...);
+    }
+
+    template <class... Args, class... CArgs>
+    void helper2(void (*)(PortAddress, Args...), PortAddress carg, CArgs... cargs) {
         neighbors.push_back(_GraphAddress(carg.address.to_string(), carg.prop));
         void (*g)(Args...) = nullptr;
-        neighbors_from_args(g, cargs...);
+        helper2(g, cargs...);
     }
 
     template <class Arg, class... Args, class CArg, class... CArgs>
-    void neighbors_from_args(void (*)(Arg, Args...), CArg, CArgs... cargs) {
+    void helper2(void (*)(Arg, Args...), CArg, CArgs... cargs) {
         void (*g)(Args...) = nullptr;
-        neighbors_from_args(g, cargs...);
-    }
-
-    template <class... Args, class... CArgs>
-    void helper2(void (*)(Assembly&, Args...), CArgs... cargs) {
-        void (*g)(Args...) = nullptr;
-        neighbors_from_args(g, cargs...);
-    }
-
-    template <class Functor, class... Args>
-    void helper1(Args... args) {
-        helper2(Functor::_connect, args...);
+        helper2(g, cargs...);
     }
 
   public:
@@ -374,7 +374,7 @@ class _Operation {
     _Operation(_Type<Connector>, Args... args)
         : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
           type(TinycompoDebug::type<Connector>()) {
-        helper1<Connector>(args...);
+        neighbors_from_args<Connector>(args...);
     }
 
     template <class Target, class Lambda>
@@ -481,7 +481,7 @@ class Model {
         return s.substr(++it);
     }
 
-    template <class Lambda, class C>
+    template <class Lambda, class C>  // this helper extracts the component type from the lambda
     void configure_helper(Address address, Lambda lambda, void (Lambda::*)(C&) const) {
         operations.emplace_back(address, _Type<C>(), lambda);
     }
@@ -547,7 +547,7 @@ class Model {
     }
 
     template <class Lambda>
-    void configure(Address address, Lambda lambda) {
+    void configure(Address address, Lambda lambda) {  // does not work with a function pointer (needs operator())
         configure_helper(address, lambda, &Lambda::operator());
     }
 
