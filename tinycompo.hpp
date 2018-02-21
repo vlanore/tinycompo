@@ -335,23 +335,7 @@ struct _GraphAddress {
 =============================================================================================================================
   ~*~ _Operation class ~*~
 ===========================================================================================================================*/
-struct _Operation {
-    template <class Connector, class... Args>
-    _Operation(_Type<Connector>, Args... args)
-        : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
-          type(TinycompoDebug::type<Connector>()) {
-        f1<Connector>(args...);
-    }
-
-    template <class Target, class Lambda>
-    _Operation(Address address, _Type<Target>, Lambda lambda);  // def at end of file
-
-    std::function<void(Assembly&)> _connect;
-
-    // representation-related stuff
-    std::string type;
-    std::vector<_GraphAddress> neighbors;
-
+class _Operation {
     void neighbors_from_args(void (*)()) {}
 
     template <class... Args, class CArg, class... CArgs>
@@ -375,15 +359,32 @@ struct _Operation {
     }
 
     template <class... Args, class... CArgs>
-    void f2(void (*)(Assembly&, Args...), CArgs... cargs) {
+    void helper2(void (*)(Assembly&, Args...), CArgs... cargs) {
         void (*g)(Args...) = nullptr;
         neighbors_from_args(g, cargs...);
     }
 
     template <class Functor, class... Args>
-    void f1(Args... args) {
-        f2(Functor::_connect, args...);
+    void helper1(Args... args) {
+        helper2(Functor::_connect, args...);
     }
+
+  public:
+    template <class Connector, class... Args>
+    _Operation(_Type<Connector>, Args... args)
+        : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
+          type(TinycompoDebug::type<Connector>()) {
+        helper1<Connector>(args...);
+    }
+
+    template <class Target, class Lambda>
+    _Operation(Address address, _Type<Target>, Lambda lambda);  // def at end of file
+
+    std::function<void(Assembly&)> _connect;
+
+    // representation-related stuff
+    std::string type;
+    std::vector<_GraphAddress> neighbors;
 
     void print(std::ostream& os = std::cout, int tabs = 0) const {
         os << std::string(tabs, '\t') << "Connector (" << type << ") ";
@@ -481,7 +482,7 @@ class Model {
     }
 
     template <class Lambda, class C>
-    void _configure_helper(Address address, Lambda lambda, void (Lambda::*)(C&) const) {
+    void configure_helper(Address address, Lambda lambda, void (Lambda::*)(C&) const) {
         operations.emplace_back(address, _Type<C>(), lambda);
     }
 
@@ -508,7 +509,7 @@ class Model {
         return ComponentReference(*this, address);
     }
 
-    // horrible enable_if to avoid ambiguous call with version below
+    // horrible enable_if to avoid ambiguous call with version above
     template <class T, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     ComponentReference component(CallKey key, Args&&... args) {
@@ -547,7 +548,7 @@ class Model {
 
     template <class Lambda>
     void configure(Address address, Lambda lambda) {
-        _configure_helper(address, lambda, &Lambda::operator());
+        configure_helper(address, lambda, &Lambda::operator());
     }
 
     template <class C, class... Args>
