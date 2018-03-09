@@ -3,7 +3,7 @@ MPI_TEST_FILES = test/mpi_context.cpp
 EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 FLAGS = --std=gnu++11 -Wall -Wextra -Wfatal-errors
 
-all: test_bin example/text_process_bin example/poisson_gamma_bin example/perf_test_bin mpi
+all: test_bin example/text_process_bin example/perf_test_bin mpi #example/poisson_gamma_bin
 mpi: example/mpi_example_mpibin test/mpi_context_mpibin
 
 #======================================================================================================================

@@ -440,8 +440,6 @@ class ComponentReference {
     template <class T, class... Args>
     ComponentReference& connect(const std::string&, Args&&...);  // implemented at the end
 
-    ComponentReference& annotate(const std::string&, const std::string&);  // implemented at the end
-
     template <class Lambda>
     ComponentReference& configure(Lambda lambda);  // implemented at the end
 
@@ -472,7 +470,6 @@ class Model {
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
-    std::map<std::string, std::map<std::string, std::string>> annotate_data;
 
     std::vector<_MetaOperation> meta_operations;
 
@@ -565,14 +562,6 @@ class Model {
         meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
-    void annotate(Address address, const std::string& prop, const std::string& value) {
-        if (!address.is_composite()) {
-            annotate_data[address.first()][prop] = value;
-        } else {
-            get_composite(address.first()).annotate(address.rest(), prop, value);
-        }
-    }
-
     void perform_meta() {
         for (auto& op : meta_operations) {
             op.operation(*this);
@@ -627,20 +616,6 @@ class Model {
             return get_composite(address.first()).exists(address.rest());
         } else {
             return components.count(address.first()) != 0 or composites.count(address.first()) != 0;
-        }
-    }
-
-    std::string get_annotation(Address address, const std::string& prop) const {
-        if (!address.is_composite()) {
-            if (annotate_data.find(address.first()) == annotate_data.end()) {
-                throw TinycompoException("No annotation entry for address " + address.first());
-            } else if (annotate_data.at(address.first()).find(prop) == annotate_data.at(address.first()).end()) {
-                throw TinycompoException("Annotation entry for address " + address.first() + " does not contain prop " +
-                                         prop);
-            }
-            return annotate_data.at(address.first()).at(prop);
-        } else {
-            return get_composite(address.first()).get_annotation(address.rest(), prop);
         }
     }
 
@@ -986,11 +961,6 @@ inline Address::Address(const ComponentReference& ref) { keys = ref.component_ad
 template <class T, class... Args>
 inline ComponentReference& ComponentReference::connect(const std::string& port, Args&&... args) {
     model_ref.connect<T>(PortAddress(port, component_address), std::forward<Args>(args)...);
-    return *this;
-}
-
-inline ComponentReference& ComponentReference::annotate(const std::string& prop, const std::string& value) {
-    model_ref.annotate(component_address, prop, value);
     return *this;
 }
 

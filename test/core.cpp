@@ -325,38 +325,6 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
     CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1_t", "2", "1_r", "1_t_l"}));
 }
 
-TEST_CASE("Model test: annotate") {
-    struct MyMetaComposite {
-        static void contents(Model& model) {
-            model.component<MyInt>("hello");
-            model.annotate("hello", "prop", "tralala");
-        }
-
-        static void ports(Assembly&) {}
-    };
-
-    Model model;
-    model.component<MyInt>("compo");
-    model.composite("composite");
-    model.component<MyInt>(Address("composite", "compo2"));
-    model.annotate(Address("compo"), "prop1", "value1");
-    model.annotate(Address("compo"), "prop2", "value2");
-    model.annotate(Address("composite", "compo2"), "prop3", "value3");
-    model.annotate(Address("composite"), "prop4", "value4");
-    model.composite<MyMetaComposite>("composite2");
-
-    CHECK(model.get_annotation(Address("compo"), "prop1") == "value1");
-    CHECK(model.get_annotation(Address("compo"), "prop2") == "value2");
-    CHECK(model.get_annotation(Address("composite", "compo2"), "prop3") == "value3");
-    CHECK(model.get_annotation(Address("composite"), "prop4") == "value4");
-    CHECK(model.get_annotation(Address("composite2", "hello"), "prop") == "tralala");
-
-    TINYCOMPO_TEST_ERRORS { model.get_annotation(Address("pouloulou"), "prop"); }
-    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address pouloulou");
-    TINYCOMPO_TEST_MORE_ERRORS { model.get_annotation(Address("compo"), "prop3"); }
-    TINYCOMPO_TEST_ERRORS_END("Annotation entry for address compo does not contain prop prop3");
-}
-
 TEST_CASE("Model test: composite not found") {
     Model model;
     model.composite("youpi");
@@ -621,8 +589,7 @@ TEST_CASE("ComponentReference test") {
 
     auto c = model.composite("c");
     auto d = model.component<MyInt>(Address("c", "d"), 8);
-    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d).annotate("prop", "value");
-    CHECK(model.get_annotation(e, "prop") == "value");
+    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d);
 
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("b").get() == 14);
