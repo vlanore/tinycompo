@@ -671,7 +671,7 @@ class Model {
     void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
         std::string prefix = name + (name == "" ? "" : "_");
         if (name == "") {  // toplevel
-            os << std::string(tabs, '\t') << "graph g {\n";
+            os << std::string(tabs, '\t') << "graph g {\n\tsep=\"+25,25\";\n\tnodesep=0.6;\n";
         } else {
             os << std::string(tabs, '\t') << "subgraph cluster_" << name << " {\n";
         }
