@@ -20,7 +20,7 @@ example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_conne
 	$(CXX) $< -o $@ -I. $(FLAGS)
 
 %_mpibin: %.cpp tinycompo.hpp tinycompo_mpi.hpp
-	mpic++ $< -o $@ -I. $(FLAGS)
+	mpic++ $< -o $@ -I. $(FLAGS) $(TINYCOMPO_FLAGS)
 
 #======================================================================================================================
 .PHONY: test
