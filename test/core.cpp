@@ -327,7 +327,8 @@ TEST_CASE("Model test: dot output and representation print") {
     stringstream ss;
     model.dot(ss);
     CHECK(ss.str() ==
-          "graph g {\n\tmycompo [label=\"mycompo\\n(MyBasicCompo)\" shape=component margin=0.15];\n\tconnect_0 "
+          "graph g {\n\tsep=\"+25,25\";\n\tnodesep=0.6;\n\tmycompo [label=\"mycompo\\n(MyBasicCompo)\" shape=component "
+          "margin=0.15];\n\tconnect_0 "
           "[xlabel=\"tc::Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
           "composite__2;\n\tsubgraph cluster_composite {\n\t\tcomposite__2 [label=\"2\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n\t}\n}\n");
