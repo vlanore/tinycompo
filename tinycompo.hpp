@@ -51,6 +51,7 @@ namespace tc {
 class Model;
 class Assembly;
 class Address;
+class Component;
 struct PortAddress;
 class ComponentReference;
 
@@ -59,6 +60,15 @@ class _Type {};     // constructor below
 
 struct _AbstractPort {
     virtual ~_AbstractPort() = default;
+};
+
+struct _AbstractProvidePort : public _AbstractPort {
+    virtual Component* get_type_erased() = 0;
+};
+
+struct _AbstractDriver {
+    virtual void go() {}
+    virtual void set_refs(std::vector<Component*>) = 0;
 };
 
 struct _AbstractAddress {};  // for identification of _Address types encountered in the wild
@@ -128,8 +138,9 @@ struct _Port : public _AbstractPort {
 };
 
 template <class Interface>
-struct _ProvidePort : public _AbstractPort {
+struct _ProvidePort : public _AbstractProvidePort {
     std::function<Interface*()> _get;
+    Component* get_type_erased() override { return dynamic_cast<Component*>(_get()); }
 
     _ProvidePort() = delete;
 
@@ -197,6 +208,10 @@ class Component {
     template <class Interface>
     Interface* get(std::string name) const {
         return dynamic_cast<_ProvidePort<Interface>*>(_ports.at(name).get())->_get();
+    }
+
+    Component* get(std::string name) const {
+        return dynamic_cast<_AbstractProvidePort*>(_ports.at(name).get())->get_type_erased();
     }
 
     void set_name(const std::string& n) { name = n; }
@@ -460,19 +475,72 @@ struct _MetaOperation {
 
 /*
 =============================================================================================================================
+  ~*~ _Driver ~*~
+===========================================================================================================================*/
+// invariant : Refs are all pointers to classes inheriting from Component
+template <class... Refs>
+class _Driver : public Component, public _AbstractDriver {
+    std::function<void(Refs...)> instructions;
+    std::tuple<Refs...> refs;
+
+    // C++11 integer_sequence implementation :/
+    template <int...>
+    struct seq {};
+
+    template <int N, int... S>
+    struct gens : gens<N - 1, N - 1, S...> {};
+
+    template <int... S>
+    struct gens<0, S...> {
+        typedef seq<S...> type;
+    };
+
+    // helper functions
+    template <int... S>
+    void call_helper(seq<S...>) {
+        instructions(std::get<S>(refs)...);
+    }
+
+    template <int i>
+    void set_ref_helper(std::vector<Component*>&) {}
+
+    template <int i, class Head, class... Tail>
+    void set_ref_helper(std::vector<Component*>& ref_values) {
+        std::get<i>(refs) = dynamic_cast<Head>(ref_values.at(i));
+        set_ref_helper<i - 1, Tail...>(ref_values);
+    }
+
+    // port to set the references (invariant : vector should have the same size as Refs)
+    void set_refs(std::vector<Component*> ref_values) override { set_ref_helper<sizeof...(Refs) - 1, Refs...>(ref_values); }
+
+    void go() override { call_helper(typename gens<sizeof...(Refs)>::type()); }
+
+  public:
+    _Driver(const std::function<void(Refs...)>& instructions) : instructions(instructions) {
+        port("go", &_Driver::go);
+        port("refs", &_Driver::set_refs);
+    }
+};
+
+/*
+=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
     friend class Assembly;  // to access internal data
 
+    // state of model as a composite
     std::function<void(Assembly&)> declare_ports{[](Assembly&) {}};
 
+    // state of model
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
     std::map<std::string, Model> composites;
 
+    // all things meta-related
     std::vector<_MetaOperation> meta_operations;
 
+    // helper functions
     std::string strip(std::string s) const {
         auto it = s.find('_');
         return s.substr(++it);
@@ -481,6 +549,11 @@ class Model {
     template <class Lambda, class C>  // this helper extracts the component type from the lambda
     void configure_helper(Address address, Lambda lambda, void (Lambda::*)(C&) const) {
         operations.emplace_back(address, _Type<C>(), lambda);
+    }
+
+    template <class Lambda, class... Refs>  // this helper extracts the reference types from the lambda
+    void driver_helper(Address address, Lambda lambda, void (Lambda::*)(Refs...) const) {
+        component<_Driver<Refs...>>(address, lambda);
     }
 
   public:
@@ -546,6 +619,11 @@ class Model {
     template <class Lambda>
     void configure(Address address, Lambda lambda) {  // does not work with a function pointer (needs operator())
         configure_helper(address, lambda, &Lambda::operator());
+    }
+
+    template <class Lambda>
+    void driver(Address address, Lambda lambda) {
+        driver_helper(address, lambda, &Lambda::operator());
     }
 
     template <class C, class... Args>
@@ -942,6 +1020,34 @@ struct MultiProvide {
         } catch (...) {
             throw TinycompoException("<MultiProvide::_connect> There was an error while trying to connect components.");
         }
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ DriverConnect class ~*~
+===========================================================================================================================*/
+template <class... Addresses>
+struct DriverConnect {
+    static void ref_gathering_helper(Assembly&, std::vector<Component*>&) {}
+
+    template <class... Tail>
+    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, Address head, Tail... tail) {
+        result.push_back(&a.at(head));
+        ref_gathering_helper(a, result, tail...);
+    }
+
+    template <class... Tail>
+    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, PortAddress head, Tail... tail) {
+        auto provided_port = a.at(head.address).get(head.prop);
+        result.push_back(provided_port);
+        ref_gathering_helper(a, result, tail...);
+    }
+
+    static void _connect(Assembly& a, Address driver, Addresses... addresses) {
+        std::vector<Component*> result;
+        ref_gathering_helper(a, result, addresses...);
+        a.at<_AbstractDriver>(driver).set_refs(result);
     }
 };
 

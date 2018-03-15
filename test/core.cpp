@@ -700,8 +700,26 @@ TEST_CASE("Attribute port declaration.") {
 
 /*
 =============================================================================================================================
-  ~*~ Memory allocation control ~*~
+  ~*~ Drivers ~*~
 ===========================================================================================================================*/
-TEST_CASE("Aggregation test.") {
-    
+TEST_CASE("Basic driver test.") {
+    struct MyWrapper : public Component {
+        MyInt state;
+        MyInt* provideState() { return &state; }
+        MyWrapper() { provide("state", &MyWrapper::provideState); }
+    };
+
+    Model model;
+    model.component<MyInt>("c1", 119);
+    model.component<MyWrapper>("c2");
+    model.driver("driver", [](MyInt* r, MyInt* r2) {
+        r->set(111);
+        r2->set(1111);
+    });
+    model.connect<DriverConnect<Address, PortAddress>>("driver", "c1", PortAddress("state", "c2"));
+
+    Assembly assembly(model);
+    assembly.call("driver", "go");
+    CHECK(assembly.at<MyInt>("c1").get() == 111);
+    CHECK(assembly.at<MyWrapper>("c2").state.get() == 1111);
 }
