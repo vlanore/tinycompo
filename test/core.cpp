@@ -697,3 +697,11 @@ TEST_CASE("Attribute port declaration.") {
     Assembly assembly(model);
     CHECK(assembly.at<MyUltraBasicCompo>("compo").data == 14);
 }
+
+/*
+=============================================================================================================================
+  ~*~ Memory allocation control ~*~
+===========================================================================================================================*/
+TEST_CASE("Aggregation test.") {
+    
+}
