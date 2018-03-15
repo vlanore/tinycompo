@@ -67,7 +67,7 @@ struct _AbstractProvidePort : public _AbstractPort {
 };
 
 struct _AbstractDriver {
-    virtual void go() {}
+    virtual void go() = 0;
     virtual void set_refs(std::vector<Component*>) = 0;
 };
 
