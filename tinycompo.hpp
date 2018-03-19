@@ -455,6 +455,9 @@ class ComponentReference {
     template <class T, class... Args>
     ComponentReference& connect(const std::string&, Args&&...);  // implemented at the end
 
+    template <class... Args>
+    ComponentReference& connect(Args&&...);  // implemented at the end
+
     template <class Lambda>
     ComponentReference& configure(Lambda lambda);  // implemented at the end
 
@@ -552,8 +555,8 @@ class Model {
     }
 
     template <class Lambda, class... Refs>  // this helper extracts the reference types from the lambda
-    void driver_helper(Address address, Lambda lambda, void (Lambda::*)(Refs...) const) {
-        component<_Driver<Refs...>>(address, lambda);
+    ComponentReference driver_helper(Address address, Lambda lambda, void (Lambda::*)(Refs...) const) {
+        return component<_Driver<Refs...>>(address, lambda);
     }
 
   public:
@@ -622,8 +625,8 @@ class Model {
     }
 
     template <class Lambda>
-    void driver(Address address, Lambda lambda) {
-        driver_helper(address, lambda, &Lambda::operator());
+    ComponentReference driver(Address address, Lambda lambda) {
+        return driver_helper(address, lambda, &Lambda::operator());
     }
 
     template <class C, class... Args>
@@ -1067,6 +1070,12 @@ inline Address::Address(const ComponentReference& ref) { keys = ref.component_ad
 template <class T, class... Args>
 inline ComponentReference& ComponentReference::connect(const std::string& port, Args&&... args) {
     model_ref.connect<T>(PortAddress(port, component_address), std::forward<Args>(args)...);
+    return *this;
+}
+
+template <class... Args>
+ComponentReference& ComponentReference::connect(Args&&... args) {
+    model_ref.connect<DriverConnect<Args...>>(component_address, std::forward<Args>(args)...);
     return *this;
 }
 

@@ -723,3 +723,21 @@ TEST_CASE("Basic driver test.") {
     CHECK(assembly.at<MyInt>("c1").get() == 111);
     CHECK(assembly.at<MyWrapper>("c2").state.get() == 1111);
 }
+
+TEST_CASE("Driver connect short syntax") {
+    Model model;
+    model.component<MyInt>("c1", 19);
+    model.component<MyInt>("c2", 321);
+    model
+        .driver("driver",
+                [](MyInt* p1, MyInt* p2) {
+                    p1->set(17);
+                    p2->set(37);
+                })
+        .connect(Address("c1"), Address("c2"));
+
+    Assembly assembly(model);
+    assembly.call("driver", "go");
+    CHECK(assembly.at<MyInt>("c1").get() == 17);
+    CHECK(assembly.at<MyInt>("c2").get() == 37);
+}
