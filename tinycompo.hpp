@@ -867,6 +867,12 @@ class Assembly : public Component {
         }
     }
 
+    template <class T = Component>
+    T& at(const PortAddress& port_address) const {
+        auto& compo_ref = at(port_address.address);
+        return *compo_ref.get<T>(port_address.prop);
+    }
+
     const Model& get_model() const { return internal_model; }
 
     void print_all(std::ostream& os = std::cout) const {
@@ -1033,6 +1039,12 @@ struct MultiProvide {
 template <class... Addresses>
 struct DriverConnect {
     static void ref_gathering_helper(Assembly&, std::vector<Component*>&) {}
+
+    template <class... Tail>
+    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, const char* head, Tail... tail) {
+        result.push_back(&a.at(std::string(head)));
+        ref_gathering_helper(a, result, tail...);
+    }
 
     template <class... Tail>
     static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, Address head, Tail... tail) {

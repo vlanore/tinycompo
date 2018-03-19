@@ -577,6 +577,23 @@ TEST_CASE("Assembly: instantiate from new model") {
         "Existing addresses are:\n  * a\n  * c\n");
 }
 
+TEST_CASE("Assembly: at with port address") {
+    class SillyWrapper : public Component {
+        MyInt wrappee;
+        MyInt* provide_wrappee() { return &wrappee; }
+
+      public:
+        SillyWrapper(int init) : wrappee(init) { provide("port", &SillyWrapper::provide_wrappee); }
+    };
+
+    Model model;
+    model.component<SillyWrapper>("c", 1717);
+
+    Assembly assembly(model);
+    auto& wref = assembly.at<MyInt>(PortAddress("port", "c"));
+    CHECK(wref.get() == 1717);
+}
+
 /*
 =============================================================================================================================
   ~*~ ComponentReference ~*~
