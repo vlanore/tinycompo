@@ -609,6 +609,20 @@ TEST_CASE("Assembly: at with port address") {
     CHECK(wref.get() == 1717);
 }
 
+TEST_CASE("Assembly: at with port address with composite port") {
+    struct SillyWrapper {
+        static void contents(Model& m, int i) { m.component<MyInt>("c", i); }
+        static void ports(Assembly& a) { a.provide<MyInt>("port", "c"); }
+    };
+
+    Model model;
+    model.composite<SillyWrapper>("c", 1717);
+
+    Assembly assembly(model);
+    auto& wref = assembly.at<MyInt>(PortAddress("port", "c"));
+    CHECK(wref.get() == 1717);
+}
+
 /*
 =============================================================================================================================
   ~*~ ComponentReference ~*~
