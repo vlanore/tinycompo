@@ -751,7 +751,7 @@ TEST_CASE("Driver connect short syntax") {
                     p1->set(17);
                     p2->set(37);
                 })
-        .connect(Address("c1"), Address("c2"));
+        .connect("c1", "c2");
 
     Assembly assembly(model);
     assembly.call("driver", "go");

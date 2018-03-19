@@ -386,7 +386,7 @@ class _Operation {
 
   public:
     template <class Connector, class... Args>
-    _Operation(_Type<Connector>, Args... args)
+    _Operation(_Type<Connector>, Args&&... args)
         : _connect([args...](Assembly& assembly) { Connector::_connect(assembly, args...); }),
           type(TinycompoDebug::type<Connector>()) {
         neighbors_from_args<Connector>(args...);
@@ -1040,15 +1040,9 @@ template <class... Addresses>
 struct DriverConnect {
     static void ref_gathering_helper(Assembly&, std::vector<Component*>&) {}
 
-    template <class... Tail>
-    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, const char* head, Tail... tail) {
-        result.push_back(&a.at(std::string(head)));
-        ref_gathering_helper(a, result, tail...);
-    }
-
-    template <class... Tail>
-    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, Address head, Tail... tail) {
-        result.push_back(&a.at(head));
+    template <class Head, class... Tail>
+    static void ref_gathering_helper(Assembly& a, std::vector<Component*>& result, Head head, Tail... tail) {
+        result.push_back(&a.at(Address(head)));
         ref_gathering_helper(a, result, tail...);
     }
 
