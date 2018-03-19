@@ -207,11 +207,21 @@ class Component {
 
     template <class Interface>
     Interface* get(std::string name) const {
-        return dynamic_cast<_ProvidePort<Interface>*>(_ports.at(name).get())->_get();
+        try {
+            return dynamic_cast<_ProvidePort<Interface>*>(_ports.at(name).get())->_get();
+        } catch (std::out_of_range) {
+            throw TinycompoException("<Component::get<Interface>> Port name " + name + " not found. Existing ports are:\n" +
+                                     TinycompoDebug::list(_ports));
+        }
     }
 
     Component* get(std::string name) const {
-        return dynamic_cast<_AbstractProvidePort*>(_ports.at(name).get())->get_type_erased();
+        try {
+            return dynamic_cast<_AbstractProvidePort*>(_ports.at(name).get())->get_type_erased();
+        } catch (std::out_of_range) {
+            throw TinycompoException("<Component::get> Port name " + name + " not found. Existing ports are:\n" +
+                                     TinycompoDebug::list(_ports));
+        }
     }
 
     void set_name(const std::string& n) { name = n; }

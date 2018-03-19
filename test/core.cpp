@@ -92,6 +92,21 @@ TEST_CASE("Component without debug") {
     CHECK(compo.debug() == "Component");
 }
 
+TEST_CASE("Component get errors") {
+    struct MyBasicCompo : public Component {
+        int data;
+        MyBasicCompo() {
+            port("p1", &MyBasicCompo::data);
+            port("p2", &MyBasicCompo::data);
+        }
+    };
+    MyBasicCompo compo{};
+    TINYCOMPO_TEST_ERRORS { compo.get("p3"); }
+    TINYCOMPO_TEST_ERRORS_END("<Component::get> Port name p3 not found. Existing ports are:\n  * p1\n  * p2\n");
+    TINYCOMPO_TEST_MORE_ERRORS { compo.get<int>("p3"); }
+    TINYCOMPO_TEST_ERRORS_END("<Component::get<Interface>> Port name p3 not found. Existing ports are:\n  * p1\n  * p2\n");
+}
+
 /*
 =============================================================================================================================
   ~*~ _ComponentBuilder ~*~
