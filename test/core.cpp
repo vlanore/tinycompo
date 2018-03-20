@@ -530,19 +530,17 @@ TEST_CASE("Assembly test: composite ports.") {
     };
 
     struct MyFancyComposite : public Composite {
-        using Composite::Composite;
+        MyFancyComposite(Model m, std::string s) : Composite(m, s) {
+            provide<IntInterface>("int", Address("a"));
+            provide<IntInterface>("proxy", Address("b"));
+            provide<GetInt>("prov", PortAddress("int", "p"));
+        }
 
         static void contents(Model& model) {
             model.component<MyInt>("a", 7);
             model.component<MyIntProxy>("b");
             model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), "a");
             model.component<Provider>("p");
-        }
-
-        void ports() override {
-            provide<IntInterface>("int", Address("a"));
-            provide<IntInterface>("proxy", Address("b"));
-            provide<GetInt>("prov", PortAddress("int", "p"));
         }
     };
 
@@ -613,9 +611,8 @@ TEST_CASE("Assembly: at with port address") {
 
 TEST_CASE("Assembly: at with port address with composite port") {
     struct SillyWrapper : public Composite {
-        using Composite::Composite;
+        SillyWrapper(Model& m, std::string n) : Composite(m, n) { provide<MyInt>("port", "c"); }
         static void contents(Model& m, int i) { m.component<MyInt>("c", i); }
-        void ports() { provide<MyInt>("port", "c"); }
     };
 
     Model model;

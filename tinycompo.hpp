@@ -54,7 +54,7 @@ class Address;
 class Component;
 struct PortAddress;
 class ComponentReference;
-class Composite;
+struct Composite;
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
@@ -533,11 +533,11 @@ class _Driver : public Component, public _AbstractDriver {
 ===========================================================================================================================*/
 template <class M>  // template to break circular dependency
 struct _CompositeBuilder {
-    std::function<std::unique_ptr<Component>(Model)> _constructor;
+    std::function<std::unique_ptr<Component>(Model, std::string)> _constructor;
     M model;
     template <class T, class... Args>
     _CompositeBuilder(_Type<T>, Args... args)
-        : _constructor([](M m) { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(m))); }),
+        : _constructor([](M m, std::string s) { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(m, s))); }),
           model(_Type<T>(), args...) {}
 };
 
@@ -811,11 +811,8 @@ class Assembly : public Component {
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
-    virtual void ports() {}  // to be overriden by potential composite child class
-
     void build() {
         internal_model.perform_meta();
-        ports();  // declaring Assembly ports
         for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
@@ -825,7 +822,7 @@ class Assembly : public Component {
         for (auto& c : internal_model.composites) {
             std::stringstream ss;
             ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model)));
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model, ss.str())));
         }
         for (auto& o : internal_model.operations) {
             o._connect(*this);
@@ -925,12 +922,8 @@ class Assembly : public Component {
 =============================================================================================================================
   ~*~ Composite ~*~
 ===========================================================================================================================*/
-class Composite : public Assembly {
-    void ports() override {}
-
-  public:
-    Composite(Model m) : Assembly(m) {}
-
+struct Composite : public Assembly {
+    using Assembly::Assembly;
     static void contents(Model&) {}
 };
 
