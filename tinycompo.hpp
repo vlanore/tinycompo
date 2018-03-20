@@ -54,6 +54,7 @@ class Address;
 class Component;
 struct PortAddress;
 class ComponentReference;
+class Composite;
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
@@ -335,15 +336,6 @@ struct PortAddress {
 
 /*
 =============================================================================================================================
-  ~*~ Composite ~*~
-===========================================================================================================================*/
-struct Composite {
-    static void contents(Model&) {}
-    static void ports(Assembly&) {}
-};
-
-/*
-=============================================================================================================================
   ~*~ Graph representation classes ~*~
 Small classes implementing a simple easily explorable graph representation for TinyCompo component assemblies.
 ===========================================================================================================================*/
@@ -537,18 +529,29 @@ class _Driver : public Component, public _AbstractDriver {
 
 /*
 =============================================================================================================================
+  ~*~ _CompositeBuilder ~*~
+===========================================================================================================================*/
+template <class M>  // template to break circular dependency
+struct _CompositeBuilder {
+    std::function<std::unique_ptr<Component>(Model)> _constructor;
+    M model;
+    template <class T, class... Args>
+    _CompositeBuilder(_Type<T>, Args... args)
+        : _constructor([](M m) { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(m))); }),
+          model(_Type<T>(), args...) {}
+};
+
+/*
+=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
     friend class Assembly;  // to access internal data
 
-    // state of model as a composite
-    std::function<void(Assembly&)> declare_ports{[](Assembly&) {}};
-
     // state of model
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
-    std::map<std::string, Model> composites;
+    std::map<std::string, _CompositeBuilder<Model>> composites;
 
     // all things meta-related
     std::vector<_MetaOperation> meta_operations;
@@ -573,9 +576,8 @@ class Model {
     Model() = default;  // when creating model from scratch
 
     template <class T, class... Args>
-    Model(_Type<T>, Args... args) {  // when instantiating from composite functor
+    Model(_Type<T>, Args... args) {  // when instantiating from composite content function
         T::contents(*this, std::forward<Args>(args)...);
-        declare_ports = [](Assembly& assembly) { T::ports(assembly); };
     }
 
     /*
@@ -597,7 +599,7 @@ class Model {
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     ComponentReference component(CallKey key, Args&&... args) {
         static_assert(std::is_base_of<Component, T>::value,
-                      "Trying to declare a component that does not inherit from Component.");
+                      "Trying to declare a component that does not inherit from tc::Component.");
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
@@ -617,10 +619,12 @@ class Model {
     template <class T = Composite, class CallKey, class... Args,
               typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
     ComponentReference composite(CallKey key, Args&&... args) {
+        static_assert(std::is_base_of<Composite, T>::value,
+                      "Trying to declare a composite that does not inherit from tc::Composite.");
         std::string key_name = key_to_string(key);
 
         composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
-                           std::forward_as_tuple(_Type<T>(), std::forward<Args>(args)...));
+                           std::forward_as_tuple(_Type<T>(), args...));
         return ComponentReference(*this, Address(key));
     }
 
@@ -659,7 +663,7 @@ class Model {
         }
         meta_operations.clear();
         for (auto& c : composites) {
-            c.second.perform_meta();
+            c.second.model.perform_meta();
         }
     }
 
@@ -675,7 +679,7 @@ class Model {
             throw TinycompoException("Composite not found. Composite " + key_name +
                                      " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
-            return dynamic_cast<Model&>(compositeIt->second);
+            return dynamic_cast<Model&>(compositeIt->second.model);
         }
     }
 
@@ -687,7 +691,7 @@ class Model {
             throw TinycompoException("Composite not found. Composite " + key_name +
                                      " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
-            return dynamic_cast<const Model&>(compositeIt->second);
+            return dynamic_cast<const Model&>(compositeIt->second.model);
         }
     }
 
@@ -695,10 +699,11 @@ class Model {
         if (address.is_composite()) {
             return get_composite(address.first()).is_composite(address.rest());
         } else {
-            return std::accumulate(
-                composites.begin(), composites.end(), false, [this, address](bool acc, std::pair<std::string, Model> ref) {
-                    return acc || ref.second.is_composite(strip(address.first())) || (ref.first == address.first());
-                });
+            bool result = false;
+            for (auto& c : composites) {
+                result = result or c.first == address.first() or c.second.model.is_composite(address.first());
+            }
+            return result;
         }
     }
 
@@ -757,7 +762,7 @@ class Model {
             i++;
         }
         for (auto& c : composites) {
-            c.second.to_dot(tabs + 1, prefix + c.first, os);
+            c.second.model.to_dot(tabs + 1, prefix + c.first, os);
         }
         os << std::string(tabs, '\t') << "}\n";
     }
@@ -771,7 +776,7 @@ class Model {
         }
         for (auto& c : composites) {
             os << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
-            c.second.print(os, tabs + 1);
+            c.second.model.print(os, tabs + 1);
             os << std::string(tabs, '\t') << "}\n";
         }
     }
@@ -790,7 +795,7 @@ class Model {
         }
         if (depth > 0) {
             for (auto& c : composites) {  // names from composites until a certain depth
-                auto subresult = c.second.all_component_names(depth - 1, include_composites, prefix + c.first);
+                auto subresult = c.second.model.all_component_names(depth - 1, include_composites, prefix + c.first);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
@@ -806,9 +811,11 @@ class Assembly : public Component {
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
+    virtual void ports() {}  // to be overriden by potential composite child class
+
     void build() {
         internal_model.perform_meta();
-        internal_model.declare_ports(*this);  // declaring Assembly ports
+        ports();  // declaring Assembly ports
         for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
@@ -818,7 +825,7 @@ class Assembly : public Component {
         for (auto& c : internal_model.composites) {
             std::stringstream ss;
             ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-            instances.emplace(c.first, std::unique_ptr<Component>(new Assembly(c.second, c.first)));
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model)));
         }
         for (auto& o : internal_model.operations) {
             o._connect(*this);
@@ -916,6 +923,19 @@ class Assembly : public Component {
 
 /*
 =============================================================================================================================
+  ~*~ Composite ~*~
+===========================================================================================================================*/
+class Composite : public Assembly {
+    void ports() override {}
+
+  public:
+    Composite(Model m) : Assembly(m) {}
+
+    static void contents(Model&) {}
+};
+
+/*
+=============================================================================================================================
   ~*~ Set class ~*~
 ===========================================================================================================================*/
 template <class... Args>
@@ -960,6 +980,8 @@ struct UseProvide {
 ===========================================================================================================================*/
 template <class T>
 struct Array : public Composite {
+    using Composite::Composite;
+
     template <class... Args>
     static void contents(Model& model, int nb_elems, Args&&... args) {
         for (int i = 0; i < nb_elems; i++) {
