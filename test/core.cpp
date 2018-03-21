@@ -530,7 +530,7 @@ TEST_CASE("Assembly test: composite ports.") {
     };
 
     struct MyFancyComposite : public Composite {
-        void ports() override {
+        void after_construct() override {
             provide<IntInterface>("int", Address("a"));
             provide<IntInterface>("proxy", Address("b"));
             provide<GetInt>("prov", PortAddress("int", "p"));
@@ -611,7 +611,7 @@ TEST_CASE("Assembly: at with port address") {
 
 TEST_CASE("Assembly: at with port address with composite port") {
     struct SillyWrapper : public Composite {
-        void ports() { provide<MyInt>("port", "c"); }
+        void after_construct() override { provide<MyInt>("port", "c"); }
         static void contents(Model& m, int i) { m.component<MyInt>("c", i); }
     };
 
@@ -628,19 +628,21 @@ TEST_CASE("Assembly: at with port address with composite port") {
   ~*~ Composite ~*~
 ===========================================================================================================================*/
 TEST_CASE("Instantiation of lone composite") {
-    class MyComposite : public Composite {
-        static void contents(Model& m) {
-            m.component<MyInt>("a", 17);
-            m.component<MyIntProxy>("b").connect("ptr", "a");
+    struct MyComposite : public Composite {
+        static void contents(Model& m, int i) {
+            m.component<MyInt>("compo1", i);
+            m.component<MyIntProxy>("compo2").connect<Use<IntInterface>>("ptr", "compo1");
         }
 
-        void ports() override { provide<IntInterface>("interface", "b"); }
+        void after_construct() override { provide<IntInterface>("interface", "compo2"); }
     };
 
     MyComposite c;
+    instantiate_composite(c, 17);
     auto value = c.get<IntInterface>("interface")->get();
-    CHECK(value == 35);
+    CHECK(value == 34);
 }
+
 /*
 =============================================================================================================================
   ~*~ ComponentReference ~*~

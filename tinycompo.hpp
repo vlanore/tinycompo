@@ -165,12 +165,28 @@ class Component {
     friend Assembly;
 
   public:
+    /*
+    =========================================================================================================================
+      ~*~ Constructors ~*~  */
+
     void operator=(const Component&) = delete;  // forbidding assignation
     Component(const Component&) = delete;       // forbidding copy
     Component() = default;
     virtual ~Component() = default;
 
-    virtual std::string debug() const { return "Component"; };  // runtime overridable method for debug info (class&state)
+    /*
+    =========================================================================================================================
+      ~*~ Functions that can be overriden by user (lifecycle and debug) ~*~  */
+
+    virtual std::string debug() const { return "Component"; }  // runtime overridable method for debug info (class&state)
+
+    virtual void after_construct() {}  // called after component constructor but before connection
+
+    virtual void after_connect() {}  // called after connections are all done
+
+    /*
+    =========================================================================================================================
+      ~*~ Declaration of ports ~*~  */
 
     template <class C, class... Args>
     void port(std::string name, void (C::*prop)(Args...)) {  // case where the port is a setter member function
@@ -189,6 +205,10 @@ class Component {
         _ports[name] = std::unique_ptr<_AbstractPort>(
             static_cast<_AbstractPort*>(new _ProvidePort<Interface>(dynamic_cast<C*>(this), prop)));
     }
+
+    /*
+    =========================================================================================================================
+      ~*~ Accessors to ports and name ~*~  */
 
     template <class... Args>
     void set(std::string name, Args... args) {    // no perfect forwarding to avoid references
@@ -811,7 +831,34 @@ class Assembly : public Component {
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
-    void build();  // implemented at the end (uses Composite)
+    friend Composite;
+
+    void build() {
+        internal_model.perform_meta();
+        for (auto& c : internal_model.components) {
+            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
+            std::stringstream ss;
+            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+            instances.at(c.first).get()->set_name(ss.str());
+        }
+        for (auto& c : internal_model.composites) {
+            std::stringstream ss;
+            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+            auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor())).first;
+            auto& ref = dynamic_cast<Assembly&>(*(*it).second.get());
+            ref.set_name(ss.str());
+            ref.instantiate_from(c.second.model);
+        }
+        for (auto& i : instances) {
+            i.second->after_construct();
+        }
+        for (auto& o : internal_model.operations) {
+            o._connect(*this);
+        }
+        for (auto& i : instances) {
+            i.second->after_connect();
+        }
+    }
 
   public:
     Assembly() : internal_model(Model()) {}
@@ -907,10 +954,18 @@ class Assembly : public Component {
   ~*~ Composite ~*~
 ===========================================================================================================================*/
 struct Composite : public Assembly {
-    using Assembly::Assembly;
-    virtual void ports() {}
+    using Assembly::Assembly;  // TODO remove ?
+
     static void contents(Model&) {}
 };
+
+template <class C, class... Args>
+void instantiate_composite(C& c, Args&&... args) {
+    Model m;
+    C::contents(m, std::forward<Args>(args)...);
+    c.instantiate_from(m);
+    c.after_construct();
+}
 
 /*
 =============================================================================================================================
@@ -1115,28 +1170,6 @@ inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, Address address
 template <class Interface>
 inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress port)
     : _get([&assembly, port]() { return assembly.at<Component>(port.address).get<Interface>(port.prop); }) {}
-
-void Assembly::build() {
-    internal_model.perform_meta();
-    for (auto& c : internal_model.components) {
-        instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
-        std::stringstream ss;
-        ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-        instances.at(c.first).get()->set_name(ss.str());
-    }
-    for (auto& c : internal_model.composites) {
-        std::stringstream ss;
-        ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-        auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor())).first;
-        auto& ref = dynamic_cast<Composite&>(*(*it).second.get());
-        ref.set_name(ss.str());
-        ref.instantiate_from(c.second.model);
-        ref.ports();
-    }
-    for (auto& o : internal_model.operations) {
-        o._connect(*this);
-    }
-}
 
 }  // namespace tc
 
