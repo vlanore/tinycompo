@@ -531,13 +531,13 @@ class _Driver : public Component, public _AbstractDriver {
 =============================================================================================================================
   ~*~ _CompositeBuilder ~*~
 ===========================================================================================================================*/
-template <class M>  // template to break circular dependency
-struct _CompositeBuilder {
-    std::function<std::unique_ptr<Component>(Model, std::string)> _constructor;
+template <class M>          // template to break circular dependency
+struct _CompositeBuilder {  // TODO class can possibly be replaced by pair<Model, _ComponentBuilder>
+    std::function<std::unique_ptr<Component>()> _constructor;
     M model;
     template <class T, class... Args>
     _CompositeBuilder(_Type<T>, Args... args)
-        : _constructor([](M m, std::string s) { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T(m, s))); }),
+        : _constructor([]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T())); }),
           model(_Type<T>(), args...) {}
 };
 
@@ -1127,8 +1127,11 @@ void Assembly::build() {
     for (auto& c : internal_model.composites) {
         std::stringstream ss;
         ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-        instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model, ss.str())));
-        at<Composite>(c.first).ports();
+        auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor())).first;
+        auto& ref = dynamic_cast<Composite&>(*(*it).second.get());
+        ref.set_name(ss.str());
+        ref.instantiate_from(c.second.model);
+        ref.ports();
     }
     for (auto& o : internal_model.operations) {
         o._connect(*this);
