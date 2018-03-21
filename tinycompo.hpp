@@ -811,23 +811,7 @@ class Assembly : public Component {
     std::map<std::string, std::unique_ptr<Component>> instances;
     Model internal_model;
 
-    void build() {
-        internal_model.perform_meta();
-        for (auto& c : internal_model.components) {
-            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
-            std::stringstream ss;
-            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-            instances.at(c.first).get()->set_name(ss.str());
-        }
-        for (auto& c : internal_model.composites) {
-            std::stringstream ss;
-            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-            instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model, ss.str())));
-        }
-        for (auto& o : internal_model.operations) {
-            o._connect(*this);
-        }
-    }
+    void build();  // implemented at the end (uses Composite)
 
   public:
     Assembly() : internal_model(Model()) {}
@@ -924,6 +908,7 @@ class Assembly : public Component {
 ===========================================================================================================================*/
 struct Composite : public Assembly {
     using Assembly::Assembly;
+    virtual void ports() {}
     static void contents(Model&) {}
 };
 
@@ -1130,6 +1115,25 @@ inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, Address address
 template <class Interface>
 inline _ProvidePort<Interface>::_ProvidePort(Assembly& assembly, PortAddress port)
     : _get([&assembly, port]() { return assembly.at<Component>(port.address).get<Interface>(port.prop); }) {}
+
+void Assembly::build() {
+    internal_model.perform_meta();
+    for (auto& c : internal_model.components) {
+        instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
+        std::stringstream ss;
+        ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+        instances.at(c.first).get()->set_name(ss.str());
+    }
+    for (auto& c : internal_model.composites) {
+        std::stringstream ss;
+        ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+        instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor(c.second.model, ss.str())));
+        at<Composite>(c.first).ports();
+    }
+    for (auto& o : internal_model.operations) {
+        o._connect(*this);
+    }
+}
 
 }  // namespace tc
 
