@@ -625,6 +625,24 @@ TEST_CASE("Assembly: at with port address with composite port") {
 
 /*
 =============================================================================================================================
+  ~*~ Composite ~*~
+===========================================================================================================================*/
+TEST_CASE("Instantiation of lone composite") {
+    class MyComposite : public Composite {
+        static void contents(Model& m) {
+            m.component<MyInt>("a", 17);
+            m.component<MyIntProxy>("b").connect("ptr", "a");
+        }
+
+        void ports() override { provide<IntInterface>("interface", "b"); }
+    };
+
+    MyComposite c;
+    auto value = c.get<IntInterface>("interface")->get();
+    CHECK(value == 35);
+}
+/*
+=============================================================================================================================
   ~*~ ComponentReference ~*~
 ===========================================================================================================================*/
 TEST_CASE("ComponentReference test") {
