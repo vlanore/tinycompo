@@ -26,7 +26,10 @@ its terms.*/
 #ifndef TINYCOMPO_HPP
 #define TINYCOMPO_HPP
 
+#ifdef __GNUG__
 #include <cxxabi.h>
+#endif
+
 #include <string.h>
 #include <exception>
 #include <fstream>
