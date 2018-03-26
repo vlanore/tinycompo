@@ -552,20 +552,6 @@ class _Driver : public Component, public _AbstractDriver {
 
 /*
 =============================================================================================================================
-  ~*~ _CompositeBuilder ~*~
-===========================================================================================================================*/
-template <class M>          // template to break circular dependency
-struct _CompositeBuilder {  // TODO class can possibly be replaced by pair<Model, _ComponentBuilder>
-    std::function<std::unique_ptr<Component>()> _constructor;
-    M model;
-    template <class T, class... Args>
-    _CompositeBuilder(_Type<T>, Args... args)
-        : _constructor([]() { return std::unique_ptr<Component>(dynamic_cast<Component*>(new T())); }),
-          model(_Type<T>(), args...) {}
-};
-
-/*
-=============================================================================================================================
   ~*~ Model ~*~
 ===========================================================================================================================*/
 class Model {
@@ -574,7 +560,7 @@ class Model {
     // state of model
     std::map<std::string, _ComponentBuilder> components;
     std::vector<_Operation> operations;
-    std::map<std::string, _CompositeBuilder<Model>> composites;
+    std::map<std::string, std::pair<Model, _ComponentBuilder>> composites;
 
     // all things meta-related
     std::vector<_MetaOperation> meta_operations;
@@ -646,8 +632,13 @@ class Model {
                       "Trying to declare a composite that does not inherit from tc::Composite.");
         std::string key_name = key_to_string(key);
 
-        composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
-                           std::forward_as_tuple(_Type<T>(), args...));
+        Model m;
+        T::contents(m, args...);
+
+        composites.emplace(
+            std::piecewise_construct, std::forward_as_tuple(key_name),
+            std::forward_as_tuple(std::pair<Model, _ComponentBuilder>(std::piecewise_construct, std::forward_as_tuple(m),
+                                                                      std::forward_as_tuple(_Type<T>(), key_name))));
         return ComponentReference(*this, Address(key));
     }
 
@@ -686,7 +677,7 @@ class Model {
         }
         meta_operations.clear();
         for (auto& c : composites) {
-            c.second.model.perform_meta();
+            c.second.first.perform_meta();
         }
     }
 
@@ -702,7 +693,7 @@ class Model {
             throw TinycompoException("Composite not found. Composite " + key_name +
                                      " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
-            return dynamic_cast<Model&>(compositeIt->second.model);
+            return dynamic_cast<Model&>(compositeIt->second.first);
         }
     }
 
@@ -714,7 +705,7 @@ class Model {
             throw TinycompoException("Composite not found. Composite " + key_name +
                                      " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
         } else {
-            return dynamic_cast<const Model&>(compositeIt->second.model);
+            return dynamic_cast<const Model&>(compositeIt->second.first);
         }
     }
 
@@ -724,7 +715,7 @@ class Model {
         } else {
             bool result = false;
             for (auto& c : composites) {
-                result = result or c.first == address.first() or c.second.model.is_composite(address.first());
+                result = result or c.first == address.first() or c.second.first.is_composite(address.first());
             }
             return result;
         }
@@ -785,7 +776,7 @@ class Model {
             i++;
         }
         for (auto& c : composites) {
-            c.second.model.to_dot(tabs + 1, prefix + c.first, os);
+            c.second.first.to_dot(tabs + 1, prefix + c.first, os);
         }
         os << std::string(tabs, '\t') << "}\n";
     }
@@ -799,7 +790,7 @@ class Model {
         }
         for (auto& c : composites) {
             os << std::string(tabs, '\t') << "Composite " << c.first << " {\n";
-            c.second.model.print(os, tabs + 1);
+            c.second.first.print(os, tabs + 1);
             os << std::string(tabs, '\t') << "}\n";
         }
     }
@@ -818,7 +809,7 @@ class Model {
         }
         if (depth > 0) {
             for (auto& c : composites) {  // names from composites until a certain depth
-                auto subresult = c.second.model.all_component_names(depth - 1, include_composites, prefix + c.first);
+                auto subresult = c.second.first.all_component_names(depth - 1, include_composites, prefix + c.first);
                 result.insert(result.end(), subresult.begin(), subresult.end());
             }
         }
@@ -847,10 +838,10 @@ class Assembly : public Component {
         for (auto& c : internal_model.composites) {
             std::stringstream ss;
             ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
-            auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor())).first;
+            auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second.second._constructor())).first;
             auto& ref = dynamic_cast<Assembly&>(*(*it).second.get());
             ref.set_name(ss.str());
-            ref.instantiate_from(c.second.model);
+            ref.instantiate_from(c.second.first);
         }
         for (auto& i : instances) {
             i.second->after_construct();
