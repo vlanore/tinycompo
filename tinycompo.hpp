@@ -957,9 +957,7 @@ class Assembly : public Component {
   ~*~ Composite ~*~
 ===========================================================================================================================*/
 struct Composite : public Assembly {
-    using Assembly::Assembly;  // TODO remove ?
-
-    static void contents(Model&) {}
+    static void contents(Model&) {}  // useful for empty composites
 };
 
 template <class C, class... Args>
