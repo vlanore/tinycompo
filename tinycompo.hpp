@@ -635,10 +635,9 @@ class Model {
         Model m;
         T::contents(m, args...);
 
-        composites.emplace(
-            std::piecewise_construct, std::forward_as_tuple(key_name),
-            std::forward_as_tuple(std::pair<Model, _ComponentBuilder>(std::piecewise_construct, std::forward_as_tuple(m),
-                                                                      std::forward_as_tuple(_Type<T>(), key_name))));
+        composites.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
+                           std::forward_as_tuple(std::piecewise_construct, std::forward_as_tuple(m),
+                                                 std::forward_as_tuple(_Type<T>(), key_name)));
         return ComponentReference(*this, Address(key));
     }
 
