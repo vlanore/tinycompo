@@ -535,11 +535,11 @@ class _Driver : public Component, public _AbstractDriver {
     template <int i, class Head, class... Tail>
     void set_ref_helper(std::vector<Component*>& ref_values) {
         std::get<i>(refs) = dynamic_cast<Head>(ref_values.at(i));
-        set_ref_helper<i - 1, Tail...>(ref_values);
+        set_ref_helper<i + 1, Tail...>(ref_values);
     }
 
     // port to set the references (invariant : vector should have the same size as Refs)
-    void set_refs(std::vector<Component*> ref_values) override { set_ref_helper<sizeof...(Refs) - 1, Refs...>(ref_values); }
+    void set_refs(std::vector<Component*> ref_values) override { set_ref_helper<0, Refs...>(ref_values); }
 
     void go() override { call_helper(typename gens<sizeof...(Refs)>::type()); }
 
