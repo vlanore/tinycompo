@@ -339,7 +339,7 @@ class Address {
 
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
-                               [this](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
+                               [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
     }
 
     // for use as key in maps

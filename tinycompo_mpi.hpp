@@ -140,7 +140,7 @@ namespace process {
     }
     RelativeProcess to_zero = to(0);
     RelativeProcess to_next([](int p) { return p + 1; });
-}
+}  // namespace process
 
 /*
 =============================================================================================================================
