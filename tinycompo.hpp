@@ -289,11 +289,11 @@ class Address {
     Address(const std::string& input) {
         std::string copy = input;
         auto get_token = [&]() -> std::string {
-            auto it = copy.find('_');
+            auto it = copy.find("__");
             std::string result;
             if (it != std::string::npos) {
                 result = copy.substr(0, it);
-                copy = copy.substr(++it);
+                copy = copy.substr(++++it);
             } else {
                 result = copy;
                 copy = "";
@@ -339,7 +339,7 @@ class Address {
 
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
-                               [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "_") + key; });
+                               [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "__") + key; });
     }
 
     // for use as key in maps
@@ -567,8 +567,8 @@ class Model {
 
     // helper functions
     std::string strip(std::string s) const {
-        auto it = s.find('_');
-        return s.substr(++it);
+        auto it = s.find("__");
+        return s.substr(++++it);
     }
 
     template <class Lambda, class C>  // this helper extracts the component type from the lambda
@@ -753,7 +753,7 @@ class Model {
     }
 
     void to_dot(int tabs = 0, const std::string& name = "", std::ostream& os = std::cout) const {
-        std::string prefix = name + (name == "" ? "" : "_");
+        std::string prefix = name + (name == "" ? "" : "__");
         if (name == "") {  // toplevel
             os << std::string(tabs, '\t') << "graph g {\n";
         } else {
@@ -796,7 +796,7 @@ class Model {
 
     std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
                                                  const std::string& name = "") const {
-        std::string prefix = name + (name == "" ? "" : "_");
+        std::string prefix = name + (name == "" ? "" : "__");
         std::vector<std::string> result;
         for (auto& c : components) {             // local components
             result.push_back(prefix + c.first);  // stringified name
@@ -831,12 +831,12 @@ class Assembly : public Component {
         for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;
-            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+            ss << get_name() << ((get_name() != "") ? "__" : "") << c.first;
             instances.at(c.first).get()->set_name(ss.str());
         }
         for (auto& c : internal_model.composites) {
             std::stringstream ss;
-            ss << get_name() << ((get_name() != "") ? "_" : "") << c.first;
+            ss << get_name() << ((get_name() != "") ? "__" : "") << c.first;
             auto it = instances.emplace(c.first, std::unique_ptr<Component>(c.second.second._constructor())).first;
             auto& ref = dynamic_cast<Assembly&>(*(*it).second.get());
             ref.set_name(ss.str());
