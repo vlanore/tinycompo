@@ -92,6 +92,21 @@ TEST_CASE("Component without debug") {
     CHECK(compo.debug() == "Component");
 }
 
+TEST_CASE("Component get errors") {
+    struct MyBasicCompo : public Component {
+        int data;
+        MyBasicCompo() {
+            port("p1", &MyBasicCompo::data);
+            port("p2", &MyBasicCompo::data);
+        }
+    };
+    MyBasicCompo compo{};
+    TINYCOMPO_TEST_ERRORS { compo.get("p3"); }
+    TINYCOMPO_TEST_ERRORS_END("<Component::get> Port name p3 not found. Existing ports are:\n  * p1\n  * p2\n");
+    TINYCOMPO_TEST_MORE_ERRORS { compo.get<int>("p3"); }
+    TINYCOMPO_TEST_ERRORS_END("<Component::get<Interface>> Port name p3 not found. Existing ports are:\n  * p1\n  * p2\n");
+}
+
 /*
 =============================================================================================================================
   ~*~ _ComponentBuilder ~*~
@@ -134,17 +149,17 @@ TEST_CASE("Address tests.") {
     CHECK(a.is_composite() == true);
     CHECK(Address("youpi").is_composite() == false);
 
-    CHECK(a.to_string() == "a_2_3_b");
-    CHECK(Address(a, 17).to_string() == "a_2_3_b_17");
+    CHECK(a.to_string() == "a__2__3__b");
+    CHECK(Address(a, 17).to_string() == "a__2__3__b__17");
 
     Address b("a", "b");
     Address c("c", "d");
     Address e(b, c);
-    CHECK(e.to_string() == "a_b_c_d");
+    CHECK(e.to_string() == "a__b__c__d");
 }
 
 TEST_CASE("Address: builder from string") {
-    Address a("Omega_3_1");
+    Address a("Omega__3__1");
     CHECK(a.first() == "Omega");
     CHECK(a.rest().first() == "3");
     CHECK(a.rest().rest().first() == "1");
@@ -214,14 +229,14 @@ TEST_CASE("Model test: dot output and representation print") {
           "graph g {\n\tsep=\"+25,25\";\n\tnodesep=0.6;\n\tmycompo [label=\"mycompo\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n\tconnect_0 "
           "[xlabel=\"tc::Use<MyBasicCompo>\" shape=point];\n\tconnect_0 -- mycompo[xlabel=\"buddy\"];\n\tconnect_0 -- "
-          "composite_2;\n\tsubgraph cluster_composite {\n\t\tcomposite_2 [label=\"2\\n(MyBasicCompo)\" shape=component "
+          "composite__2;\n\tsubgraph cluster_composite {\n\t\tcomposite__2 [label=\"2\\n(MyBasicCompo)\" shape=component "
           "margin=0.15];\n\t}\n}\n");
 
     stringstream ss2;
     model.print(ss2);
     CHECK(
         ss2.str() ==
-        "Component \"mycompo\" (MyBasicCompo)\nConnector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->composite_2 \nComposite "
+        "Component \"mycompo\" (MyBasicCompo)\nConnector (tc::Use<MyBasicCompo>) ->mycompo.buddy ->composite__2 \nComposite "
         "composite {\n	Component \"2\" (MyBasicCompo)\n}\n");
 }
 
@@ -321,41 +336,9 @@ TEST_CASE("_AssemblyGraph test: all_component_names") {
     vector<string> vec2 = model.all_component_names(2);
     vector<string> vec3 = model.all_component_names(2, true);
     CHECK((set<string>(vec0.begin(), vec0.end())) == (set<string>{"0", "2"}));
-    CHECK((set<string>(vec1.begin(), vec1.end())) == (set<string>{"0", "2", "1_r"}));
-    CHECK((set<string>(vec2.begin(), vec2.end())) == (set<string>{"0", "2", "1_r", "1_t_l"}));
-    CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1_t", "2", "1_r", "1_t_l"}));
-}
-
-TEST_CASE("Model test: annotate") {
-    struct MyMetaComposite {
-        static void contents(Model& model) {
-            model.component<MyInt>("hello");
-            model.annotate("hello", "prop", "tralala");
-        }
-
-        static void ports(Assembly&) {}
-    };
-
-    Model model;
-    model.component<MyInt>("compo");
-    model.composite("composite");
-    model.component<MyInt>(Address("composite", "compo2"));
-    model.annotate(Address("compo"), "prop1", "value1");
-    model.annotate(Address("compo"), "prop2", "value2");
-    model.annotate(Address("composite", "compo2"), "prop3", "value3");
-    model.annotate(Address("composite"), "prop4", "value4");
-    model.composite<MyMetaComposite>("composite2");
-
-    CHECK(model.get_annotation(Address("compo"), "prop1") == "value1");
-    CHECK(model.get_annotation(Address("compo"), "prop2") == "value2");
-    CHECK(model.get_annotation(Address("composite", "compo2"), "prop3") == "value3");
-    CHECK(model.get_annotation(Address("composite"), "prop4") == "value4");
-    CHECK(model.get_annotation(Address("composite2", "hello"), "prop") == "tralala");
-
-    TINYCOMPO_TEST_ERRORS { model.get_annotation(Address("pouloulou"), "prop"); }
-    TINYCOMPO_TEST_ERRORS_END("No annotation entry for address pouloulou");
-    TINYCOMPO_TEST_MORE_ERRORS { model.get_annotation(Address("compo"), "prop3"); }
-    TINYCOMPO_TEST_ERRORS_END("Annotation entry for address compo does not contain prop prop3");
+    CHECK((set<string>(vec1.begin(), vec1.end())) == (set<string>{"0", "2", "1__r"}));
+    CHECK((set<string>(vec2.begin(), vec2.end())) == (set<string>{"0", "2", "1__r", "1__t__l"}));
+    CHECK((set<string>(vec3.begin(), vec3.end())) == (set<string>{"0", "1", "1__t", "2", "1__r", "1__t__l"}));
 }
 
 TEST_CASE("Model test: composite not found") {
@@ -513,7 +496,7 @@ TEST_CASE("Assembly test: component names.") {
     Assembly assembly(model);
     CHECK(assembly.at<MyCompo>("compoYoupi").get_name() == "compoYoupi");
     CHECK(assembly.at<MyCompo>("compoYoupla").get_name() == "compoYoupla");
-    CHECK(assembly.at<MyCompo>(Address("composite", 3)).get_name() == "composite_3");
+    CHECK(assembly.at<MyCompo>(Address("composite", 3)).get_name() == "composite__3");
 }
 
 TEST_CASE("Assembly test: get_model.") {
@@ -548,17 +531,17 @@ TEST_CASE("Assembly test: composite ports.") {
     };
 
     struct MyFancyComposite : public Composite {
+        void after_construct() override {
+            provide<IntInterface>("int", Address("a"));
+            provide<IntInterface>("proxy", Address("b"));
+            provide<GetInt>("prov", PortAddress("int", "p"));
+        }
+
         static void contents(Model& model) {
             model.component<MyInt>("a", 7);
             model.component<MyIntProxy>("b");
             model.connect<Use<IntInterface>>(PortAddress("ptr", "b"), "a");
             model.component<Provider>("p");
-        }
-
-        static void ports(Assembly& assembly) {
-            assembly.provide<IntInterface>("int", Address("a"));
-            assembly.provide<IntInterface>("proxy", Address("b"));
-            assembly.provide<GetInt>("prov", PortAddress("int", "p"));
         }
     };
 
@@ -610,6 +593,57 @@ TEST_CASE("Assembly: instantiate from new model") {
         "Existing addresses are:\n  * a\n  * c\n");
 }
 
+TEST_CASE("Assembly: at with port address") {
+    class SillyWrapper : public Component {
+        MyInt wrappee;
+        MyInt* provide_wrappee() { return &wrappee; }
+
+      public:
+        SillyWrapper(int init) : wrappee(init) { provide("port", &SillyWrapper::provide_wrappee); }
+    };
+
+    Model model;
+    model.component<SillyWrapper>("c", 1717);
+
+    Assembly assembly(model);
+    auto& wref = assembly.at<MyInt>(PortAddress("port", "c"));
+    CHECK(wref.get() == 1717);
+}
+
+TEST_CASE("Assembly: at with port address with composite port") {
+    struct SillyWrapper : public Composite {
+        void after_construct() override { provide<MyInt>("port", "c"); }
+        static void contents(Model& m, int i) { m.component<MyInt>("c", i); }
+    };
+
+    Model model;
+    model.composite<SillyWrapper>("c", 1717);
+
+    Assembly assembly(model);
+    auto& wref = assembly.at<MyInt>(PortAddress("port", "c"));
+    CHECK(wref.get() == 1717);
+}
+
+/*
+=============================================================================================================================
+  ~*~ Composite ~*~
+===========================================================================================================================*/
+TEST_CASE("Instantiation of lone composite") {
+    struct MyComposite : public Composite {
+        static void contents(Model& m, int i) {
+            m.component<MyInt>("compo1", i);
+            m.component<MyIntProxy>("compo2").connect<Use<IntInterface>>("ptr", "compo1");
+        }
+
+        void after_construct() override { provide<IntInterface>("interface", "compo2"); }
+    };
+
+    MyComposite c;
+    instantiate_composite(c, 17);
+    auto value = c.get<IntInterface>("interface")->get();
+    CHECK(value == 34);
+}
+
 /*
 =============================================================================================================================
   ~*~ ComponentReference ~*~
@@ -622,8 +656,7 @@ TEST_CASE("ComponentReference test") {
 
     auto c = model.composite("c");
     auto d = model.component<MyInt>(Address("c", "d"), 8);
-    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d).annotate("prop", "value");
-    CHECK(model.get_annotation(e, "prop") == "value");
+    auto e = model.component<MyIntProxy>(Address("c", "e")).connect<Use<IntInterface>>("ptr", d);
 
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("b").get() == 14);
@@ -730,4 +763,48 @@ TEST_CASE("Attribute port declaration.") {
     model.connect<Set<int>>(PortAddress("data", "compo"), 14);
     Assembly assembly(model);
     CHECK(assembly.at<MyUltraBasicCompo>("compo").data == 14);
+}
+
+/*
+=============================================================================================================================
+  ~*~ Drivers ~*~
+===========================================================================================================================*/
+TEST_CASE("Basic driver test.") {
+    struct MyWrapper : public Component {
+        MyInt state;
+        MyInt* provideState() { return &state; }
+        MyWrapper() { provide("state", &MyWrapper::provideState); }
+    };
+
+    Model model;
+    model.component<MyInt>("c1", 119);
+    model.component<MyWrapper>("c2");
+    model.driver("driver", [](MyInt* r, MyInt* r2) {
+        r->set(111);
+        r2->set(1111);
+    });
+    model.connect<DriverConnect<Address, PortAddress>>("driver", "c1", PortAddress("state", "c2"));
+
+    Assembly assembly(model);
+    assembly.call("driver", "go");
+    CHECK(assembly.at<MyInt>("c1").get() == 111);
+    CHECK(assembly.at<MyWrapper>("c2").state.get() == 1111);
+}
+
+TEST_CASE("Driver connect short syntax") {
+    Model model;
+    model.component<MyInt>("c1", 19);
+    model.component<MyInt>("c2", 321);
+    model
+        .driver("driver",
+                [](MyInt* p1, MyInt* p2) {
+                    p1->set(17);
+                    p2->set(37);
+                })
+        .connect("c1", "c2");
+
+    Assembly assembly(model);
+    assembly.call("driver", "go");
+    CHECK(assembly.at<MyInt>("c1").get() == 17);
+    CHECK(assembly.at<MyInt>("c2").get() == 37);
 }
