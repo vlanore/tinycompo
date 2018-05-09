@@ -1,6 +1,7 @@
 *.o
 *.a
 *_bin
+*_testbin
 *_mpibin
 *.gcov
 *.gcno

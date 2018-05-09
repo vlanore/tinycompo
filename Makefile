@@ -19,6 +19,11 @@ example/poisson_gamma_bin: example/poisson_gamma.cpp example/poisson_gamma_conne
 %_mpibin: %.cpp tinycompo.hpp tinycompo_mpi.hpp
 	mpic++ $< -o $@ -I. $(FLAGS) $(TINYCOMPO_FLAGS)
 
+tc2_testbin: test2.cpp tinycompo2.hpp
+	$(CXX) $< -o $@ -I. $(FLAGS)
+
+tc2: tc2_testbin
+	./$<
 
 #======================================================================================================================
 .PHONY: test clean format ready

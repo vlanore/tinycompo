@@ -25,11 +25,82 @@ its terms.*/
 
 #pragma once
 
-// ~*~ TinyCompo 2 ~*~ -------------------------------------------------------------------------------------------------------
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+#include "test/doctest.h"
+
+// ~*~ TinyCompo 2 ~*~ ------------------------------------------------------------------------------------------------------
 // TinyCompo 2 is a prototype of a possible complete rewrite of TinyCompo
 // it aims at improving TinyCompo's structure by making it component-based
 // it also aims at minimizing component overhead by separating the component itself from its component-related metadata
 
 // ~*~ Interfaces ~*~ -------------------------------------------------------------------------------------------------------
+struct AllocatedObjects {
+    virtual ~AllocatedObjects() = default;
+};
 
-// ~*~ Interfaces ~*~ -------------------------------------------------------------------------------------------------------
+struct Component : public AllocatedObjects {};
+
+struct ComponentData : public AllocatedObjects {
+    std::string name;
+    Component& ref;
+    ComponentData(std::string name, Component& ref) : name(name), ref(ref) {}
+};
+
+struct _Allocation {
+    std::unique_ptr<AllocatedObjects> data;
+    std::vector<Component*> components;
+};
+
+struct _Allocator {
+    std::function<_Allocation()> allocate;
+};
+
+struct _DataAllocator {
+    std::function<_Allocation(_Allocation&)> allocate;
+};
+
+struct Model {
+    std::map<std::string, _Allocator> allocators;
+    std::map<std::string, _DataAllocator> data_allocators;
+
+    // most easy to read function I ever wrote
+    template <class Type, class... Args>
+    void component(std::string name, Args... args) {
+        auto allocate_component = [args...]() {
+            _Allocation alloc{std::unique_ptr<AllocatedObjects>(dynamic_cast<AllocatedObjects*>(new Type(args...))),
+                              std::vector<Component*>()};
+            alloc.components.push_back(dynamic_cast<Component*>(alloc.data.get()));
+            return alloc;
+        };
+
+        allocators[name] = {allocate_component};
+
+        auto allocate_component_data = [name](_Allocation& a) {
+            return _Allocation{std::unique_ptr<AllocatedObjects>(dynamic_cast<AllocatedObjects*>(
+                                   new ComponentData(name, *dynamic_cast<Component*>(a.data.get())))),
+                               std::vector<Component*>()};
+        };
+
+        data_allocators[name] = {allocate_component_data};
+    }
+};
+
+struct Assembly {
+    Assembly(Model& m) {}
+};
+
+// ~*~ Test ~*~ -------------------------------------------------------------------------------------------------------------
+struct MyCompo : public Component {
+    int data;
+    MyCompo(int data) : data(data) {}
+};
+
+TEST_CASE("main") {
+    Model m;
+    m.component<MyCompo>("compo1", 3);
+}
