@@ -59,6 +59,8 @@ struct PortAddress;
 class ComponentReference;
 struct Composite;
 
+struct Meta {};  // type tag for meta components and connectors
+
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
 
@@ -605,7 +607,6 @@ class Model {
         return ComponentReference(*this, address);
     }
 
-    // horrible enable_if to avoid ambiguous call with version above
     template <class T, class CallKey, class... Args>
     ComponentReference component_call_helper(IsComponent, IsNotAddress, CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
@@ -627,6 +628,20 @@ class Model {
         return ComponentReference(*this, Address(key));
     }
 
+    // helpers for connect method
+    using IsMeta = std::true_type;
+    using IsConcrete = std::false_type;
+
+    template <class C, class... Args>
+    void connect_call_helper(IsConcrete, Args&&... args) {
+        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
+    template <class C, class... Args>
+    void connect_call_helper(IsMeta, Args&&... args) {
+        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+    }
+
     /*
     =========================================================================================================================
     ~*~ Declaration functions ~*~  */
@@ -641,7 +656,7 @@ class Model {
 
     template <class C, class... Args>
     void connect(Args&&... args) {
-        operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+        connect_call_helper<C>(std::is_base_of<Meta, C>(), std::forward<Args>(args)...);
     }
 
     template <class Lambda>
@@ -661,11 +676,6 @@ class Model {
         } else {
             meta_operations.emplace_back(_Type<C>(), address.first(), std::forward<Args>(args)...);
         }
-    }
-
-    template <class C, class... Args>
-    void meta_connect(Args&&... args) {
-        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
     }
 
     void perform_meta() {

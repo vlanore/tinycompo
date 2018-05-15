@@ -228,7 +228,7 @@ class MPICommunicator : public Component {
     }
 };
 
-struct UseComm {
+struct UseComm : Meta {
     static void connect(Model& model, int, PortAddress user, ProcessSet processes, Address comm) {
         auto core = MPIContext::core();
         if (processes.contains(core.rank)) {
@@ -258,7 +258,7 @@ class MPIModel {
 
     template <class T, class... Args>
     void mpi_connect(Args&&... args) {
-        model.meta_connect<T>(MPIContext::get_tag(), std::forward<Args>(args)...);
+        model.connect<T>(MPIContext::get_tag(), std::forward<Args>(args)...);
     }
 
     void comm(Address address, ProcessSet process) { model.component<MPICommunicator>(address, process); }

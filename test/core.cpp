@@ -382,7 +382,7 @@ TEST_CASE("Model test: exists") {
   ~*~ Meta things ~*~
 ===========================================================================================================================*/
 template <class Interface>
-struct UseOrArrayUse {
+struct UseOrArrayUse : public Meta {
     static void connect(Model& model, PortAddress user, Address provider) {
         if (model.is_composite(provider)) {
             model.connect<MultiUse<Interface>>(user, provider);
@@ -397,8 +397,8 @@ TEST_CASE("Meta connections") {
     model.component<Array<MyInt>>("array", 5, 17);
     model.component<IntReducer>("reducer");
     model.component<MyIntProxy>("proxy");
-    model.meta_connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "reducer"), Address("array"));
-    model.meta_connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "proxy"), Address("reducer"));
+    model.connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "reducer"), Address("array"));
+    model.connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "proxy"), Address("reducer"));
 
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>("proxy").get() == 170);
