@@ -938,6 +938,18 @@ class Assembly : public Component {
         _ports[prop_name] =
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
     }
+
+    template <class Type>
+    std::vector<Type*> get_all() {
+        std::vector<Type*> result;
+        for (auto&& instance : instances) {
+            auto ptr = dynamic_cast<Type*>(instance.second.get());
+            if (ptr != NULL) {
+                result.push_back(ptr);
+            }
+        }
+        return result;
+    }
 };
 
 /*
