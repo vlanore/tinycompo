@@ -595,10 +595,8 @@ class Model {
     using IsAddress = std::true_type;
     using IsNotAddress = std::false_type;
 
-    template <class T, class... Args>
-    ComponentReference component_call_helper(IsComponent, IsAddress, const Address& address, Args&&... args) {
-        static_assert(std::is_base_of<Component, T>::value,
-                      "Trying to declare a component that does not inherit from tc::Component.");
+    template <class T, class IsComponentOrComposite, class... Args>
+    ComponentReference component_call_helper(IsComponentOrComposite, IsAddress, const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             component<T>(address.first(), std::forward<Args>(args)...);
         } else {
@@ -610,30 +608,14 @@ class Model {
     // horrible enable_if to avoid ambiguous call with version above
     template <class T, class CallKey, class... Args>
     ComponentReference component_call_helper(IsComponent, IsNotAddress, CallKey key, Args&&... args) {
-        static_assert(std::is_base_of<Component, T>::value,
-                      "Trying to declare a component that does not inherit from tc::Component.");
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
         return ComponentReference(*this, Address(key));
     }
 
-    template <class T = Composite, class... Args>
-    ComponentReference component_call_helper(IsComposite, IsAddress, const Address& address, Args&&... args) {
-        static_assert(std::is_base_of<Composite, T>::value,
-                      "Trying to declare a composite that does not inherit from tc::Composite.");
-        if (!address.is_composite()) {
-            component<T>(address.first(), std::forward<Args>(args)...);
-        } else {
-            get_composite(address.first()).component<T>(address.rest(), std::forward<Args...>(args)...);
-        }
-        return ComponentReference(*this, address);
-    }
-
     template <class T = Composite, class CallKey, class... Args>
     ComponentReference component_call_helper(IsComposite, IsNotAddress, CallKey key, Args&&... args) {
-        static_assert(std::is_base_of<Composite, T>::value,
-                      "Trying to declare a composite that does not inherit from tc::Composite.");
         std::string key_name = key_to_string(key);
 
         Model m;
