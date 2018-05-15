@@ -947,7 +947,7 @@ class Assembly : public Component {
                 auto sub_result = at<Assembly>(instance.first).get_all<Type>();
                 result.insert(result.end(), sub_result.begin(), sub_result.end());
             } else if (derives_from<Type>(instance.first)) {
-                result.push_back(at<Type>(instance.first));
+                result.push_back(&at<Type>(instance.first));
             }
         }
         return result;

@@ -623,6 +623,23 @@ TEST_CASE("Assembly: at with port address with composite port") {
     CHECK(wref.get() == 1717);
 }
 
+TEST_CASE("Assembly: get_all") {
+    Model m;
+    m.component<MyInt>("c0", 21);
+    m.component<MyInt>("c1", 11);
+    m.composite("box");
+    m.component<MyInt>(Address("box", "c0"), 13);
+    m.component<MyInt>(Address("box", "c1"), 17);
+    m.component<MyIntProxy>("c3").connect<Use<IntInterface>>("ptr", Address("box", "c0"));
+
+    Assembly a(m);
+    auto all_myint = a.get_all<MyInt>();
+    auto all_intinterface = a.get_all<IntInterface>();
+    CHECK(accumulate(all_myint.begin(), all_myint.end(), 0, [](int acc, MyInt* ptr) { return acc + ptr->i; }) == 62);
+    CHECK(accumulate(all_intinterface.begin(), all_intinterface.end(), 0,
+                     [](int acc, IntInterface* ptr) { return acc + ptr->get(); }) == 88);
+}
+
 /*
 =============================================================================================================================
   ~*~ Composite ~*~
