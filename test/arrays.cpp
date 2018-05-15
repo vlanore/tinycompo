@@ -31,7 +31,7 @@ its terms.*/
 ===========================================================================================================================*/
 TEST_CASE("Array tests.") {
     Model model;
-    model.composite<Array<MyCompo>>("a", 3, 11, 12);
+    model.component<Array<MyCompo>>("a", 3, 11, 12);
 
     Assembly assembly(model);
     CHECK(assembly.at<Assembly>("a").size() == 3);
@@ -46,7 +46,7 @@ TEST_CASE("Array tests.") {
 ===========================================================================================================================*/
 TEST_CASE("ArraySet tests.") {
     Model model;
-    model.composite<Array<MyInt>>("array", 5, 2);
+    model.component<Array<MyInt>>("array", 5, 2);
     model.connect<ArraySet<int>>(PortAddress("set", "array"), std::vector<int>{5, 4, 3, 2, 1});
     Assembly assembly(model);
     CHECK(assembly.at<MyInt>(Address("array", 0)).i == 5);
@@ -62,8 +62,8 @@ TEST_CASE("ArraySet tests.") {
 ===========================================================================================================================*/
 TEST_CASE("Array connector tests.") {
     Model model;
-    model.composite<Array<MyInt>>("intArray", 5, 12);
-    model.composite<Array<MyIntProxy>>("proxyArray", 5);
+    model.component<Array<MyInt>>("intArray", 5, 12);
+    model.component<Array<MyIntProxy>>("proxyArray", 5);
     Assembly assembly(model);
     ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
     CHECK(assembly.at<Assembly>("intArray").size() == 5);
@@ -78,8 +78,8 @@ TEST_CASE("Array connector tests.") {
 
 TEST_CASE("Array connector error test.") {
     Model model;
-    model.composite<Array<MyInt>>("intArray", 5, 12);
-    model.composite<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
+    model.component<Array<MyInt>>("intArray", 5, 12);
+    model.component<Array<MyIntProxy>>("proxyArray", 4);  // intentionally mismatched arrays
     Assembly assembly(model);
     TINYCOMPO_TEST_ERRORS {
         ArrayOneToOne<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("intArray"));
@@ -93,7 +93,7 @@ TEST_CASE("Array connector error test.") {
 ===========================================================================================================================*/
 TEST_CASE("MultiUse tests.") {
     Model model;
-    model.composite<Array<MyInt>>("intArray", 3, 12);
+    model.component<Array<MyInt>>("intArray", 3, 12);
     model.component<IntReducer>("reducer");
     Assembly assembly(model);
     std::stringstream ss;
@@ -115,7 +115,7 @@ TEST_CASE("MultiUse tests.") {
 TEST_CASE("MultiProvide connector tests.") {
     Model model;
     model.component<MyInt>("superInt", 17);  // random number
-    model.composite<Array<MyIntProxy>>("proxyArray", 5);
+    model.component<Array<MyIntProxy>>("proxyArray", 5);
     Assembly assembly(model);
     MultiProvide<IntInterface>::_connect(assembly, PortAddress("ptr", "proxyArray"), Address("superInt"));
     CHECK(assembly.at<MyIntProxy>(Address("proxyArray", 2)).get() == 34);

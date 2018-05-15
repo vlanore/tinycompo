@@ -394,7 +394,7 @@ struct UseOrArrayUse {
 
 TEST_CASE("Meta connections") {
     Model model;
-    model.composite<Array<MyInt>>("array", 5, 17);
+    model.component<Array<MyInt>>("array", 5, 17);
     model.component<IntReducer>("reducer");
     model.component<MyIntProxy>("proxy");
     model.meta_connect<UseOrArrayUse<IntInterface>>(PortAddress("ptr", "reducer"), Address("array"));
@@ -545,7 +545,7 @@ TEST_CASE("Assembly test: composite ports.") {
     };
 
     Model model;
-    model.composite<MyFancyComposite>("composite");
+    model.component<MyFancyComposite>("composite");
     model.component<MyIntProxy>("myProxy");
     model.connect<UseProvide<IntInterface>>(PortAddress("ptr", "myProxy"), PortAddress("int", "composite"));
     model.component<User>("u");
@@ -616,7 +616,7 @@ TEST_CASE("Assembly: at with port address with composite port") {
     };
 
     Model model;
-    model.composite<SillyWrapper>("c", 1717);
+    model.component<SillyWrapper>("c", 1717);
 
     Assembly assembly(model);
     auto& wref = assembly.at<MyInt>(PortAddress("port", "c"));

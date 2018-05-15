@@ -589,12 +589,16 @@ class Model {
         T::contents(*this, std::forward<Args>(args)...);
     }
 
-    /*
-    =========================================================================================================================
-    ~*~ Declaration functions ~*~  */
+    // helpers to select right component method
+    using IsComponent = std::false_type;
+    using IsComposite = std::true_type;
+    using IsAddress = std::true_type;
+    using IsNotAddress = std::false_type;
 
     template <class T, class... Args>
-    ComponentReference component(const Address& address, Args&&... args) {
+    ComponentReference component_call_helper(IsComponent, IsAddress, const Address& address, Args&&... args) {
+        static_assert(std::is_base_of<Component, T>::value,
+                      "Trying to declare a component that does not inherit from tc::Component.");
         if (!address.is_composite()) {
             component<T>(address.first(), std::forward<Args>(args)...);
         } else {
@@ -604,9 +608,8 @@ class Model {
     }
 
     // horrible enable_if to avoid ambiguous call with version above
-    template <class T, class CallKey, class... Args,
-              typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    ComponentReference component(CallKey key, Args&&... args) {
+    template <class T, class CallKey, class... Args>
+    ComponentReference component_call_helper(IsComponent, IsNotAddress, CallKey key, Args&&... args) {
         static_assert(std::is_base_of<Component, T>::value,
                       "Trying to declare a component that does not inherit from tc::Component.");
         std::string key_name = key_to_string(key);
@@ -616,18 +619,19 @@ class Model {
     }
 
     template <class T = Composite, class... Args>
-    ComponentReference composite(const Address& address, Args&&... args) {
+    ComponentReference component_call_helper(IsComposite, IsAddress, const Address& address, Args&&... args) {
+        static_assert(std::is_base_of<Composite, T>::value,
+                      "Trying to declare a composite that does not inherit from tc::Composite.");
         if (!address.is_composite()) {
-            composite<T>(address.first(), std::forward<Args>(args)...);
+            component<T>(address.first(), std::forward<Args>(args)...);
         } else {
-            get_composite(address.first()).composite<T>(address.rest(), std::forward<Args...>(args)...);
+            get_composite(address.first()).component<T>(address.rest(), std::forward<Args...>(args)...);
         }
         return ComponentReference(*this, address);
     }
 
-    template <class T = Composite, class CallKey, class... Args,
-              typename = typename std::enable_if<!std::is_same<CallKey, Address>::value>::type>
-    ComponentReference composite(CallKey key, Args&&... args) {
+    template <class T = Composite, class CallKey, class... Args>
+    ComponentReference component_call_helper(IsComposite, IsNotAddress, CallKey key, Args&&... args) {
         static_assert(std::is_base_of<Composite, T>::value,
                       "Trying to declare a composite that does not inherit from tc::Composite.");
         std::string key_name = key_to_string(key);
@@ -640,6 +644,18 @@ class Model {
                                                  std::forward_as_tuple(_Type<T>(), key_name)));
         return ComponentReference(*this, Address(key));
     }
+
+    /*
+    =========================================================================================================================
+    ~*~ Declaration functions ~*~  */
+
+    template <class T, class MaybeAddress, class... Args>
+    ComponentReference component(MaybeAddress address, Args... args) {
+        return component_call_helper<T>(std::is_base_of<Composite, T>(), std::is_same<Address, MaybeAddress>(), address,
+                                        args...);
+    }
+
+    ComponentReference composite(const Address& address) { return component<Composite>(address); }
 
     template <class C, class... Args>
     void connect(Args&&... args) {
