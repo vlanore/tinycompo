@@ -175,15 +175,18 @@ TEST_CASE("model test: components in composites") {
     model.component<MyInt>(Address("compo0", 1), 5);
     model.composite(Address("compo0", 2));
     model.component<MyInt>(Address("compo0", 2, 1), 3);
+
     CHECK(model.size() == 1);  // top level contains only one component which is a composite
     auto& compo0 = model.get_composite("compo0");
     CHECK(compo0.size() == 2);
     auto& compo0_2 = compo0.get_composite(2);
     CHECK(compo0_2.size() == 1);
-    // TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
-    // TINYCOMPO_TEST_ERRORS_END("composite does not exist",
-    //                           "-- Error: composite does not exist. Assembly contains no composite "
-    //                           "at address badAddress.\n");
+    auto& compo0_3 = model.get_composite(Address("compo0", 2));
+    CHECK(compo0_3.size() == 1);
+
+    TINYCOMPO_TEST_ERRORS { model.component<MyInt>(Address("badAddress", 1), 2); }
+    TINYCOMPO_TEST_ERRORS_END(
+        "Composite not found. Composite badAddress does not exist. Existing composites are:\n  * compo0\n");
 }
 
 TEST_CASE("model test: model copy") {

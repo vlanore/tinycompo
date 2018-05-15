@@ -692,27 +692,33 @@ class Model {
     =========================================================================================================================
     ~*~ Getters / introspection ~*~  */
 
-    template <class Key>
-    Model& get_composite(const Key& key) {
-        std::string key_name = key_to_string(key);
-        auto compositeIt = composites.find(key_name);
-        if (compositeIt == composites.end()) {
-            throw TinycompoException("Composite not found. Composite " + key_name +
-                                     " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
+    Model& get_composite(const Address& address) {
+        if (address.is_composite()) {
+            return get_composite(address.first()).get_composite(address.rest());
         } else {
-            return dynamic_cast<Model&>(compositeIt->second.first);
+            std::string key_name = address.first();
+            auto compositeIt = composites.find(key_name);
+            if (compositeIt == composites.end()) {
+                throw TinycompoException("Composite not found. Composite " + key_name +
+                                         " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
+            } else {
+                return dynamic_cast<Model&>(compositeIt->second.first);
+            }
         }
     }
 
-    template <class Key>
-    const Model& get_composite(const Key& key) const {
-        std::string key_name = key_to_string(key);
-        auto compositeIt = composites.find(key_name);
-        if (compositeIt == composites.end()) {
-            throw TinycompoException("Composite not found. Composite " + key_name +
-                                     " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
+    const Model& get_composite(const Address& address) const {
+        if (address.is_composite()) {
+            return get_composite(address.first()).get_composite(address.rest());
         } else {
-            return dynamic_cast<const Model&>(compositeIt->second.first);
+            std::string key_name = address.first();
+            auto compositeIt = composites.find(key_name);
+            if (compositeIt == composites.end()) {
+                throw TinycompoException("Composite not found. Composite " + key_name +
+                                         " does not exist. Existing composites are:\n" + TinycompoDebug::list(composites));
+            } else {
+                return dynamic_cast<const Model&>(compositeIt->second.first);
+            }
         }
     }
 
