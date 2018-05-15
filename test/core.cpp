@@ -407,14 +407,14 @@ TEST_CASE("Meta connections") {
     CHECK(assembly.at<IntInterface>("proxy").get() == 170);
 }
 
-struct MyIntWrapper {
-    static void connect(Model& model, std::string name, int value) { model.component<MyInt>(name, value); }
+struct MyIntWrapper : Meta {
+    static ComponentReference connect(Model& model, Address name, int value) { return model.component<MyInt>(name, value); }
 };
 
 TEST_CASE("Meta components") {
     Model model;
     model.composite("a");
-    model.meta_component<MyIntWrapper>(Address("a", "b"), 17);
+    model.component<MyIntWrapper>(Address("a", "b"), 17);
 
     Assembly assembly(model);
     CHECK(assembly.at<IntInterface>(Address("a", "b")).get() == 17);

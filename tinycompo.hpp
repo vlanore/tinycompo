@@ -59,7 +59,7 @@ struct PortAddress;
 class ComponentReference;
 struct Composite;
 
-struct Meta {};  // type tag for meta components and connectors
+struct Meta {};  // type tag for meta connectors
 
 template <class T>  // this is an empty helper class that is used to pass T to the _ComponentBuilder
 class _Type {};     // constructor below
@@ -494,17 +494,6 @@ class ComponentReference {
 
 /*
 =============================================================================================================================
-  ~*~ _MetaOperation ~*~
-===========================================================================================================================*/
-struct _MetaOperation {
-    std::function<void(Model&)> operation;
-
-    template <class T, class... Args>
-    _MetaOperation(_Type<T>, Args... args) : operation([args...](Model& model) { T::connect(model, args...); }) {}
-};
-
-/*
-=============================================================================================================================
   ~*~ _Driver ~*~
 ===========================================================================================================================*/
 // invariant : Refs are all pointers to classes inheriting from Component
@@ -564,9 +553,6 @@ class Model {
     std::vector<_Operation> operations;
     std::map<std::string, std::pair<Model, _ComponentBuilder>> composites;
 
-    // all things meta-related
-    std::vector<_MetaOperation> meta_operations;
-
     // helper functions
     std::string strip(std::string s) const {
         auto it = s.find("__");
@@ -596,9 +582,16 @@ class Model {
     using IsComposite = std::true_type;
     using IsAddress = std::true_type;
     using IsNotAddress = std::false_type;
+    using IsMeta = std::true_type;
+    using IsConcrete = std::false_type;
 
-    template <class T, class IsComponentOrComposite, class... Args>
-    ComponentReference component_call_helper(IsComponentOrComposite, IsAddress, const Address& address, Args&&... args) {
+    template <class T, class Whatever, class Whatever2, class... Args>
+    ComponentReference component_call_helper(IsMeta, Whatever, Whatever2, Args&&... args) {
+        return T::connect(*this, std::forward<Args>(args)...);
+    }
+
+    template <class T, class Whatever, class... Args>
+    ComponentReference component_call_helper(IsConcrete, Whatever, IsAddress, const Address& address, Args&&... args) {
         if (!address.is_composite()) {
             component<T>(address.first(), std::forward<Args>(args)...);
         } else {
@@ -608,7 +601,7 @@ class Model {
     }
 
     template <class T, class CallKey, class... Args>
-    ComponentReference component_call_helper(IsComponent, IsNotAddress, CallKey key, Args&&... args) {
+    ComponentReference component_call_helper(IsConcrete, IsComponent, IsNotAddress, CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
         components.emplace(std::piecewise_construct, std::forward_as_tuple(key_name),
                            std::forward_as_tuple(_Type<T>(), key_name, std::forward<Args>(args)...));
@@ -616,7 +609,7 @@ class Model {
     }
 
     template <class T = Composite, class CallKey, class... Args>
-    ComponentReference component_call_helper(IsComposite, IsNotAddress, CallKey key, Args&&... args) {
+    ComponentReference component_call_helper(IsConcrete, IsComposite, IsNotAddress, CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
 
         Model m;
@@ -629,9 +622,6 @@ class Model {
     }
 
     // helpers for connect method
-    using IsMeta = std::true_type;
-    using IsConcrete = std::false_type;
-
     template <class C, class... Args>
     void connect_call_helper(IsConcrete, Args&&... args) {
         operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
@@ -648,8 +638,8 @@ class Model {
 
     template <class T, class MaybeAddress, class... Args>
     ComponentReference component(MaybeAddress address, Args... args) {
-        return component_call_helper<T>(std::is_base_of<Composite, T>(), std::is_same<Address, MaybeAddress>(), address,
-                                        args...);
+        return component_call_helper<T>(std::is_base_of<Meta, T>(), std::is_base_of<Composite, T>(),
+                                        std::is_same<Address, MaybeAddress>(), address, args...);
     }
 
     ComponentReference composite(const Address& address) { return component<Composite>(address); }
@@ -667,25 +657,6 @@ class Model {
     template <class Lambda>
     ComponentReference driver(Address address, Lambda lambda) {
         return driver_helper(address, lambda, &Lambda::operator());
-    }
-
-    template <class C, class... Args>
-    void meta_component(Address address, Args&&... args) {
-        if (address.is_composite()) {
-            get_composite(address.first()).meta_component<C>(address.rest(), std::forward<Args>(args)...);
-        } else {
-            meta_operations.emplace_back(_Type<C>(), address.first(), std::forward<Args>(args)...);
-        }
-    }
-
-    void perform_meta() {
-        for (auto& op : meta_operations) {
-            op.operation(*this);
-        }
-        meta_operations.clear();
-        for (auto& c : composites) {
-            c.second.first.perform_meta();
-        }
     }
 
     /*
@@ -841,7 +812,6 @@ class Assembly : public Component {
     friend Composite;
 
     void build() {
-        internal_model.perform_meta();
         for (auto& c : internal_model.components) {
             instances.emplace(c.first, std::unique_ptr<Component>(c.second._constructor()));
             std::stringstream ss;

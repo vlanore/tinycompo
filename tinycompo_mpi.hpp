@@ -187,12 +187,14 @@ struct P2P {
   ~*~ MPI Communicator ~*~
 ===========================================================================================================================*/
 template <class C>
-struct CondCompo {
+struct CondCompo : Meta {
     template <class... Args>
-    static void connect(Model& model, const std::string& name, ProcessSet process, Args&&... args) {
+    static ComponentReference connect(Model& model, const Address& name, ProcessSet process, Args&&... args) {
         auto core = MPIContext::core();
         if (process.contains(core.rank)) {
-            model.component<C>(name, std::forward<Args>(args)...);
+            return model.component<C>(name, std::forward<Args>(args)...);
+        } else {
+            return ComponentReference(model, "invalid");
         }
     }
 };
@@ -253,7 +255,7 @@ class MPIModel {
 
     template <class T, class... Args>
     void component(Address address, ProcessSet process, Args&&... args) {
-        model.meta_component<CondCompo<T>>(address, process, std::forward<Args>(args)...);
+        model.component<CondCompo<T>>(address, process, std::forward<Args>(args)...);
     }
 
     template <class T, class... Args>
