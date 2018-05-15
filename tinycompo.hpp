@@ -943,9 +943,11 @@ class Assembly : public Component {
     std::vector<Type*> get_all() {
         std::vector<Type*> result;
         for (auto&& instance : instances) {
-            auto ptr = dynamic_cast<Type*>(instance.second.get());
-            if (ptr != NULL) {
-                result.push_back(ptr);
+            if (is_composite(instance.first)) {
+                auto sub_result = at<Assembly>(instance.first).get_all<Type>();
+                result.insert(result.end(), sub_result.begin(), sub_result.end());
+            } else if (derives_from<Type>(instance.first)) {
+                result.push_back(at<Type>(instance.first));
             }
         }
         return result;
