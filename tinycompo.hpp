@@ -639,7 +639,7 @@ class Model {
 
     template <class C, class... Args>
     void connect_call_helper(IsMeta, Args&&... args) {
-        meta_operations.emplace_back(_Type<C>(), std::forward<Args>(args)...);
+        C::connect(*this, std::forward<Args>(args)...);
     }
 
     /*
