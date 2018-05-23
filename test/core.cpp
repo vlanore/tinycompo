@@ -668,6 +668,24 @@ TEST_CASE("Assembly: get_all") {
                      [](int acc, IntInterface* ptr) { return acc + ptr->get(); }) == 88);
 }
 
+TEST_CASE("Assembly: get_all in composites") {
+    Model m;
+    m.component<MyInt>("c0", 13);
+    m.composite("a");
+    m.component<MyInt>(Address("a", "c1"), 15);
+    m.composite("b");
+    m.component<MyInt>(Address("b", "c2"), 17);
+    m.composite("c");
+    m.component<MyInt>(Address("c", "c3"), 19);
+
+    Assembly a(m);
+    std::vector<Address> expected1{"c1", "c3"}, expected2{"c2"};
+    auto result1 = a.get_all<MyInt>(std::set<Address>{"a", "c"}).names();
+    auto result2 = a.get_all<MyInt>("b").names();
+    CHECK(result1 == expected1);
+    CHECK(result2 == expected2);
+}
+
 /*
 =============================================================================================================================
   ~*~ Composite ~*~
@@ -858,11 +876,12 @@ TEST_CASE("Driver connect short syntax") {
   ~*~ Component sets ~*~
 ===========================================================================================================================*/
 TEST_CASE("Basic InstanceSet test.") {
-    InstanceSet<MyInt> cs;
+    InstanceSet<MyInt> cs, cs2;
     MyInt a(13);
     MyInt b(17);
     MyInt c(19);
-    cs.push_back("a", &a);
+    cs2.push_back("a", &a);
+    cs.combine(cs2);
     cs.push_back(Address("b"), &b);
     cs.push_back(Address("composite", "c"), &c);
     vector<string> observed_names, expected_names{"a", "b", "composite__c"};

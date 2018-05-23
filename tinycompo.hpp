@@ -845,6 +845,11 @@ class InstanceSet {
         _pointers.push_back(pointer);
     }
 
+    void combine(const InstanceSet<C>& other) {
+        _names.insert(_names.end(), other._names.begin(), other._names.end());
+        _pointers.insert(_pointers.end(), other._pointers.begin(), other._pointers.end());
+    }
+
     const std::vector<Address>& names() const { return _names; }
     const std::vector<C*>& pointers() const { return _pointers; }
 };
@@ -973,7 +978,7 @@ class Assembly : public Component {
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
     }
 
-    template <class T>
+    template <class T = Component>
     InstanceSet<T> get_all() {
         InstanceSet<T> result;
         auto all_addresses = internal_model.all_addresses();
@@ -984,6 +989,20 @@ class Assembly : public Component {
             }
         }
         return result;
+    }
+
+    template <class T>
+    InstanceSet<T> get_all(std::set<Address> composites) {
+        InstanceSet<T> result;
+        for (auto&& composite : composites) {
+            result.combine(at<Assembly>(composite).get_all<T>());
+        }
+        return result;
+    }
+
+    template <class T>
+    InstanceSet<T> get_all(const Address& composite) {
+        return get_all<T>(std::set<Address>{composite});
     }
 };
 
