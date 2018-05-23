@@ -610,7 +610,7 @@ class Model {
         return ComponentReference(*this, Address(key));
     }
 
-    template <class T = Composite, class CallKey, class... Args>
+    template <class T, class CallKey, class... Args>
     ComponentReference component_call_helper(IsConcrete, IsComposite, IsNotAddress, CallKey key, Args&&... args) {
         std::string key_name = key_to_string(key);
 
@@ -799,7 +799,7 @@ class Model {
             result.emplace_back(Address(parent, c.first));
         }
         for (auto&& c : composites) {
-            auto recursive_result = all_addresses(c.first);
+            auto recursive_result = c.second.first.all_addresses(Address(parent, c.first));
             result.insert(result.end(), recursive_result.begin(), recursive_result.end());
         }
         return result;
