@@ -677,13 +677,17 @@ TEST_CASE("Assembly: get_all in composites") {
     m.component<MyInt>(Address("b", "c2"), 17);
     m.composite("c");
     m.component<MyInt>(Address("c", "c3"), 19);
+    m.component<MyInt>(Address("c", "c4"), 31);
 
     Assembly a(m);
-    std::vector<Address> expected1{"c1", "c3"}, expected2{"c2"};
+    std::vector<Address> expected1{Address("a", "c1"), Address("c", "c3"), Address("c", "c4")}, expected2{"c2"},
+        expected3{"c3", "c4"};
     auto result1 = a.get_all<MyInt>(std::set<Address>{"a", "c"}).names();
     auto result2 = a.get_all<MyInt>("b").names();
+    auto result3 = a.get_all<MyInt>(std::set<Address>{"c"}, "c").names();
     CHECK(result1 == expected1);
     CHECK(result2 == expected2);
+    CHECK(result3 == expected3);
 }
 
 /*

@@ -31,6 +31,7 @@ its terms.*/
 #endif
 
 #include <string.h>
+#include <cassert>
 #include <exception>
 #include <fstream>
 #include <functional>
@@ -284,6 +285,8 @@ class Address {
     }
 
   public:
+    Address() {}
+
     Address(const ComponentReference&);
 
     Address(const char* input) : Address(std::string(input)) {}
@@ -311,9 +314,9 @@ class Address {
         }
     }
 
-    template <class... Keys>
-    Address(Keys... keys) {  // not explicit (how dangerous is this, really?)
-        register_keys(std::forward<Keys>(keys)...);
+    template <class Key, class... Keys>
+    Address(Key key, Keys... keys) {  // not explicit (how dangerous is this, really?)
+        register_keys(key, std::forward<Keys>(keys)...);
     }
 
     explicit Address(const std::vector<std::string>& v) : keys(v) {}
@@ -979,30 +982,42 @@ class Assembly : public Component {
     }
 
     template <class T = Component>
-    InstanceSet<T> get_all() {
+    InstanceSet<T> get_all_helper(const Address parent = Address()) {
         InstanceSet<T> result;
         auto all_addresses = internal_model.all_addresses();
         for (auto&& address : all_addresses) {
             auto ptr = dynamic_cast<T*>(&at<Component>(address));
             if (ptr != nullptr) {
-                result.push_back(address, ptr);
+                result.push_back(Address(parent, address), ptr);
             }
         }
         return result;
     }
 
+    template <class T = Component>
+    InstanceSet<T> get_all() {
+        return get_all_helper<T>(Address());
+    }
+
     template <class T>
-    InstanceSet<T> get_all(std::set<Address> composites) {
+    InstanceSet<T> get_all(std::set<Address> composites, const Address& point_of_view = Address()) {
         InstanceSet<T> result;
         for (auto&& composite : composites) {
-            result.combine(at<Assembly>(composite).get_all<T>());
+            result.combine(get_all<T>(composite, point_of_view));
         }
         return result;
     }
 
     template <class T>
-    InstanceSet<T> get_all(const Address& composite) {
-        return get_all<T>(std::set<Address>{composite});
+    InstanceSet<T> get_all(const Address& composite, const Address& point_of_view = Address("invalid")) {
+        Address pov = (point_of_view == Address("invalid")) ? composite : point_of_view;
+        if (composite == Address()) {
+            return get_all_helper<T>();
+        } else if (pov == Address()) {
+            return at<Assembly>(composite).get_all_helper<T>(composite);
+        } else {
+            return at<Assembly>(pov.first()).get_all<T>(composite.rest(), pov.rest());
+        }
     }
 };
 
