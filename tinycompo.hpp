@@ -571,14 +571,6 @@ class Model {
         return component<_Driver<Refs...>>(address, lambda);
     }
 
-  public:
-    Model() = default;  // when creating model from scratch
-
-    template <class T, class... Args>
-    Model(_Type<T>, Args... args) {  // when instantiating from composite content function
-        T::contents(*this, std::forward<Args>(args)...);
-    }
-
     // helpers to select right component method
     using IsComponent = std::false_type;
     using IsComposite = std::true_type;
@@ -634,6 +626,26 @@ class Model {
         C::connect(*this, std::forward<Args>(args)...);
     }
 
+    // helpers for introspection things
+    std::vector<Address> all_addresses_helper(Address parent) {
+        std::vector<Address> result;
+        for (auto&& c : components) {
+            result.emplace_back(Address(parent, c.first));
+        }
+        for (auto&& c : composites) {
+            auto recursive_result = c.second.first.all_addresses_helper(Address(parent, c.first));
+            result.insert(result.end(), recursive_result.begin(), recursive_result.end());
+        }
+        return result;
+    }
+
+  public:
+    Model() = default;  // when creating model from scratch
+
+    template <class T, class... Args>
+    Model(_Type<T>, Args... args) {  // when instantiating from composite content function
+        T::contents(*this, std::forward<Args>(args)...);
+    }
     /*
     =========================================================================================================================
     ~*~ Declaration functions ~*~  */
@@ -787,19 +799,7 @@ class Model {
             result.emplace_back(c.first);
         }
         for (auto&& c : composites) {
-            auto recursive_result = c.second.first.all_addresses(c.first);
-            result.insert(result.end(), recursive_result.begin(), recursive_result.end());
-        }
-        return result;
-    }
-
-    std::vector<Address> all_addresses(Address parent) {
-        std::vector<Address> result;
-        for (auto&& c : components) {
-            result.emplace_back(Address(parent, c.first));
-        }
-        for (auto&& c : composites) {
-            auto recursive_result = c.second.first.all_addresses(Address(parent, c.first));
+            auto recursive_result = c.second.first.all_addresses_helper(c.first);
             result.insert(result.end(), recursive_result.begin(), recursive_result.end());
         }
         return result;
