@@ -973,15 +973,14 @@ class Assembly : public Component {
             std::unique_ptr<_AbstractPort>(static_cast<_AbstractPort*>(new _ProvidePort<Interface>(*this, address)));
     }
 
-    template <class Type>
-    std::vector<Type*> get_all() {
-        std::vector<Type*> result;
-        for (auto&& instance : instances) {
-            if (is_composite(instance.first)) {
-                auto sub_result = at<Assembly>(instance.first).get_all<Type>();
-                result.insert(result.end(), sub_result.begin(), sub_result.end());
-            } else if (derives_from<Type>(instance.first)) {
-                result.push_back(&at<Type>(instance.first));
+    template <class T>
+    InstanceSet<T> get_all() {
+        InstanceSet<T> result;
+        auto all_addresses = internal_model.all_addresses();
+        for (auto&& address : all_addresses) {
+            auto ptr = dynamic_cast<T*>(&at<Component>(address));
+            if (ptr != nullptr) {
+                result.push_back(address, ptr);
             }
         }
         return result;

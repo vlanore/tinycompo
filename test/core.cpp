@@ -662,8 +662,9 @@ TEST_CASE("Assembly: get_all") {
     Assembly a(m);
     auto all_myint = a.get_all<MyInt>();
     auto all_intinterface = a.get_all<IntInterface>();
-    CHECK(accumulate(all_myint.begin(), all_myint.end(), 0, [](int acc, MyInt* ptr) { return acc + ptr->i; }) == 62);
-    CHECK(accumulate(all_intinterface.begin(), all_intinterface.end(), 0,
+    CHECK(accumulate(all_myint.pointers().begin(), all_myint.pointers().end(), 0,
+                     [](int acc, MyInt* ptr) { return acc + ptr->i; }) == 62);
+    CHECK(accumulate(all_intinterface.pointers().begin(), all_intinterface.pointers().end(), 0,
                      [](int acc, IntInterface* ptr) { return acc + ptr->get(); }) == 88);
 }
 
