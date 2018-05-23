@@ -399,8 +399,9 @@ TEST_CASE("Model test: all_addresses") {
     model.composite(Address("b", "c"));
     model.component<MyInt>(Address("b", "c", "d"), 19);
 
-    vector<Address> expected_result{"a", Address("b", "c", "d")};
+    vector<Address> expected_result{"a", Address("b", "c", "d")}, expected_result2{Address("c", "d")};
     CHECK(model.all_addresses() == expected_result);
+    CHECK(model.all_addresses("b") == expected_result2);
 }
 
 /*

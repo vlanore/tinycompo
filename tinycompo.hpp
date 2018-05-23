@@ -805,6 +805,8 @@ class Model {
         return result;
     }
 
+    std::vector<Address> all_addresses(const Address& address) { return get_composite(address).all_addresses(); }
+
     std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
                                                  const std::string& name = "") const {
         std::string prefix = name + (name == "" ? "" : "__");
