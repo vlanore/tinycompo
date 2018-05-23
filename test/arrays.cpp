@@ -97,7 +97,7 @@ TEST_CASE("MultiUse tests.") {
     model.component<IntReducer>("reducer");
     Assembly assembly(model);
     std::stringstream ss;
-    assembly.print_all(ss);
+    assembly.print(ss);
     CHECK(ss.str() == "intArray: Composite {\n0: MyInt\n1: MyInt\n2: MyInt\n}\nreducer: IntReducer\n");
     MultiUse<IntInterface>::_connect(assembly, PortAddress("ptr", "reducer"), Address("intArray"));
     auto& refElement1 = assembly.at<MyInt>(Address("intArray", 1));

@@ -907,7 +907,7 @@ class Assembly : public Component {
     std::string debug() const override {
         std::stringstream ss;
         ss << "Composite {\n";
-        print_all(ss);
+        print(ss);
         ss << "}";
         return ss.str();
     }
@@ -950,7 +950,7 @@ class Assembly : public Component {
 
     const Model& get_model() const { return internal_model; }
 
-    void print_all(std::ostream& os = std::cout) const {
+    void print(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
             os << i.first << ": " << i.second->debug() << std::endl;
         }

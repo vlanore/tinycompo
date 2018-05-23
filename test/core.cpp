@@ -465,7 +465,7 @@ TEST_CASE("Assembly test: instances and call.") {
     CHECK(ref2.i == 17);
     CHECK(ref2.j == 19);
     stringstream ss;
-    b.print_all(ss);
+    b.print(ss);
     CHECK(ss.str() == "Compo1: MyCompo\nCompo2: MyCompo\n");
 }
 
@@ -476,7 +476,7 @@ TEST_CASE("Assembly test: instantiating composites.") {
     Assembly assembly(model);
 
     stringstream ss;
-    assembly.print_all(ss);
+    assembly.print(ss);
     CHECK(ss.str() == "composite: Composite {\n0: MyInt\n}\n");
     auto& refComposite = assembly.at<Assembly>("composite");
     CHECK(refComposite.size() == 1);
@@ -765,7 +765,7 @@ TEST_CASE("Use/provide test.") {
     model.component<MyIntProxy>("Compo2");
     Assembly assembly(model);
     stringstream ss;
-    assembly.print_all(ss);
+    assembly.print(ss);
     CHECK(ss.str() == "Compo1: MyInt\nCompo2: MyIntProxy\n");
     Use<IntInterface>::_connect(assembly, PortAddress("ptr", "Compo2"), Address("Compo1"));
     CHECK(assembly.at<MyIntProxy>("Compo2").get() == 8);
