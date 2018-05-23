@@ -827,3 +827,27 @@ TEST_CASE("Driver connect short syntax") {
     CHECK(assembly.at<MyInt>("c1").get() == 17);
     CHECK(assembly.at<MyInt>("c2").get() == 37);
 }
+
+/*
+=============================================================================================================================
+  ~*~ Component sets ~*~
+===========================================================================================================================*/
+TEST_CASE("Basic ComponentSet test.") {
+    ComponentSet<MyInt> cs;
+    MyInt a(13);
+    MyInt b(17);
+    MyInt c(19);
+    cs.push_back("a", &a);
+    cs.push_back(Address("b"), &b);
+    cs.push_back(Address("composite", "c"), &c);
+    vector<string> observed_names, expected_names{"a", "b", "composite__c"};
+    vector<int> observed_ints, expected_ints{13, 17, 19};
+    for (auto&& name : cs.names()) {
+        observed_names.push_back(name.to_string());
+    }
+    for (auto&& ptr : cs.pointers()) {
+        observed_ints.push_back(ptr->get());
+    }
+    CHECK(observed_names == expected_names);
+    CHECK(observed_ints == expected_ints);
+}

@@ -803,6 +803,26 @@ class Model {
 
 /*
 =============================================================================================================================
+  ~*~ ComponentSet ~*~
+  An object rezpresenting a set of instantiated components. To be obtained via Assembly.
+===========================================================================================================================*/
+template <class C>
+class ComponentSet {
+    std::vector<Address> _names;
+    std::vector<C*> _pointers;
+
+  public:
+    void push_back(Address address, C* pointer) {
+        _names.push_back(address);
+        _pointers.push_back(pointer);
+    }
+
+    const std::vector<Address>& names() const { return _names; }
+    const std::vector<C*>& pointers() const { return _pointers; }
+};
+
+/*
+=============================================================================================================================
   ~*~ Assembly class ~*~
 ===========================================================================================================================*/
 class Assembly : public Component {
