@@ -348,6 +348,8 @@ class Address {
     bool operator<(const Address& other_address) const {
         return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
     }
+
+    bool operator==(const Address& other_address) const { return keys == other_address.keys; }
 };
 
 struct PortAddress {
@@ -779,6 +781,30 @@ class Model {
         }
     }
 
+    std::vector<Address> all_addresses() {
+        std::vector<Address> result;
+        for (auto&& c : components) {
+            result.emplace_back(c.first);
+        }
+        for (auto&& c : composites) {
+            auto recursive_result = c.second.first.all_addresses(c.first);
+            result.insert(result.end(), recursive_result.begin(), recursive_result.end());
+        }
+        return result;
+    }
+
+    std::vector<Address> all_addresses(Address parent) {
+        std::vector<Address> result;
+        for (auto&& c : components) {
+            result.emplace_back(Address(parent, c.first));
+        }
+        for (auto&& c : composites) {
+            auto recursive_result = all_addresses(c.first);
+            result.insert(result.end(), recursive_result.begin(), recursive_result.end());
+        }
+        return result;
+    }
+
     std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
                                                  const std::string& name = "") const {
         std::string prefix = name + (name == "" ? "" : "__");
@@ -803,11 +829,11 @@ class Model {
 
 /*
 =============================================================================================================================
-  ~*~ ComponentSet ~*~
+  ~*~ InstanceSet ~*~
   An object rezpresenting a set of instantiated components. To be obtained via Assembly.
 ===========================================================================================================================*/
 template <class C>
-class ComponentSet {
+class InstanceSet {
     std::vector<Address> _names;
     std::vector<C*> _pointers;
 

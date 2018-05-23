@@ -165,6 +165,18 @@ TEST_CASE("Address: builder from string") {
     CHECK(a.rest().rest().first() == "1");
 }
 
+TEST_CASE("Address: ==  operator") {
+    Address abc("a", "b", "c");
+    Address abb("a", "b", "b");
+    Address ab("a", "b");
+    Address abc2("a", "b", "c");
+
+    CHECK(not(abc == abb));
+    CHECK(not(abc == ab));
+    CHECK(abc == abc);
+    CHECK(abc == abc2);
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~
@@ -378,6 +390,16 @@ TEST_CASE("Model test: exists") {
     CHECK(model.exists("youplaboum") == false);
     CHECK(model.exists("b") == true);
     CHECK(model.exists(Address("b", "c")) == true);
+}
+
+TEST_CASE("Model test: all_addresses") {
+    Model model;
+    model.component<MyInt>("a", 17);
+    model.composite("b");
+    model.component<MyInt>(Address("b", "c"), 19);
+
+    vector<Address> expected_result{"a", Address("b", "c")};
+    CHECK(model.all_addresses() == expected_result);
 }
 
 /*
@@ -832,8 +854,8 @@ TEST_CASE("Driver connect short syntax") {
 =============================================================================================================================
   ~*~ Component sets ~*~
 ===========================================================================================================================*/
-TEST_CASE("Basic ComponentSet test.") {
-    ComponentSet<MyInt> cs;
+TEST_CASE("Basic InstanceSet test.") {
+    InstanceSet<MyInt> cs;
     MyInt a(13);
     MyInt b(17);
     MyInt c(19);
