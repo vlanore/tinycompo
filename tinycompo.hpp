@@ -955,7 +955,7 @@ class Assembly : public Component {
         return *compo_ref.get<T>(port_address.prop);
     }
 
-    const Model& get_model() const { return internal_model; }
+    Model& get_model() { return internal_model; }
 
     void print(std::ostream& os = std::cout) const {
         for (auto& i : instances) {
