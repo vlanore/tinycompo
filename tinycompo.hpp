@@ -902,8 +902,12 @@ class Assembly : public Component {
     }
 
     void instantiate_from(Model model) {
-        instances.clear();
         internal_model = model;
+        instantiate();
+    }
+
+    void instantiate() {
+        instances.clear();
         build();
     }
 
