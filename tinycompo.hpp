@@ -1004,10 +1004,14 @@ class Assembly : public Component {
     }
 
     template <class T>
-    InstanceSet<T> get_all(std::set<Address> composites, const Address& point_of_view = Address()) {
+    InstanceSet<T> get_all(std::set<Address> composites_and_components, const Address& point_of_view = Address()) {
         InstanceSet<T> result;
-        for (auto&& composite : composites) {
-            result.combine(get_all<T>(composite, point_of_view));
+        for (auto&& compo : composites_and_components) {
+            if (is_composite(compo)) {
+                result.combine(get_all<T>(compo, point_of_view));
+            } else {
+                result.push_back(compo, &at<T>(compo));
+            }
         }
         return result;
     }
