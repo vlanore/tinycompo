@@ -630,7 +630,7 @@ class Model {
     }
 
     // helpers for introspection things
-    std::vector<Address> all_addresses_helper(Address parent) {
+    std::vector<Address> all_addresses_helper(Address parent) const {
         std::vector<Address> result;
         for (auto&& c : components) {
             result.emplace_back(Address(parent, c.first));
@@ -810,7 +810,7 @@ class Model {
         }
     }
 
-    std::vector<Address> all_addresses() {
+    std::vector<Address> all_addresses() const {
         std::vector<Address> result;
         for (auto&& c : components) {
             result.emplace_back(c.first);
@@ -822,7 +822,7 @@ class Model {
         return result;
     }
 
-    std::vector<Address> all_addresses(const Address& address) { return get_composite(address).all_addresses(); }
+    std::vector<Address> all_addresses(const Address& address) const { return get_composite(address).all_addresses(); }
 
     std::vector<std::string> all_component_names(int depth = 0, bool include_composites = false,
                                                  const std::string& name = "") const {
