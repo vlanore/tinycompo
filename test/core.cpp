@@ -379,6 +379,20 @@ TEST_CASE("Model test: is_composite") {
     CHECK(model.is_composite(Address("b", "c")) == false);
 }
 
+TEST_CASE("Model test: has_type") {
+    Model model;
+    model.component<MyInt>("a", 17);
+    model.composite("b");
+    model.component<MyIntProxy>(Address("b", "c"));
+
+    CHECK(model.has_type<MyInt>("a") == true);
+    CHECK(model.has_type<MyIntProxy>("a") == false);
+    CHECK(model.has_type<MyInt>("b") == false);
+    CHECK(model.has_type<MyIntProxy>("b") == false);
+    CHECK(model.has_type<MyInt>(Address("b", "c")) == false);
+    CHECK(model.has_type<MyIntProxy>(Address("b", "c")) == true);
+}
+
 TEST_CASE("Model test: exists") {
     Model model;
     model.component<MyInt>("a", 17);

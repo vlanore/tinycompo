@@ -710,6 +710,20 @@ class Model {
         }
     }
 
+    template <class T>
+    bool has_type(const Address& address) const {
+        if (address.is_composite()) {  // address is composite (several names)
+            return get_composite(address.first()).has_type<T>(address.rest());
+        } else {
+            if (is_composite(address)) {  // non-composite address corresponds to a composite
+                return false;             // composite don't have types
+            } else {
+                auto tmp_ptr = components.at(address.to_string())._constructor();
+                return dynamic_cast<T*>(tmp_ptr.get()) != nullptr;
+            }
+        }
+    }
+
     bool is_composite(const Address& address) const {
         if (address.is_composite()) {
             return get_composite(address.first()).is_composite(address.rest());
