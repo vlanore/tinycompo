@@ -917,7 +917,7 @@ class Introspector {
 /*
 =============================================================================================================================
   ~*~ InstanceSet ~*~
-  An object rezpresenting a set of instantiated components. To be obtained via Assembly.
+  An object representing a set of instantiated components. To be obtained via Assembly.
 ===========================================================================================================================*/
 template <class C>
 class InstanceSet {
