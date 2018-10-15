@@ -23,8 +23,6 @@ the same conditions as regards security.
 The fact that you are presently reading this means that you have had knowledge of the CeCILL-B license and that you accept
 its terms.*/
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-
 #include "test_utils.hpp"
 using namespace std;
 
