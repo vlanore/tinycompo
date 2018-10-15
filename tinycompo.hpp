@@ -859,13 +859,18 @@ class Introspector {
     Model& m;
 
     template <class T>
-    T accumulate_from_composites(T init, std::function<void(T&, const Introspector&)> f) const {
+    T acc_composites(T init, std::function<void(T&, Introspector&)> f) const {
         T result = init;
+        acc_composites_ref(result, f);
+        return result;
+    }
+
+    template <class T>
+    void acc_composites_ref(T& acc, std::function<void(T&, Introspector&)> f) const {
         for (auto composite : m.composites) {
             Introspector i(composite.second.first);
-            f(result, i);
+            f(acc, i);
         }
-        return result;
     }
 
   public:
@@ -876,16 +881,15 @@ class Introspector {
     ~*~ Size functions ~*~  */
     size_t nb_components() const { return m.components.size() + m.composites.size(); }
 
-    size_t nb_operations() const { return m.operations.size(); }
-
     size_t deep_nb_components() const {
-        return accumulate_from_composites<size_t>(m.components.size(),
-                                                  [](size_t& acc, const Introspector& i) { acc += i.deep_nb_components(); });
+        return acc_composites<size_t>(m.components.size(),
+                                      [](size_t& acc, Introspector& i) { acc += i.deep_nb_components(); });
     }
 
+    size_t nb_operations() const { return m.operations.size(); }
+
     size_t deep_nb_operations() const {
-        return accumulate_from_composites<size_t>(nb_operations(),
-                                                  [](size_t& acc, const Introspector& i) { acc += i.deep_nb_operations(); });
+        return acc_composites<size_t>(nb_operations(), [](size_t& acc, Introspector& i) { acc += i.deep_nb_operations(); });
     }
 
     /*
@@ -899,6 +903,18 @@ class Introspector {
         for (auto composite : m.composites) {
             result.emplace_back(composite.first);
         }
+        return result;
+    }
+
+    std::vector<Address> deep_components() const {
+        std::vector<Address> result;
+        for (auto component : m.components) {
+            result.emplace_back(component.first);
+        }
+        acc_composites_ref<std::vector<Address>>(result, [](std::vector<Address>& acc, Introspector& i) {
+            auto tmp = i.deep_components();
+            acc.insert(acc.end(), tmp.begin(), tmp.end());
+        });
         return result;
     }
 

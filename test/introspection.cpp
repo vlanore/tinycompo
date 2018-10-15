@@ -57,7 +57,7 @@ TEST_CASE("Basic introspector size test") {
 =============================================================================================================================
   ~*~ Topology ~*~
 ===========================================================================================================================*/
-TEST_CASE("Introspector non-deep component test") {
+TEST_CASE("Introspector components and connections lists") {
     Model m;
     m.component<MyIntProxy>("a");
     m.composite("b");
@@ -71,6 +71,8 @@ TEST_CASE("Introspector non-deep component test") {
     Introspector i(m);
     std::vector<Address> expected_components{"a", "b"};
     CHECK(i.components() == expected_components);
+    std::vector<Address> expected_deep_components{"a", "c", "d"};
+    CHECK(i.deep_components() == expected_deep_components);
     std::vector<std::pair<PortAddress, Address>> expected_edges{{PortAddress("ptr", "a"), {"b", "c"}}};
     CHECK(i.oriented_binary_operations() == expected_edges);
 }
