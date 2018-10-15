@@ -1,4 +1,4 @@
-TEST_FILES = test/core.cpp test/arrays.cpp
+TEST_FILES = test/core.cpp test/arrays.cpp test/introspection.cpp
 MPI_TEST_FILES = test/mpi_context.cpp
 EXAMPLE_FILES = $(shell ls -d -1 $$PWD/example/*.*pp)
 FLAGS = --std=gnu++11 -Wall -Wextra -Wfatal-errors

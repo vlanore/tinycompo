@@ -362,6 +362,10 @@ struct PortAddress {
     template <class... Keys>
     PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(std::forward<Keys>(keys)...) {}
     PortAddress(const std::string& prop, const Address& address) : prop(prop), address(address) {}
+
+    bool operator==(const PortAddress& other_address) const {
+        return prop == other_address.prop and address == other_address.address;
+    }
 };
 
 /*
@@ -552,6 +556,7 @@ class _Driver : public Component, public _AbstractDriver {
 ===========================================================================================================================*/
 class Model {
     friend class Assembly;  // to access internal data
+    friend class Introspector;
 
     // state of model
     std::map<std::string, _ComponentBuilder> components;
@@ -840,6 +845,48 @@ class Model {
             for (auto& c : composites) {  // names from composites until a certain depth
                 auto subresult = c.second.first.all_component_names(depth - 1, include_composites, prefix + c.first);
                 result.insert(result.end(), subresult.begin(), subresult.end());
+            }
+        }
+        return result;
+    }
+};
+
+/*
+=============================================================================================================================
+  ~*~ Introspector ~*~
+===========================================================================================================================*/
+class Introspector {
+    Model& m;
+
+  public:
+    Introspector(Model& m) : m(m) {}
+
+    /*
+    =========================================================================================================================
+    ~*~ Size functions ~*~  */
+    size_t nb_components() const { return m.components.size() + m.composites.size(); }
+    size_t nb_operations() const { return m.operations.size(); }
+
+    /*
+    =========================================================================================================================
+    ~*~ Size functions ~*~  */
+    std::vector<Address> components() const {
+        std::vector<Address> result;
+        for (auto component : m.components) {
+            result.emplace_back(component.first);
+        }
+        for (auto composite : m.composites) {
+            result.emplace_back(composite.first);
+        }
+        return result;
+    }
+
+    std::vector<std::pair<PortAddress, Address>> oriented_binary_operations() const {
+        std::vector<std::pair<PortAddress, Address>> result;
+        for (auto operation : m.operations) {
+            auto& n = operation.neighbors;
+            if (n.size() == 2 and n.at(0).port != "" and n.at(1).port == "") {
+                result.emplace_back(PortAddress(n.at(0).port, n.at(0).address), Address(n.at(1).address));
             }
         }
         return result;

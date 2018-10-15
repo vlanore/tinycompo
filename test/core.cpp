@@ -177,6 +177,18 @@ TEST_CASE("Address: ==  operator") {
     CHECK(abc == abc2);
 }
 
+TEST_CASE("PortAddress == operator") {
+    PortAddress ra("ptr", "a");
+    PortAddress rab("ptr", "a", "b");
+    PortAddress ta("ptt", "a");
+    PortAddress rab2("ptr", "a", "b");
+
+    CHECK(not(ra == rab));
+    CHECK(not(ra == ta));
+    CHECK(rab == rab);
+    CHECK(rab == rab2);
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~
