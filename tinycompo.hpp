@@ -858,6 +858,16 @@ class Model {
 class Introspector {
     Model& m;
 
+    template <class T>
+    T accumulate_from_composites(T init, std::function<void(T&, const Introspector&)> f) const {
+        T result = init;
+        for (auto composite : m.composites) {
+            Introspector i(composite.second.first);
+            f(result, i);
+        }
+        return result;
+    }
+
   public:
     Introspector(Model& m) : m(m) {}
 
@@ -865,22 +875,17 @@ class Introspector {
     =========================================================================================================================
     ~*~ Size functions ~*~  */
     size_t nb_components() const { return m.components.size() + m.composites.size(); }
+
     size_t nb_operations() const { return m.operations.size(); }
+
     size_t deep_nb_components() const {
-        size_t result = m.components.size();
-        for (auto composite : m.composites) {
-            Introspector i(composite.second.first);
-            result += i.deep_nb_components();
-        }
-        return result;
+        return accumulate_from_composites<size_t>(m.components.size(),
+                                                  [](size_t& acc, const Introspector& i) { acc += i.deep_nb_components(); });
     }
+
     size_t deep_nb_operations() const {
-        size_t result = nb_operations();
-        for (auto composite : m.composites) {
-            Introspector i(composite.second.first);
-            result += i.deep_nb_operations();
-        }
-        return result;
+        return accumulate_from_composites<size_t>(nb_operations(),
+                                                  [](size_t& acc, const Introspector& i) { acc += i.deep_nb_operations(); });
     }
 
     /*

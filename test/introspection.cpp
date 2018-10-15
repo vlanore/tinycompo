@@ -41,11 +41,16 @@ TEST_CASE("Basic introspector size test") {
     m.connect<Set<int>>(PortAddress("set", "b", "d"), 19);
     m2.connect<Use<IntInterface>>(PortAddress("ptr", "c"), "d");
 
+    m2.composite("e");
+    auto& m3 = m2.get_composite("e");
+    m3.component<MyInt>("f");
+    m3.component<MyIntProxy>("g").connect<Use<IntInterface>>("ptr", "f");
+
     Introspector i(m);
     CHECK(i.nb_components() == 2);
     CHECK(i.nb_operations() == 2);
-    CHECK(i.deep_nb_components() == 3);
-    CHECK(i.deep_nb_operations() == 3);
+    CHECK(i.deep_nb_components() == 5);
+    CHECK(i.deep_nb_operations() == 4);
 }
 
 /*
