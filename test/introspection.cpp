@@ -44,6 +44,8 @@ TEST_CASE("Basic introspector size test") {
     Introspector i(m);
     CHECK(i.nb_components() == 2);
     CHECK(i.nb_operations() == 2);
+    CHECK(i.deep_nb_components() == 3);
+    CHECK(i.deep_nb_operations() == 3);
 }
 
 /*

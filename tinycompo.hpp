@@ -866,10 +866,26 @@ class Introspector {
     ~*~ Size functions ~*~  */
     size_t nb_components() const { return m.components.size() + m.composites.size(); }
     size_t nb_operations() const { return m.operations.size(); }
+    size_t deep_nb_components() const {
+        size_t result = m.components.size();
+        for (auto composite : m.composites) {
+            Introspector i(composite.second.first);
+            result += i.deep_nb_components();
+        }
+        return result;
+    }
+    size_t deep_nb_operations() const {
+        size_t result = nb_operations();
+        for (auto composite : m.composites) {
+            Introspector i(composite.second.first);
+            result += i.deep_nb_operations();
+        }
+        return result;
+    }
 
     /*
     =========================================================================================================================
-    ~*~ Size functions ~*~  */
+    ~*~ Topology-related functions ~*~  */
     std::vector<Address> components() const {
         std::vector<Address> result;
         for (auto component : m.components) {
