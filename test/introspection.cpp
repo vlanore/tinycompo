@@ -71,8 +71,12 @@ TEST_CASE("Introspector components and connections lists") {
     Introspector i(m);
     std::vector<Address> expected_components{"a", "b"};
     CHECK(i.components() == expected_components);
-    std::vector<Address> expected_deep_components{"a", "c", "d"};
+    std::vector<Address> expected_deep_components{"a", Address("b", "c"), Address("b", "d")};
     CHECK(i.deep_components() == expected_deep_components);
-    std::vector<std::pair<PortAddress, Address>> expected_edges{{PortAddress("ptr", "a"), {"b", "c"}}};
-    CHECK(i.oriented_binary_operations() == expected_edges);
+
+    using edges_t = std::vector<std::pair<PortAddress, Address>>;
+    edges_t expected_edges{{PortAddress("ptr", "a"), {"b", "c"}}};
+    CHECK(i.directed_binops() == expected_edges);
+    edges_t expected_deep_edges{{PortAddress("ptr", "a"), {"b", "c"}}, {PortAddress("ptr", "b", "c"), {"b", "d"}}};
+    CHECK(i.deep_directed_binops() == expected_deep_edges);
 }

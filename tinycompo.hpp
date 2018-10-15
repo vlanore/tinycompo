@@ -873,6 +873,14 @@ class Introspector {
         }
     }
 
+    template <class T>
+    void acc_composites_ref(T& acc, std::function<void(T&, Introspector&, Address)> f) const {
+        for (auto composite : m.composites) {
+            Introspector i(composite.second.first);
+            f(acc, i, composite.first);
+        }
+    }
+
   public:
     Introspector(Model& m) : m(m) {}
 
@@ -906,26 +914,38 @@ class Introspector {
         return result;
     }
 
-    std::vector<Address> deep_components() const {
+    std::vector<Address> deep_components(Address prefix = Address()) const {
         std::vector<Address> result;
         for (auto component : m.components) {
-            result.emplace_back(component.first);
+            result.emplace_back(prefix, component.first);
         }
-        acc_composites_ref<std::vector<Address>>(result, [](std::vector<Address>& acc, Introspector& i) {
-            auto tmp = i.deep_components();
+        acc_composites_ref<std::vector<Address>>(result, [](std::vector<Address>& acc, Introspector& i, Address context) {
+            auto tmp = i.deep_components(context);
             acc.insert(acc.end(), tmp.begin(), tmp.end());
         });
         return result;
     }
 
-    std::vector<std::pair<PortAddress, Address>> oriented_binary_operations() const {
+    std::vector<std::pair<PortAddress, Address>> directed_binops(Address prefix = Address()) const {
         std::vector<std::pair<PortAddress, Address>> result;
         for (auto operation : m.operations) {
             auto& n = operation.neighbors;
             if (n.size() == 2 and n.at(0).port != "" and n.at(1).port == "") {
-                result.emplace_back(PortAddress(n.at(0).port, n.at(0).address), Address(n.at(1).address));
+                PortAddress origin(n.at(0).port, Address(prefix, n.at(0).address));
+                Address dest(prefix, Address(n.at(1).address));
+                result.emplace_back(origin, dest);
             }
         }
+        return result;
+    }
+
+    std::vector<std::pair<PortAddress, Address>> deep_directed_binops(Address prefix = Address()) const {
+        using t = std::vector<std::pair<PortAddress, Address>>;
+        auto result = directed_binops(prefix);
+        acc_composites_ref<t>(result, [](t& acc, Introspector& i, Address context) {
+            auto tmp = i.deep_directed_binops(context);
+            acc.insert(acc.end(), tmp.begin(), tmp.end());
+        });
         return result;
     }
 };
