@@ -342,6 +342,14 @@ class Address {
 
     bool is_composite() const { return keys.size() > 1; }
 
+    bool is_ancestor(const Address& other) const {
+        if (keys.size() == 0) {
+            return true;
+        } else {
+            return (first() == other.first()) and rest().is_ancestor(other.rest());
+        }
+    }
+
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
                                [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "__") + key; });

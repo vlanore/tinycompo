@@ -189,6 +189,25 @@ TEST_CASE("PortAddress == operator") {
     CHECK(rab == rab2);
 }
 
+TEST_CASE("Address: is_ancestor") {
+    Address e;
+    Address a("a");
+    Address abc("a", "b", "c");
+    Address abc2("a", "b", "c");
+    Address abd("a", "b", "d");
+    Address dbc("d", "b", "c");
+    Address ab("a", "b");
+
+    CHECK(e.is_ancestor(a));
+    CHECK(e.is_ancestor(abc));
+    CHECK(a.is_ancestor(abc));
+    CHECK(abc.is_ancestor(abc));
+    CHECK(abc.is_ancestor(abc2));
+    CHECK(ab.is_ancestor(abc));
+    CHECK(not ab.is_ancestor(dbc));
+    CHECK(not abc.is_ancestor(abd));
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~
