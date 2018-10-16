@@ -221,6 +221,9 @@ TEST_CASE("Address: rebase") {
 TEST_CASE("Address: error for keyrs with __") {
     TINYCOMPO_TEST_ERRORS { Address a("a", "b", "c__d"); }
     TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
+
+    TINYCOMPO_TEST_MORE_ERRORS { Address a(Address("a", "b"), "c__d"); }
+    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
 }
 
 /*

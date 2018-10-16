@@ -324,15 +324,21 @@ class Address {
         register_keys(key, std::forward<Keys>(keys)...);
     }
 
-    explicit Address(const std::vector<std::string>& v) : keys(v) {}
+    explicit Address(const std::vector<std::string>& v) {
+        for (auto key : v) {
+            register_keys(key);
+        }
+    }
 
     Address(const Address& a1, const Address& a2) : keys(a1.keys) {
-        keys.insert(keys.end(), a2.keys.begin(), a2.keys.end());
+        for (auto key : a2.keys) {
+            register_keys(key);
+        }
     }
 
     template <class Key>
     Address(const Address& address, Key key) : keys(address.keys) {
-        keys.push_back(key_to_string(key));
+        register_keys(key);
     }
 
     std::string first() const { return keys.front(); }
