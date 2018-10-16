@@ -132,6 +132,13 @@ struct MyKey {
 
 ostream& operator<<(ostream& os, MyKey const& m) { return os << m.i; }
 
+TEST_CASE("Address to stream") {
+    std::stringstream ss;
+    Address a("a", "b", "c");
+    ss << a;
+    CHECK(ss.str() == "a__b__c");
+}
+
 TEST_CASE("key_to_string test.") {
     CHECK(key_to_string(3) == "3");
     CHECK(key_to_string("yolo") == "yolo");
@@ -224,6 +231,11 @@ TEST_CASE("Address: error for keyrs with __") {
 
     TINYCOMPO_TEST_MORE_ERRORS { Address a(Address("a", "b"), "c__d"); }
     TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
+}
+
+TEST_CASE("Address: avoiding transforming addresses to keys with __") {
+    Address b("c", "d");
+    Address a(Address("a", "b"), b);
 }
 
 /*

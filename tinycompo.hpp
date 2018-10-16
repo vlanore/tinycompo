@@ -273,6 +273,8 @@ std::string key_to_string(Key key) {
 class Address {
     std::vector<std::string> keys;
 
+    void register_keys(const Address a) { keys.insert(keys.end(), a.keys.begin(), a.keys.end()); }
+
     template <class Arg>
     void register_keys(Arg arg) {
         auto strkey = key_to_string(arg);
@@ -290,11 +292,12 @@ class Address {
     }
 
   public:
-    Address() {}
-
+    Address() = default;
     Address(const ComponentReference&);
-
     Address(const char* input) : Address(std::string(input)) {}
+    Address(int input) { register_keys(input); }
+    Address(float input) { register_keys(input); }
+    Address(double input) { register_keys(input); }
 
     Address(const std::string& input) {
         std::string copy = input;
@@ -320,35 +323,18 @@ class Address {
     }
 
     template <class Key, class... Keys>
-    Address(Key key, Keys... keys) {  // not explicit (how dangerous is this, really?)
+    explicit Address(Key key, Keys... keys) {
         register_keys(key, std::forward<Keys>(keys)...);
-    }
-
-    explicit Address(const std::vector<std::string>& v) {
-        for (auto key : v) {
-            register_keys(key);
-        }
-    }
-
-    Address(const Address& a1, const Address& a2) : keys(a1.keys) {
-        for (auto key : a2.keys) {
-            register_keys(key);
-        }
-    }
-
-    template <class Key>
-    Address(const Address& address, Key key) : keys(address.keys) {
-        register_keys(key);
     }
 
     std::string first() const { return keys.front(); }
 
     Address rest() const {
-        std::vector<std::string> acc;
+        Address acc;
         for (unsigned int i = 1; i < keys.size(); i++) {
-            acc.push_back(keys.at(i));
+            acc.register_keys(keys.at(i));
         }
-        return Address(acc);
+        return acc;
     }
 
     bool is_composite() const { return keys.size() > 1; }
@@ -384,7 +370,7 @@ class Address {
         return std::lexicographical_compare(keys.begin(), keys.end(), other_address.keys.begin(), other_address.keys.end());
     }
 
-    bool operator==(const Address& other_address) const { return keys == other_address.keys; }
+    bool operator==(const Address& other_address) const { return (keys == other_address.keys); }
 };
 
 struct PortAddress {
@@ -393,12 +379,15 @@ struct PortAddress {
 
     template <class... Keys>
     PortAddress(const std::string& prop, Keys... keys) : prop(prop), address(std::forward<Keys>(keys)...) {}
-    PortAddress(const std::string& prop, const Address& address) : prop(prop), address(address) {}
 
     bool operator==(const PortAddress& other_address) const {
-        return prop == other_address.prop and address == other_address.address;
+        return (prop == other_address.prop) and (address == other_address.address);
     }
 };
+
+std::ostream& operator<<(std::ostream& os, const Address& a) { return os << a.to_string(); }
+
+std::ostream& operator<<(std::ostream& os, const PortAddress& p) { return os << p.address.to_string() << "." << p.prop; }
 
 /*
 =============================================================================================================================
@@ -960,6 +949,7 @@ class Introspector {
 
     std::vector<std::pair<PortAddress, Address>> directed_binops(Address prefix = Address()) const {
         std::vector<std::pair<PortAddress, Address>> result;
+
         for (auto operation : m.operations) {
             auto& n = operation.neighbors;
             if (n.size() == 2 and n.at(0).port != "" and n.at(1).port == "") {
