@@ -208,6 +208,17 @@ TEST_CASE("Address: is_ancestor") {
     CHECK(not abc.is_ancestor(abd));
 }
 
+TEST_CASE("Address: rebase") {
+    Address ab("a", "b");
+    Address abcd("a", "b", "c", "d");
+    Address cd("c", "d");
+
+    CHECK(abcd.rebase(ab) == cd);
+    TINYCOMPO_TEST_ERRORS {
+        cd.rebase(ab);
+    } TINYCOMPO_TEST_ERRORS_END("Trying to rebase address c__d from a__b although it is not an ancestor!\n")
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~

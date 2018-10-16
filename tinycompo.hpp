@@ -350,6 +350,19 @@ class Address {
         }
     }
 
+    Address rebase(const Address& other) const {  // if other is ancestor, remove corresponding prefix
+        if (!other.is_ancestor(*this)) {
+            throw TinycompoException("Trying to rebase address " + to_string() + " from " + other.to_string() +
+                                     " although it is not an ancestor!\n");
+        } else {
+            if (other.keys.size() == 0) {
+                return *this;
+            } else {
+                return rest().rebase(other.rest());
+            }
+        }
+    }
+
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
                                [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "__") + key; });
