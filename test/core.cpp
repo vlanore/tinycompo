@@ -214,9 +214,13 @@ TEST_CASE("Address: rebase") {
     Address cd("c", "d");
 
     CHECK(abcd.rebase(ab) == cd);
-    TINYCOMPO_TEST_ERRORS {
-        cd.rebase(ab);
-    } TINYCOMPO_TEST_ERRORS_END("Trying to rebase address c__d from a__b although it is not an ancestor!\n")
+    TINYCOMPO_TEST_ERRORS { cd.rebase(ab); }
+    TINYCOMPO_TEST_ERRORS_END("Trying to rebase address c__d from a__b although it is not an ancestor!\n")
+}
+
+TEST_CASE("Address: error for keyrs with __") {
+    TINYCOMPO_TEST_ERRORS { Address a("a", "b", "c__d"); }
+    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
 }
 
 /*

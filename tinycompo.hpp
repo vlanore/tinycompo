@@ -275,7 +275,12 @@ class Address {
 
     template <class Arg>
     void register_keys(Arg arg) {
-        keys.push_back(key_to_string(arg));
+        auto strkey = key_to_string(arg);
+        if (strkey.find("__") != std::string::npos) {
+            throw TinycompoException("Trying to add key " + strkey + " (which contains __) to address " + to_string() +
+                                     "\n");
+        }
+        keys.push_back(strkey);
     }
 
     template <class Arg, class... Args>
