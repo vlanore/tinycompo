@@ -273,16 +273,24 @@ std::string key_to_string(Key key) {
 class Address {
     std::vector<std::string> keys;
 
-    void register_keys(const Address a) { keys.insert(keys.end(), a.keys.begin(), a.keys.end()); }
+    template <class Arg>
+    void register_helper(std::true_type, Arg arg) {
+        keys.insert(keys.end(), arg.keys.begin(), arg.keys.end());
+    }
+
+    template <class Arg>
+    void register_helper(std::false_type, Arg arg) {
+        auto strkey = key_to_string(arg);
+        if (strkey.find("__") != std::string::npos) {
+            throw TinycompoException("Trying to add key " + strkey + " (which contains __) of type " +
+                                     TinycompoDebug::type<Arg>() + " to address " + to_string() + "\n");
+        }
+        keys.push_back(strkey);
+    }
 
     template <class Arg>
     void register_keys(Arg arg) {
-        auto strkey = key_to_string(arg);
-        if (strkey.find("__") != std::string::npos) {
-            throw TinycompoException("Trying to add key " + strkey + " (which contains __) to address " + to_string() +
-                                     "\n");
-        }
-        keys.push_back(strkey);
+        register_helper(std::is_same<Address, Arg>(), arg);
     }
 
     template <class Arg, class... Args>
@@ -953,7 +961,7 @@ class Introspector {
         for (auto operation : m.operations) {
             auto& n = operation.neighbors;
             if (n.size() == 2 and n.at(0).port != "" and n.at(1).port == "") {
-                PortAddress origin(n.at(0).port, Address(prefix, n.at(0).address));
+                PortAddress origin(n.at(0).port, Address(prefix, Address(n.at(0).address)));
                 Address dest(prefix, Address(n.at(1).address));
                 result.emplace_back(origin, dest);
             }

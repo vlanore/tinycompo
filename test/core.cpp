@@ -132,11 +132,16 @@ struct MyKey {
 
 ostream& operator<<(ostream& os, MyKey const& m) { return os << m.i; }
 
-TEST_CASE("Address to stream") {
+TEST_CASE("Address/PortAddress to stream") {
     std::stringstream ss;
     Address a("a", "b", "c");
     ss << a;
     CHECK(ss.str() == "a__b__c");
+
+    ss.str("");
+    PortAddress p("ptr", "a", "b");
+    ss << p;
+    CHECK(ss.str() == "a__b.ptr");
 }
 
 TEST_CASE("key_to_string test.") {
@@ -227,15 +232,10 @@ TEST_CASE("Address: rebase") {
 
 TEST_CASE("Address: error for keyrs with __") {
     TINYCOMPO_TEST_ERRORS { Address a("a", "b", "c__d"); }
-    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
+    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) of type char const* to address a__b\n");
 
     TINYCOMPO_TEST_MORE_ERRORS { Address a(Address("a", "b"), "c__d"); }
-    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) to address a__b\n");
-}
-
-TEST_CASE("Address: avoiding transforming addresses to keys with __") {
-    Address b("c", "d");
-    Address a(Address("a", "b"), b);
+    TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) of type char const* to address a__b\n");
 }
 
 /*

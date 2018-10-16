@@ -81,3 +81,13 @@ TEST_CASE("Introspector components and connections lists") {
                                 {PortAddress("ptr", "b", "c"), Address{"b", "d"}}};
     CHECK(i.deep_directed_binops() == expected_deep_edges);
 }
+
+TEST_CASE("Address bug from compoGM") {
+    Model m;
+    m.component<MyInt>("c0", 17);
+    m.composite("array");
+    m.component<MyIntProxy>(Address("array", "c1")).connect<Use<IntInterface>>("ptr", "c0");
+
+    Introspector i(m);
+    i.directed_binops();
+}
