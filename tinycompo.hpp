@@ -336,7 +336,20 @@ class Address {
         register_keys(key, std::forward<Keys>(keys)...);
     }
 
-    std::string first() const { return keys.front(); }
+    std::string first() const {
+        if (keys.size() > 0) {
+            return keys.front();
+        } else {
+            return "";
+        }
+    }
+    std::string last() const {
+        if (keys.size() > 0) {
+            return keys.back();
+        } else {
+            return "";
+        }
+    }
 
     Address rest() const {
         Address acc;

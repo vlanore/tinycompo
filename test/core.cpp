@@ -248,6 +248,14 @@ TEST_CASE("Address::c_str") {
     CHECK(strcmp(a.c_str(), "a__b__c") == 0);
 }
 
+TEST_CASE("Address, first and last") {
+    Address a("aazz", "baz", "caz");
+    CHECK(a.last() == "caz");
+    CHECK(a.first() == "aazz");
+    CHECK(Address().last() == "");
+    CHECK(Address().first() == "");
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~
