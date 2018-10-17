@@ -256,6 +256,13 @@ TEST_CASE("Address, first and last") {
     CHECK(Address().first() == "");
 }
 
+TEST_CASE("Address: to_string with custom sep") {
+    Address a("a", "b", "c");
+    CHECK(a.to_string(".") == "a.b.c");
+    CHECK(a.to_string("") == "abc");
+    CHECK(Address().to_string("-") == "");
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~

@@ -343,6 +343,7 @@ class Address {
             return "";
         }
     }
+
     std::string last() const {
         if (keys.size() > 0) {
             return keys.back();
@@ -392,9 +393,9 @@ class Address {
         }
     }
 
-    std::string to_string() const {
+    std::string to_string(std::string sep = "__") const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
-                               [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "__") + key; });
+                               [sep](std::string acc, std::string key) { return ((acc == "") ? "" : acc + sep) + key; });
     }
 
     const char* c_str() const {  // for easier use with printf
