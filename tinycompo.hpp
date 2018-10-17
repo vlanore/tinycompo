@@ -272,6 +272,7 @@ std::string key_to_string(Key key) {
 ===========================================================================================================================*/
 class Address {
     std::vector<std::string> keys;
+    mutable std::string to_string_buf{""};
 
     template <class Arg>
     void register_helper(std::true_type, Arg arg) {
@@ -381,6 +382,11 @@ class Address {
     std::string to_string() const {
         return std::accumulate(keys.begin(), keys.end(), std::string(""),
                                [](std::string acc, std::string key) { return ((acc == "") ? "" : acc + "__") + key; });
+    }
+
+    const char* c_str() const {  // for easier use with printf
+        to_string_buf = to_string();
+        return to_string_buf.c_str();
     }
 
     // for use as key in maps

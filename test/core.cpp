@@ -243,6 +243,11 @@ TEST_CASE("Address: error for keyrs with __") {
     TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) of type char const* to address a__b\n");
 }
 
+TEST_CASE("Address::c_str") {
+    Address a("a", "b", "c");
+    CHECK(strcmp(a.c_str(), "a__b__c") == 0);
+}
+
 /*
 =============================================================================================================================
   ~*~ Model ~*~
