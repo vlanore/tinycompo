@@ -230,6 +230,11 @@ TEST_CASE("Address: rebase") {
     TINYCOMPO_TEST_ERRORS_END("Trying to rebase address c__d from a__b although it is not an ancestor!\n")
 }
 
+TEST_CASE("Address: suffix") {
+    Address a("a", "b", "c", "de");
+    CHECK(a.suffix("_youpi") == Address("a", "b", "c", "de_youpi"));
+}
+
 TEST_CASE("Address: error for keyrs with __") {
     TINYCOMPO_TEST_ERRORS { Address a("a", "b", "c__d"); }
     TINYCOMPO_TEST_ERRORS_END("Trying to add key c__d (which contains __) of type char const* to address a__b\n");
