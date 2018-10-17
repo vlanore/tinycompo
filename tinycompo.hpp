@@ -369,13 +369,13 @@ class Address {
         }
     }
 
-    Address suffix(std::string s) const {
+    Address add_suffix(std::string s) const {
         if (keys.size() == 0) {
             return Address();
         } else if (keys.size() == 1) {
             return Address(first() + s);
         } else {
-            return Address(first(), rest().suffix(s));
+            return Address(first(), rest().add_suffix(s));
         }
     }
 
