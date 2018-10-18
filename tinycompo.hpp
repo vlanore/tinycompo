@@ -383,14 +383,14 @@ class Address {
         }
     }
 
-    Address add_suffix(std::string s) const {
-        if (keys.size() == 0) {
-            return Address();
-        } else if (keys.size() == 1) {
-            return Address(first() + s);
-        } else {
-            return Address(first(), rest().add_suffix(s));
-        }
+    Address format_last(const char* format) const {
+        char* buf = nullptr;
+        asprintf(&buf, format, last().c_str());
+        std::string formatted_key(buf);
+        free(buf);
+        Address copy(*this);
+        copy.keys.back() = formatted_key;
+        return copy;
     }
 
     std::string to_string(std::string sep = "__") const {

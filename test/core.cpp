@@ -232,7 +232,7 @@ TEST_CASE("Address: rebase") {
 
 TEST_CASE("Address: suffix") {
     Address a("a", "b", "c", "de");
-    CHECK(a.add_suffix("_youpi") == Address("a", "b", "c", "de_youpi"));
+    CHECK(a.format_last("log(%s)") == Address("a", "b", "c", "log(de)"));
 }
 
 TEST_CASE("Address: error for keyrs with __") {
